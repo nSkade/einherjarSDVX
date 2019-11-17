@@ -27,6 +27,12 @@ source_group("Include\\GUI" FILES ${GUI_INC})
 file(GLOB NUK_INC "${INCROOT}/nuklear/*.h")
 source_group("Include\\nuklear" FILES ${NUK_INC})
 
+file(GLOB NUK_INC "${INCROOT}/nuklear/*.h")
+source_group("Include\\nuklear" FILES ${NUK_INC})
+
+file(GLOB NUK_INC "${INCROOT}/LightPlugin/*.h")
+source_group("Include\\LightPlugin" FILES ${NUK_INC})
+
 set(MAIN_SRC ${SRC} ${INC} ${AUDIO_SRC} ${AUDIO_INC} ${GUI_SRC} ${GUI_INC} ${NUK_INC})
 
 file(GLOB RESOURCE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Resource.rc)

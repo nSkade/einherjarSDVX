@@ -24,6 +24,7 @@ class TitleScreen_Impl : public TitleScreen
 private:
 	lua_State* m_lua = nullptr;
 	LuaBindable* m_luaBinds = nullptr;
+	float m_lightTimer = 0.0f;
 
 	void Exit()
 	{
@@ -193,6 +194,25 @@ public:
 	{
 		g_gameWindow->SetCursorVisible(true);
 		g_application->DiscordPresenceMenu("Title Screen");
+	}
+
+	virtual void Tick(float deltaTime)
+	{
+		if (IsSuspended())
+			return;
+		m_lightTimer += deltaTime;
+		Color c = Color::FromHSV(fmodf(m_lightTimer * 180, 360), 1.0, 0.1);
+
+		for (size_t i = 0; i < 2; i++)
+		{
+			for (size_t j = 0; j < 3; j++)
+			{
+				g_application->SetRgbLights(i,j, c.ToRGBA8());
+			}
+		}
+
+		uint32 button = 1 << (int)(m_lightTimer * 10) % 6;
+		g_application->SetButtonLights(button);
 	}
 
 

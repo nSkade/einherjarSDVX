@@ -114,6 +114,12 @@ bool Track::AsyncFinalize()
 		trackCoverMaterial->opaque = false;
 	}
 
+	//laneLight
+	laneLightMaterial = g_application->LoadMaterial("laneLight");
+	laneLightMaterial->blendMode = MaterialBlendMode::Additive;
+	laneLightMaterial->opaque = false;
+	laneLightTexture = g_application->LoadTexture("laneLight.png");
+
 	// Set Texture states
 	trackTexture->SetMipmaps(false);
 	trackTexture->SetFilter(true, true, 16.0f);
@@ -205,7 +211,7 @@ bool Track::AsyncFinalize()
 
 		//tick meshes
 		pos = Vector2(-buttonTrackWidth * 0.5f * i, 0.0f);
-		size = Vector2(buttonTrackWidth / 2.0f, trackTickLength);
+		size = Vector2(buttonTrackWidth * 1.357f / 2.0f, trackTickLength); // Skade-code buttonTrackWidth ->
 		rect = Rect(pos, size);
 		splitTrackTickMesh[i] = MeshRes::Create(g_gl);
 		splitTrackTickMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
@@ -213,11 +219,11 @@ bool Track::AsyncFinalize()
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackTickMesh[i]->SetData(splitMeshData);
 	}
-	
+
 	calibrationCritMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -0.02f), Vector2(trackWidth, 0.02f));
 	calibrationDarkMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1.0f), Vector2(trackWidth, 0.99f));
 	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
-	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth, trackTickLength));
+	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth * 1.357f, trackTickLength)); //Skade-code buttonTrackWidth -> buttonTrackWidth*1.357f
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
 	uint8 whiteData[4] = { 255, 255, 255, 255 };
 	whiteTexture = TextureRes::Create(g_gl);
@@ -285,6 +291,7 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 	timedHitEffect->Tick(deltaTime);
 
 	MapTime currentTime = playback.GetLastTime();
+	m_cModSpeed = playback.cModSpeed;
 
 	// Set the view range of the track
 	trackViewRange = Vector2((float)currentTime, 0.0f);
@@ -389,12 +396,12 @@ void Track::DrawBase(class RenderQueue& rq)
 	for (float f : m_barTicks)
 	{
 		float fLocal = f / m_viewRange;
-		Vector3 tickPosition = Vector3(0.0f, trackLength * fLocal - trackTickLength * 0.5f, 0.01f);
+		Vector3 tickPosition = Vector3(-buttonTrackWidth / 5.6, trackLength * fLocal - trackTickLength * 0.5f, 0.01f); // Skade-code 0.0f -> -buttonTrackWidth / 5.6
 		Transform tickTransform = trackOrigin;
 		tickTransform *= Transform::Translation(tickPosition);
 		if (centerSplit != 0.0f)
 		{
-			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params);
+			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 1.075f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params); // Skade-code * 0.5f ->  
 			rq.Draw(tickTransform * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
 		}
 		else
@@ -402,6 +409,8 @@ void Track::DrawBase(class RenderQueue& rq)
 			rq.Draw(tickTransform, trackTickMesh, buttonMaterial, params);
 		}
 	}
+
+	// Draw lane light
 	
 }
 void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active, const std::unordered_set<MapTime> chipFXTimes[2])
@@ -490,7 +499,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		Transform buttonTransform = trackOrigin;
 		buttonTransform *= Transform::Translation(buttonPos);
-		float scale;
+		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
 		if(isHold) // Hold Note?
 		{
 			float trackScale = 0.0f;
@@ -518,7 +527,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		}
 		else {
 			//Use actual distance from camera instead of position on the track?
-			scale = 1.0f + (Math::Max(1.0f, distantButtonScale) - 1.0f) * position;
+			//scale = 1.0f + (Math::Max(1.0f, distantButtonScale) - 1.0f) * position;
+			scale = 0.4f + (1.4f) * position;
 			params.SetParameter("trackScale", 1.0f / trackLength);
 		}
 
@@ -552,7 +562,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			if (laser->GetRoot()->time > playback.GetLastTime())
 			{
 				laserParams.SetParameter("objectGlow", 0.6f);
-				laserParams.SetParameter("hitState", 1);
+				laserParams.SetParameter("hitState", 2);	// Skade-code 1 -> 2
 			}
 			else
 			{
@@ -691,6 +701,27 @@ void Track::DrawTrackCover(RenderQueue& rq)
 		}
 	}
 	#endif
+}
+void Track::DrawLaneLight(RenderQueue& rq)
+{
+	if (laneLightMaterial && laneLightTexture)
+	{
+		Transform t = trackOrigin;
+		MaterialParameterSet p;
+		p.SetParameter("mainTex", laneLightTexture);
+		p.SetParameter("timer", m_lastMapTime);
+		p.SetParameter("speed", m_cModSpeed);
+
+		if (centerSplit != 0.0f)
+		{
+			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], laneLightMaterial, p);
+			rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], laneLightMaterial, p);
+		}
+		else
+		{
+			rq.Draw(t, trackCoverMesh, laneLightMaterial, p);
+		}
+	}
 }
 
 void Track::DrawCalibrationCritLine(RenderQueue& rq)

@@ -2149,6 +2149,7 @@ int Application::IsNamedSamplePlaying(String name)
 void Application::m_OnKeyPressed(SDL_Scancode code, int32 delta)
 {
 	// Fullscreen toggle
+	/*
 	if (code == SDL_SCANCODE_RETURN)
 	{
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
@@ -2159,6 +2160,7 @@ void Application::m_OnKeyPressed(SDL_Scancode code, int32 delta)
 			return;
 		}
 	}
+	*/// Skade-code
 
 	// Pass key to application
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)

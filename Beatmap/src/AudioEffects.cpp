@@ -12,7 +12,7 @@ EffectDuration::EffectDuration(float rate)
 	type = Rate;
 }
 
-EffectDuration EffectDuration::Lerp(const EffectDuration &lhs, const EffectDuration &rhs, float time)
+EffectDuration EffectDuration::Lerp(const EffectDuration& lhs, const EffectDuration& rhs, float time)
 {
 	assert(rhs.type == lhs.type);
 	if (lhs.type == Type::Rate)
@@ -147,7 +147,7 @@ public:
 	}
 };
 
-const AudioEffect &AudioEffect::GetDefault(EffectType type)
+const AudioEffect& AudioEffect::GetDefault(EffectType type)
 {
 	static DefaultEffectSettings defaults;
 	assert((size_t)type < defaults.effects.size());
@@ -176,16 +176,18 @@ void AudioEffect::SetDefaultEffectParams(int16 *params)
 	// Set defaults based on effect type
 	switch (type)
 	{
-	case EffectType::Bitcrush:
-		params[0] = bitcrusher.reduction.Sample(1);
-		break;
-	case EffectType::Wobble:
-		break;
-	case EffectType::Flanger:
-		params[0] = flanger.depth.Sample(1);
-		params[1] = flanger.offset.Sample(1);
-		break;
-	default:
-		break;
+		case EffectType::Bitcrush:
+			params[0] = bitcrusher.reduction.Sample(1);
+			break;
+		case EffectType::Wobble:
+			break;
+		case EffectType::Flanger:
+			params[0] = flanger.depth.Sample(1);
+			params[1] = flanger.offset.Sample(1);
+			break;
+		case EffectType::VocalFilter:
+			break;
+		default:
+			break;
 	}
 }

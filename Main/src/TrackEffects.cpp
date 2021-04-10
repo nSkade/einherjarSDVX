@@ -16,6 +16,8 @@ void TimedEffect::Tick(float deltaTime)
 	time -= deltaTime;
 }
 
+//TODO check for timing in rework
+//ButtonHitEffect::ButtonHitEffect(uint32 buttonCode, Color color) : TimedEffect(0.12f), buttonCode(buttonCode), color(color) // Skade-code 0.2f -> 0.12f
 ButtonHitEffect::ButtonHitEffect() : TimedEffect(0)
 {
 }
@@ -38,10 +40,11 @@ void ButtonHitEffect::Tick(float deltaTime)
 
 void ButtonHitEffect::Draw(class RenderQueue& rq)
 {
-	float x;
-	float w;
+	float x = 0.0f;
+	float w = track->buttonWidth;
+	float yMult = 2.5f; // Skade-code 2.0f -> 2.5f
 	float hiSpeedAlphaOffset = 0;
-	float yMult = 2.0f;
+	
 	if (buttonCode < 4)
 	{
 		// Scale hit effect alpha between hispeed range of 100 to 600

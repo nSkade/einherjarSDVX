@@ -63,6 +63,9 @@ public:
 	// Sets the effect to be used for lasers
 	void SetLaserEffect(EffectType type);
 
+	// Set button Miss Vocal effect
+	void SetMissVocalEffect(bool active);
+
 	// The input which controls the laser filter amount
 	void SetLaserFilterInput(float input, bool active = false);
 	float GetLaserFilterInput() const;
@@ -91,7 +94,8 @@ public:
 private:
 	// Returns the track that should have effects applied to them
 	Ref<AudioStream> m_GetDSPTrack();
-	void m_CleanupDSP(class DSP *&ptr);
+	void m_CleanupDSP(class DSP*& ptr);
+	void m_CleanupDSPfx(class DSP*& ptr);
 	void m_SetLaserEffectParameter(float input);
 	void m_PreRenderDSPTrack();
 
@@ -117,6 +121,12 @@ private:
 	class DSP *m_laserDSP = nullptr;
 	float m_laserEffectMix = 1.0f;
 	float m_laserInput = 0.0f;
+
+	EffectType m_missVocalEffectType = EffectType::VocalFilter;
+	GameAudioEffect m_missVocalEffect;
+	class DSP* m_missVocalDSP = nullptr;
+	class DSP* m_missVocalDSPfx = nullptr;
+	float m_missVocalEffectMix = 0.0f;
 
 	GameAudioEffect m_buttonEffects[2];
 	class DSP *m_buttonDSPs[2] = {nullptr};

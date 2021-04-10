@@ -78,7 +78,8 @@ void SkinHttp::m_PushResponse(lua_State * L, const cpr::Response & r)
 	pushNumber("status", r.status_code);
 	pushNumber("elapsed", r.elapsed);
 	pushString("error", r.error.message.c_str());
-	pushString("cookies", r.cookies.GetEncoded(cpr::CurlHolder()).c_str());
+	//TODO fix
+	//pushString("cookies", r.cookies.GetEncoded(cpr::CurlHolder()).c_str());
 	lua_pushstring(L, "header");
 	lua_newtable(L);
 	for (auto& i : r.header)

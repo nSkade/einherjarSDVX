@@ -964,6 +964,9 @@ public:
 		// Draw the base track + time division ticks
 		m_track->DrawBase(renderQueue);
 
+		//draw LaneLight
+		m_track->DrawLaneLight(renderQueue);
+
 		for(auto& object : m_currentObjectSet)
 		{
 			// TODO(itszn) use something better than m_permanentlyHiddenObjects
@@ -2239,6 +2242,11 @@ public:
 				}
 			}
 
+			if (rating == ScoreHitRating::Perfect)
+			{
+				m_audioPlayback.SetMissVocalEffect(false);
+			}
+
 			//set button invisible
 			if (st != nullptr)
 				m_hiddenObjects.insert(hitObject);
@@ -2273,6 +2281,8 @@ public:
 
 	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
 	{
+		m_audioPlayback.SetMissVocalEffect(true);
+
 		uint32 buttonIdx = (uint32)button;
 		if (hitEffect)
 		{

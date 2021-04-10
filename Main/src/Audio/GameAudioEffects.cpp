@@ -119,6 +119,13 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 		ret = ps;
 		break;
 	}
+	case EffectType::VocalFilter:
+	{
+		//TODO fix
+		VocalFilterDSP* vf = new VocalFilterDSP(sampleRate);
+		ret = vf;
+		break;
+	}
 	default:
 		break;
 	}

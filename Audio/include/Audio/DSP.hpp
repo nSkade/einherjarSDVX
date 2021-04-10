@@ -301,9 +301,18 @@ public:
 
 	~PitchShiftDSP();
 
-	virtual void Process(float *out, uint32 numSamples);
-	virtual const char *GetName() const { return "PitchShiftDSP"; }
-
+	virtual void Process(float* out, uint32 numSamples);
+	virtual const char* GetName() const { return "PitchShiftDSP"; }
 private:
-	class PitchShiftDSP_Impl *m_impl;
+	class PitchShiftDSP_Impl* m_impl;
+};
+
+class VocalFilterDSP : public DSP
+{
+public:
+	VocalFilterDSP(uint32 sampleRate);
+	virtual void Process(float* out, uint32 numSamples);
+	virtual const char* GetName() const { return "VocalFilterDSP"; }
+private:
+	float invertedOut;
 };

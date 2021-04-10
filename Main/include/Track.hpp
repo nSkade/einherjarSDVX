@@ -75,7 +75,7 @@ public:
 	float trackTickLength;
 	float buttonLength;
 	float fxbuttonLength;
-	float distantButtonScale = 2.0f;
+	float distantButtonScale = 6.0f; // Skade-code 2.0f -> 4.0f
 
 	// Laser color setting
 	Color laserColors[2] = {};
@@ -110,6 +110,7 @@ public:
 	void DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, Color color = Color::White, float tilt = 0.0f);
 	void DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale = 1.0f);
 	void DrawTrackCover(RenderQueue& rq);
+	void DrawLaneLight(RenderQueue& rq);
 	void DrawCalibrationCritLine(RenderQueue& rq);
 
 	Vector3 TransformPoint(const Vector3& p);
@@ -184,6 +185,10 @@ public:
 	/* Overlay graphics */
 	Material trackOverlay;
 
+	/* LaneLight */
+	Material laneLightMaterial;
+	Texture laneLightTexture;
+
 	/* Scoring and feedback elements */
 	Texture scoreHitTexture;
 	Texture scoreHitTextures[3]; // Ok, Miss, Perfect
@@ -225,6 +230,7 @@ private:
 	float m_viewRange;
 
 	MapTime m_lastMapTime = 0;
+	float m_cModSpeed = 0;
 
 	float m_alertTimer[2] = { 10.0f, 10.0f };
 

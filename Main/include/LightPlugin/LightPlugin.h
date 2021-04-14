@@ -4,6 +4,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef struct LightPlugin {
+	void* handle;
 	char* (*GetName)();
 	void (*SetButtons)(uint32_t bitfield);
 	void (*Tick)(float deltaTime);

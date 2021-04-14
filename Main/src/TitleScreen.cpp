@@ -31,7 +31,7 @@ private:
 		g_application->Shutdown();
 	}
 
-	int lExit(lua_State* L)
+	int lExit(lua_State *L)
 	{
 		Exit();
 		return 0;
@@ -42,19 +42,19 @@ private:
 		g_transition->TransitionTo(SongSelect::Create());
 	}
 
-	int lStart(lua_State* L)
+	int lStart(lua_State *L)
 	{
 		Start();
 		return 0;
 	}
 
-	int lDownloads(lua_State* L)
+	int lDownloads(lua_State *L)
 	{
 		g_application->AddTickable(new DownloadScreen());
 		return 0;
 	}
 
-	int lMultiplayer(lua_State* L)
+	int lMultiplayer(lua_State *L)
 	{
 		g_transition->TransitionTo(new MultiplayerScreen());
 		return 0;
@@ -77,7 +77,7 @@ private:
 		g_application->AddTickable(SettingsScreen::Create());
 	}
 
-	int lSettings(lua_State* L)
+	int lSettings(lua_State *L)
 	{
 		Settings();
 		return 0;
@@ -151,7 +151,7 @@ public:
 		g_input.OnButtonPressed.Add(this, &TitleScreen_Impl::m_OnButtonPressed);
 		return true;
 	}
-	
+
 	TitleScreen_Impl()
 	{
 		g_gameWindow->OnMousePressed.RemoveAll(this);
@@ -214,12 +214,10 @@ public:
 		uint32 button = 1 << (int)(m_lightTimer * 10) % 6;
 		g_application->SetButtonLights(button);
 	}
-
-
 };
 
-TitleScreen* TitleScreen::Create()
+TitleScreen *TitleScreen::Create()
 {
-	TitleScreen_Impl* impl = new TitleScreen_Impl();
+	TitleScreen_Impl *impl = new TitleScreen_Impl();
 	return impl;
 }

@@ -101,7 +101,7 @@ void Application::SetCommandLine(const char *cmdLine)
 
 static void PluginLog(char* msg)
 {
-	Logf("[Light Plugin]: %s", Logger::Info, msg);
+	Logf("[Light Plugin]: %s", Logger::Severity::Info, msg);
 }
 
 void Application::ApplySettings()
@@ -129,7 +129,7 @@ void Application::ApplySettings()
 		m_activeLightPlugin = &m_lightPlugins.at(newPlugin);
 		if (m_activeLightPlugin->Init(PluginLog) != 0)
 		{
-			Logf("Failed to initialize light plugin: \"%s\"", Logger::Warning, newPlugin);
+			Logf("Failed to initialize light plugin: \"%s\"", Logger::Severity::Warning, newPlugin);
 			m_activeLightPlugin = nullptr;
 		}
 	}
@@ -849,7 +849,7 @@ void Application::m_InitLightPlugins()
 		int res = m_activeLightPlugin->Init(PluginLog);
 		if (res != 0)
 		{
-			Logf("Failed to initialize light plugin: \"%s\"", Logger::Warning, newPlugin);
+			Logf("Failed to initialize light plugin: \"%s\"", Logger::Severity::Warning, newPlugin);
 			m_activeLightPlugin = nullptr;
 		}
 	}

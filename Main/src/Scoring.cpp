@@ -27,6 +27,19 @@ ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 		return ClearMark::FullCombo;
 	if (score.gaugeType == GaugeType::Hard && score.gauge > 0) //Hard Clear
 		return ClearMark::HardClear;
+
+	// TODO(itszn) should we have a different clear mark for these?
+	if (score.gaugeType == GaugeType::Permissive && score.gauge > 0) //Hard Clear
+		return ClearMark::NormalClear;
+
+	if (score.gaugeType == GaugeType::Blastive && score.gauge > 0) //Hard Clear
+	{
+		if (score.gaugeOption > 4) // stricter than hard
+			return ClearMark::HardClear;
+
+		return ClearMark::NormalClear;
+	}
+
 	if (score.gaugeType == GaugeType::Normal && score.gauge >= 0.70) //Normal Clear
 		return ClearMark::NormalClear;
 
@@ -128,6 +141,7 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	// Get input offset
 	m_inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
+	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset);
 	// Get bounce guard duration
 	m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
 
@@ -149,6 +163,18 @@ void Scoring::Reset(const MapTimeRange& range)
 	if (m_options.gaugeType == GaugeType::Hard)
 	{
 		GaugeHard* gauge = new GaugeHard();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
+	}
+	else if (m_options.gaugeType == GaugeType::Permissive)
+	{
+		GaugeHard* gauge = new GaugePermissive();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
+	}
+	else if (m_options.gaugeType == GaugeType::Blastive)
+	{
+		GaugeHard* gauge = new GaugeBlastive(m_options.gaugeLevel);
 		gauge->Init(mapTotals, total, m_endTime);
 		m_gaugeStack.push_back(gauge);
 	}
@@ -428,7 +454,10 @@ bool Scoring::IsLaserHeld(uint32 laserIndex, bool includeSlams) const
 	if (m_holdObjects[laserIndex + 6])
 	{
 		// Check for slams
-		return (((LaserObjectState*)m_holdObjects[laserIndex + 6])->flags & LaserObjectState::flag_Instant) == 0;
+		auto obj = (LaserObjectState*)m_holdObjects[laserIndex + 6];
+		if ((obj->flags & LaserObjectState::flag_Instant) && obj->next)
+			return true;
+		return !(obj->flags & LaserObjectState::flag_Instant);
 	}
 	return false;
 }
@@ -702,7 +731,16 @@ void Scoring::m_UpdateTicks()
 		for (uint32 i = 0; i < ticks.size(); i++)
 		{
 			ScoreTick* tick = ticks[i];
-			MapTime delta = currentTime - ticks[i]->time + m_inputOffset;
+			MapTime delta;
+			if (tick->HasFlag(TickFlags::Laser))
+			{
+				delta = currentTime - ticks[i]->time + m_laserOffset;
+			}
+			else 
+			{
+				delta = currentTime - ticks[i]->time + m_inputOffset;
+			}
+			
 			bool processed = false;
 			if (delta >= 0)
 			{
@@ -718,7 +756,7 @@ void Scoring::m_UpdateTicks()
 					assert(buttonCode < 6);
 					if (!tick->HasFlag(TickFlags::Ignore))
 					{
-						if (m_IsBeingHold(tick) || autoplayInfo.IsAutoplayButtons())
+						if (m_IsBeingHeld(tick) || autoplayInfo.IsAutoplayButtons())
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -731,25 +769,31 @@ void Scoring::m_UpdateTicks()
 						else
 						{
 							m_TickMiss(tick, buttonCode, 0);
+							// Add miss replay hitstat
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Miss;
+							hitStats.Add(stat);
 
 							m_prevHoldHit[buttonCode] = false;
 						}
 					}
 					else if (tick->HasFlag(TickFlags::End))
-					    // Simulate releasing a held button on autoplay
 					    OnHoldLeave.Call(button);
 
 					processed = true;
 				}
 				else if (tick->HasFlag(TickFlags::Laser))
 				{
-					LaserObjectState* laserObject = (LaserObjectState*)tick->object;
+					auto* laserObject = (LaserObjectState*)tick->object;
 					if (tick->HasFlag(TickFlags::Slam))
 					{
 						// Check if slam hit
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-						if (autoplayInfo.autoplay || (dirSign == inputSign && delta <= hitWindow.slam))
+
+						if (autoplayInfo.autoplay || (dirSign == inputSign && delta <= hitWindow.slam / 2)
+							|| tick->HasFlag(TickFlags::Processed))
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -775,10 +819,23 @@ void Scoring::m_UpdateTicks()
 						else
 						{
 							m_TickMiss(tick, buttonCode, 0);
+							// Add miss replay hitstat
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Miss;
+							hitStats.Add(stat);
 						}
 						processed = true;
 					}
 				}
+			}
+			else if (tick->HasFlag(TickFlags::Slam)) // Check early for slam input
+			{
+				auto* laserObject = (LaserObjectState*)tick->object;
+				float dirSign = Math::Sign(laserObject->GetDirection());
+				float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
+				if (dirSign == inputSign && std::abs(delta) <= hitWindow.slam / 2)
+					tick->SetFlag(TickFlags::Processed);
 			}
 
 			bool miss = (tick->HasFlag(TickFlags::Slam) && delta > hitWindow.slam)
@@ -786,6 +843,14 @@ void Scoring::m_UpdateTicks()
 			if (miss && !processed)
 			{
 				m_TickMiss(tick, buttonCode, delta);
+				if (tick->HasFlag(TickFlags::Hold) || tick->HasFlag(TickFlags::Laser))
+				{
+					// Add miss replay hitstat
+					HitStat* stat = new HitStat(tick->object);
+					stat->time = currentTime;
+					stat->rating = ScoreHitRating::Miss;
+					hitStats.Add(stat);
+				}
 				processed = true;
 			}
 
@@ -817,14 +882,14 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 		ObjectState* hitObject = tick->object;
 		if (tick->HasFlag(TickFlags::Laser))
 		{
-			// Ignore laser and hold ticks
+			// Ignore laser ticks
 			return nullptr;
 		}
 		if (tick->HasFlag(TickFlags::Hold))
 		{
 			HoldObjectState* hos = (HoldObjectState*)hitObject;
 			hos = hos->GetRoot();
-			if (hos->time - hitWindow.hold <= currentTime)
+			if (hos->time - currentTime <= hitWindow.hold)
 				m_SetHoldObject(hitObject, buttonCode);
 			return nullptr;
 		}
@@ -849,6 +914,7 @@ void Scoring::m_OnTickProcessed(ScoreTick* tick, uint32 index)
 		OnScoreChanged.Call();
 	}
 }
+
 void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 {
 	HitStat* stat = m_AddOrUpdateHitStat(tick->object);
@@ -985,7 +1051,6 @@ void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
 		}
 	}
 
-
 	while (m_gaugeStack.size() > 1 && m_gaugeStack.back()->FailOut())
 	{
 		Gauge* lostGauge = m_gaugeStack.back();
@@ -1006,11 +1071,11 @@ void Scoring::m_UpdateGaugeSamples()
 
 void Scoring::m_CleanupTicks()
 {
-	for (uint32 i = 0; i < 8; i++)
+	for (auto & m_tick : m_ticks)
 	{
-		for (ScoreTick* tick : m_ticks[i])
+		for (ScoreTick* tick : m_tick)
 			delete tick;
-		m_ticks[i].clear();
+		m_tick.clear();
 	}
 }
 
@@ -1080,7 +1145,7 @@ void Scoring::m_ReleaseHoldObject(uint32 index)
 	m_ReleaseHoldObject(m_holdObjects[index]);
 }
 
-bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
+bool Scoring::m_IsBeingHeld(const ScoreTick* tick) const
 {
 	// NOTE: all these are just heuristics. If there's a better heuristic, change this.
 	// See issue #355 for more detail.
@@ -1133,7 +1198,7 @@ bool Scoring::m_IsRoot(const HoldObjectState* hold) const
 
 void Scoring::m_UpdateLasers(float deltaTime)
 {
-	MapTime mapTime = m_playback->GetLastTime() + m_inputOffset;
+	MapTime mapTime = m_playback->GetLastTime() + m_laserOffset;
 	bool currentlySlamNextSegmentStraight[2] = { false };
 
 	// Check for new laser segments in laser queue
@@ -1425,15 +1490,17 @@ bool Scoring::HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine)
     if (m_ticks[index].empty())
         return false;
 
-    auto currentTime = m_playback->GetLastTime();
+    auto currentTime = m_playback->GetLastTime() + m_inputOffset;
     auto tick = m_ticks[index].front();
     auto obj = (HoldObjectState*)tick->object;
+    if (obj->type != ObjectType::Hold)
+		return false;
     // When a hold passes the crit line and we're eligible to hit the starting tick,
     // change the idle hit effect to the crit hit effect
-    bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHold(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
+    bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHeld(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
     // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
     // including when the final scorable tick has been processed
-    bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] > obj->time;
+    bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] + m_inputOffset > obj->time;
 
     return withinHoldStartWindow || holdObjectHittable;
 }

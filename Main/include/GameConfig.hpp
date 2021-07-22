@@ -24,6 +24,8 @@ DefineEnum(GameConfigKeys,
 		   Fullscreen,
 		   FullscreenMonitorIndex,
 		   WindowedFullscreen,
+		   AdjustWindowPositionOnStartup,
+
 		   AntiAliasing,
 		   MasterVolume,
 		   VSync,
@@ -43,6 +45,7 @@ DefineEnum(GameConfigKeys,
 		   SkipScore,
 		   GlobalOffset,
 		   InputOffset,
+		   LaserOffset,
 		   SongFolder,
 		   Skin,
 		   Laser0Color,
@@ -177,10 +180,15 @@ DefineEnum(GameConfigKeys,
 		   SettingsLastTab,
 		   TransferScoresOnChartUpdate,
 
+		   KeepFontTexture,
+
 		   CurrentProfileName,
+		   FastGUI,
+		   SkinDevMode,
 
 		   // Gameplay options
 		   GaugeType,
+		   BlastiveLevel,
 		   MirrorChart,
 		   RandomizeChart,
 		   BackupGauge,
@@ -191,7 +199,9 @@ extern ConfigBase::KeyList GameConfigProfileSettings;
 
 DefineEnum(GaugeTypes,
 		   Normal,
-		   Hard)
+		   Hard,
+		   Permissive,
+	       Blastive)
 
 DefineEnum(SpeedMods,
 		   XMod,

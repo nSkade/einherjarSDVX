@@ -9,6 +9,7 @@
 #include <Graphics/ResourceManagers.hpp>
 #include <Shared/Profiling.hpp>
 #include "GameConfig.hpp"
+#include "GuiUtils.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
 #include "SkinConfig.hpp"
@@ -114,6 +115,8 @@ void Application::ApplySettings()
 	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
+
+	m_UpdateWindowPosAndShape();
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
 
 	//restart light plugin
@@ -928,11 +931,12 @@ bool Application::m_Init()
 	m_allowMapConversion = false;
 	bool debugMute = false;
 	bool startFullscreen = false;
-	uint32 fullscreenMonitor = -1;
+	int32 fullscreenMonitor = -1;
 
 	// Fullscreen settings from config
 	if (g_gameConfig.GetBool(GameConfigKeys::Fullscreen))
 		startFullscreen = true;
+
 	fullscreenMonitor = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
 
 	// Flags read _after_ config load
@@ -989,6 +993,7 @@ bool Application::m_Init()
 	g_gameWindow->OnKeyPressed.Add(this, &Application::m_OnKeyPressed);
 	g_gameWindow->OnKeyReleased.Add(this, &Application::m_OnKeyReleased);
 	g_gameWindow->OnResized.Add(this, &Application::m_OnWindowResized);
+	g_gameWindow->OnMoved.Add(this, &Application::m_OnWindowMoved);
 	g_gameWindow->OnFocusChanged.Add(this, &Application::m_OnFocusChanged);
 
 	// Initialize Input
@@ -1007,15 +1012,12 @@ bool Application::m_Init()
 	}
 
 	g_skinConfig = new SkinConfig(m_skin);
+
 	// Window cursor
 	Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + m_skin + "/textures/cursor.png"));
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
 
-	if (startFullscreen)
-		g_gameWindow->SwitchFullscreen(
-			g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight),
-			g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight),
-			fullscreenMonitor, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen));
+	m_UpdateWindowPosAndShape(fullscreenMonitor, startFullscreen, g_gameConfig.GetBool(GameConfigKeys::AdjustWindowPositionOnStartup));
 
 	// Set render state variables
 	m_renderStateBase.aspectRatio = g_aspectRatio;
@@ -1109,6 +1111,11 @@ bool Application::m_Init()
 		g_transition = TransitionScreen::Create();
 	}
 
+	if (g_gameConfig.GetBool(GameConfigKeys::KeepFontTexture)) {
+		BasicNuklearGui::StartFontInit();
+		m_fontBakeThread = Thread(BasicNuklearGui::BakeFontWithLock);
+	}
+
 	///TODO: check if directory exists already?
 	Path::CreateDir(Path::Absolute("screenshots"));
 	Path::CreateDir(Path::Absolute("songs"));
@@ -1131,7 +1138,12 @@ void Application::m_MainLoop()
 
 		// Process changes in the list of items
 		bool restoreTop = false;
-		for (auto &ch : g_tickableChanges)
+
+		// Flush current changes from g_tickables in case another tickable needs to be added while destroying or initializing another tickable
+		Vector<TickableChange> currentChanges(g_tickableChanges);
+		g_tickableChanges.clear();
+
+		for (auto &ch : currentChanges)
 		{
 			if (ch.mode == TickableChange::Added)
 			{
@@ -1177,12 +1189,11 @@ void Application::m_MainLoop()
 			g_tickables.back()->m_Restore();
 
 		// Application should end, no more active screens
-		if (!g_tickableChanges.empty() && g_tickables.empty())
+		if (g_tickableChanges.empty() && g_tickables.empty())
 		{
 			Log("No more IApplicationTickables, shutting down", Logger::Severity::Warning);
 			return;
 		}
-		g_tickableChanges.clear();
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
@@ -1292,7 +1303,6 @@ void Application::m_Tick()
 		g_guiState.scissor = Rect(0, 0, -1, -1);
 		g_guiState.imageTint = nvgRGB(255, 255, 255);
 		// Render all items
-		assert(!g_tickables.empty());
 		for (auto &tickable : g_tickables)
 		{
 			tickable->Render(m_deltaTime);
@@ -1399,8 +1409,8 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
+	sharedTextures.clear();
 	// Clear fonts before freeing library
-
 	for (auto &f : g_guiState.fontCahce)
 	{
 		f.second.reset();
@@ -1420,6 +1430,9 @@ void Application::m_Cleanup()
 	Graphics::FontRes::FreeLibrary();
 	if (m_updateThread.joinable())
 		m_updateThread.join();
+
+	if (m_fontBakeThread.joinable())
+		m_fontBakeThread.join();
 
 	// Finally, save config
 	m_SaveConfig();
@@ -1531,6 +1544,8 @@ Material Application::LoadMaterial(const String &name, const String &path)
 		assert(gshader);
 		ret->AssignShader(ShaderType::Geometry, gshader);
 	}
+	if (!ret)
+		g_gameWindow->ShowMessageBox("Shader Error", "Could not load shaders "+path+name+".vs and "+path+name+".fs", 0);
 	assert(ret);
 	return ret;
 }
@@ -1615,13 +1630,26 @@ void Application::SetScriptPath(lua_State *s)
 	std::string cur_path = lua_tostring(s, -1); // grab path string from top of stack
 	cur_path.append(";");						// do your path magic here
 	cur_path.append(lua_path.c_str());
-	lua_pop(s, 1);						 // get rid of the string on the stack we just pushed on line 5
+	lua_pop(s, 1);						 // get rid of the string on the stack e just pushed on line 5
 	lua_pushstring(s, cur_path.c_str()); // push the new one
 	lua_setfield(s, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
 	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
-std::set<String> g_luaErrorsSeen;
+bool Application::ScriptError(const String& name, lua_State* L)
+{
+	Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1)); //TODO: Don't spam the same message
+	if (g_gameConfig.GetBool(GameConfigKeys::SkinDevMode))
+	{
+		String message = Utility::Sprintf("Lua error: %s \n\nReload Script?", lua_tostring(L, -1));
+		if (g_gameWindow->ShowYesNoMessage("Lua Error", message)) {
+			return ReloadScript(name, L);
+		}
+	}
+
+	return false;
+}
+
 
 lua_State *Application::LoadScript(const String &name, bool noError)
 {
@@ -1657,23 +1685,11 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		lua_close(s);
 		return nullptr;
 	}
-	else
-		g_luaErrorsSeen.clear();
+
 	return s;
 }
 
-// TODO add option for this
-void Application::ShowLuaError(const String &error)
-{
-	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
-		return;
-	g_luaErrorsSeen.insert(error);
-
-	Logf("Lua error: %s", Logger::Severity::Error, *error);
-	g_gameWindow->ShowMessageBox("Lua Error", error, 0);
-}
-
-void Application::ReloadScript(const String &name, lua_State *L)
+bool Application::ReloadScript(const String &name, lua_State *L)
 {
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
@@ -1688,10 +1704,9 @@ void Application::ReloadScript(const String &name, lua_State *L)
 		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1));
 		g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(L, -1), 0);
 		lua_close(L);
-		assert(false);
+		return false;
 	}
-	else
-		g_luaErrorsSeen.clear();
+	return true;
 }
 
 void Application::ReloadSkin()
@@ -1717,6 +1732,7 @@ void Application::ReloadSkin()
 	g_guiState.nextPaintId.clear();
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
+	sharedTextures.clear();
 
 	for (auto &sample : m_samples)
 	{
@@ -1889,6 +1905,11 @@ Material Application::GetGuiTexMaterial() const
 	return m_guiTex;
 }
 
+Material Application::GetGuiFillMaterial() const
+{
+	return m_fillMaterial;
+}
+
 Transform Application::GetGUIProjection() const
 {
 	return ProjectionMatrix::CreateOrthographic(0.0f, (float)g_resolution.x, (float)g_resolution.y, 0.0f, 0.0f, 100.0f);
@@ -1971,12 +1992,9 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 	{
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
-			g_gameWindow->SwitchFullscreen(
-				g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight),
-				g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight),
-				-1, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen));
-			g_gameConfig.Set(GameConfigKeys::Fullscreen, g_gameWindow->IsFullscreen());
-			//m_OnWindowResized(g_gameWindow->GetWindowSize());
+			g_gameConfig.Set(GameConfigKeys::Fullscreen, !g_gameWindow->IsFullscreen());
+			m_UpdateWindowPosAndShape();
+
 			return;
 		}
 	}
@@ -2046,6 +2064,43 @@ void Application::m_OnWindowResized(const Vector2i &newSize)
 			g_gameConfig.Set(GameConfigKeys::ScreenWidth, newSize.x);
 			g_gameConfig.Set(GameConfigKeys::ScreenHeight, newSize.y);
 		}
+	}
+}
+
+void Application::m_OnWindowMoved(const Vector2i& newPos)
+{
+	if (g_gameWindow->IsActive() && !g_gameWindow->IsFullscreen())
+	{
+		g_gameConfig.Set(GameConfigKeys::ScreenX, newPos.x);
+		g_gameConfig.Set(GameConfigKeys::ScreenY, newPos.y);
+	}
+}
+
+void Application::m_UpdateWindowPosAndShape()
+{
+	m_UpdateWindowPosAndShape(
+		g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex),
+		g_gameConfig.GetBool(GameConfigKeys::Fullscreen),
+		false
+	);
+}
+
+void Application::m_UpdateWindowPosAndShape(int32 monitorId, bool fullscreen, bool ensureInBound)
+{
+	const Vector2i windowPos(g_gameConfig.GetInt(GameConfigKeys::ScreenX), g_gameConfig.GetInt(GameConfigKeys::ScreenY));
+	const Vector2i windowSize(g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight));
+	const Vector2i fullscreenSize(g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight));
+
+	g_gameWindow->SetPosAndShape(Graphics::Window::PosAndShape {
+		fullscreen, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen),
+		windowPos, windowSize, monitorId, fullscreenSize
+	}, ensureInBound);
+	
+	if (ensureInBound && !fullscreen)
+	{
+		Vector2i windowPos = g_gameWindow->GetWindowPos();
+		g_gameConfig.Set(GameConfigKeys::ScreenX, windowPos.x);
+		g_gameConfig.Set(GameConfigKeys::ScreenY, windowPos.y);
 	}
 }
 
@@ -2411,6 +2466,73 @@ static int lGetSkinSetting(lua_State *L /*String key*/)
 	}
 }
 
+int lLoadSharedTexture(lua_State* L) {
+	Ref<SharedTexture> newTexture = Utility::MakeRef(new SharedTexture());
+
+
+	const auto key = luaL_checkstring(L, 1);
+	const auto path = luaL_checkstring(L, 2);
+	int imageflags = 0;
+	if (lua_isinteger(L, 3)) {
+		imageflags = luaL_checkinteger(L, 3);
+	}
+
+	newTexture->nvgTexture = nvgCreateImage(g_guiState.vg, path, imageflags);
+	newTexture->texture = g_application->LoadTexture(path, true);
+
+	if (newTexture->Valid())
+	{
+		g_application->sharedTextures.Add(key, newTexture);
+	}
+	else {
+		lua_pushstring(L, *Utility::Sprintf("Failed to load shared texture with path: '%s', key: '%s'", path, key));
+		return lua_error(L);
+	}
+	
+	return 0;
+}
+
+int lLoadSharedSkinTexture(lua_State* L) {
+	Ref<SharedTexture> newTexture = Utility::MakeRef(new SharedTexture());
+	const auto key = luaL_checkstring(L, 1);
+	const auto filename = luaL_checkstring(L, 2);
+	int imageflags = 0;
+	if (lua_isinteger(L, 3)) {
+		imageflags = luaL_checkinteger(L, 3);
+	}
+
+
+	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + filename;
+	path = Path::Absolute(path);
+
+	newTexture->nvgTexture = nvgCreateImage(g_guiState.vg, path.c_str(), imageflags);
+	newTexture->texture = g_application->LoadTexture(path, true);
+
+	if (newTexture->Valid())
+	{
+		g_application->sharedTextures.Add(key, newTexture);
+	}
+	else {
+		return luaL_error(L, "Failed to load shared texture with path: '%s', key: '%s'", *path, *key);
+	}
+
+	return 0;
+}
+
+int lGetSharedTexture(lua_State* L) {
+	const auto key = luaL_checkstring(L, 1);
+
+	if (g_application->sharedTextures.Contains(key))
+	{
+		auto& t = g_application->sharedTextures.at(key);
+		lua_pushnumber(L, t->nvgTexture);
+		return 1;
+	}
+
+	
+	return 0;
+}
+
 void Application::SetLuaBindings(lua_State *state)
 {
 	auto pushFuncToTable = [&](const char *name, int (*func)(lua_State *)) {
@@ -2497,6 +2619,9 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("SetImageTint", lSetImageTint);
 		pushFuncToTable("LoadAnimation", lLoadAnimation);
 		pushFuncToTable("LoadSkinAnimation", lLoadSkinAnimation);
+		pushFuncToTable("LoadSharedTexture", lLoadSharedTexture);
+		pushFuncToTable("LoadSharedSkinTexture", lLoadSharedSkinTexture);
+		pushFuncToTable("GetSharedTexture", lGetSharedTexture);
 		pushFuncToTable("TickAnimation", lTickAnimation);
 		pushFuncToTable("ResetAnimation", lResetAnimation);
 		pushFuncToTable("GlobalCompositeOperation", lGlobalCompositeOperation);
@@ -2677,4 +2802,14 @@ void JacketLoadingJob::Finalize()
 		target->texture = nvgCreateImageRGBA(g_guiState.vg, loadedImage->GetSize().x, loadedImage->GetSize().y, 0, (unsigned char *)loadedImage->GetBits());
 		target->loaded = true;
 	}
+}
+
+SharedTexture::~SharedTexture()
+{
+	nvgDeleteImage(g_guiState.vg, nvgTexture);
+}
+
+bool SharedTexture::Valid()
+{
+	return nvgTexture != 0 && texture;
 }

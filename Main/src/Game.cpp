@@ -1590,7 +1590,7 @@ public:
 				{
 					if (j == 0)
 					{
-						const Color c = m_track->laserColors[1 - i] * brightness;
+						const Color c(m_track->laserColors[1 - i] * brightness);
 						g_application->SetRgbLights(i, j, c.ToRGBA8());
 					}
 					else

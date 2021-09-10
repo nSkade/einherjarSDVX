@@ -104,8 +104,12 @@ static AudioEffect CreateDefault(EffectType type)
 		break;
 	case EffectType::Flanger:
 		ret.duration = TimeRange(2000);
-		ret.flanger.offset = IntRange(10);
-		ret.flanger.depth = IntRange(40);
+		ret.mix = FloatRange(0.8f);
+		ret.flanger.offset = IntRange(30);
+		ret.flanger.depth = IntRange(45);
+		ret.flanger.feedback = FloatRange(0.6f);
+		ret.flanger.stereoWidth = FloatRange(0.0f);
+		ret.flanger.volume = FloatRange(0.75f);
 		break;
 	case EffectType::SwitchAudio:
 		ret.switchaudio.index = -1;

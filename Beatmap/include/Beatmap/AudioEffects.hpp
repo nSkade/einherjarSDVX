@@ -161,6 +161,12 @@ struct AudioEffect
 			EffectParam<int32> offset;
 			// Depth of the effect (samples)
 			EffectParam<int32> depth;
+			// Feedback (0-1)
+			EffectParam<float> feedback;
+			// Stereo width (0-1)
+			EffectParam<float> stereoWidth;
+			// Volume of added source audio + delayed source audio (0-1)
+			EffectParam<float> volume;
 		} flanger;
 		struct
 		{

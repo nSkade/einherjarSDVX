@@ -103,7 +103,7 @@ static AudioEffect CreateDefault(EffectType type)
 		ret.wobble.q = FloatRange(2.0f);
 		break;
 	case EffectType::Flanger:
-		ret.duration = TimeRange(2000);
+		ret.duration = TimeRange(2.0f);
 		ret.mix = FloatRange(0.8f);
 		ret.flanger.offset = IntRange(30);
 		ret.flanger.depth = IntRange(45);

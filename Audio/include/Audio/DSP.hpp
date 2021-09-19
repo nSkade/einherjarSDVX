@@ -222,6 +222,9 @@ public:
 
 	void SetLength(double length);
 	void SetDelayRange(uint32 min, uint32 max);
+	void SetFeedback(float feedback);
+	void SetStereoWidth(float stereoWidth);
+	void SetVolume(float volume);
 
 	virtual void Process(float *out, uint32 numSamples);
 	virtual const char *GetName() const { return "FlangerDSP"; }
@@ -232,6 +235,10 @@ private:
 	// Delay range
 	uint32 m_min = 0;
 	uint32 m_max = 0;
+
+	float m_feedback = 0.f;
+	float m_stereoWidth = 0.f;
+	float m_volume = 0.f;
 
 	Vector<float> m_sampleBuffer;
 	uint32 m_time = 0;

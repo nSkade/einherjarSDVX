@@ -164,7 +164,7 @@ struct MultiParamRange
 		r.isRange = isRange;
 		return r;
 	}
-	EffectParam<EffectDuration> ToDurationParam(bool isAbsolute)
+	EffectParam<EffectDuration> ToDurationParam(bool isAbsolute) // TODO: revamp isAbsolute
 	{
 		EffectParam<EffectDuration> r;
 		if (isAbsolute)
@@ -175,7 +175,7 @@ struct MultiParamRange
 			}
 			else
 			{
-				r = EffectParam<EffectDuration>(params[0].ival, params[1].ival);
+				r = EffectParam<EffectDuration>(1000 * params[0].ival, 1000 * params[1].ival);
 			}
 		}
 		else {

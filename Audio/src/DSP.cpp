@@ -429,8 +429,6 @@ void WobbleDSP::Process(float *out, uint32 numSamples)
 
 		BQFDSP::Process(&out[i * 2], 1);
 
-		// Apply slight mixing
-		float mix = 0.5f;
 		out[i * 2 + 0] = out[i * 2 + 0] * mix + s[0] * (1.0f - mix);
 		out[i * 2 + 1] = out[i * 2 + 1] * mix + s[1] * (1.0f - mix);
 
@@ -525,6 +523,18 @@ void FlangerDSP::SetDelayRange(uint32 offset, uint32 depth)
 	m_bufferLength = m_max * 2;
 	m_sampleBuffer.resize(m_bufferLength);
 }
+void FlangerDSP::SetFeedback(float feedback)
+{
+	m_feedback = feedback;
+}
+void FlangerDSP::SetStereoWidth(float stereoWidth)
+{
+	m_stereoWidth = stereoWidth;
+}
+void FlangerDSP::SetVolume(float volume)
+{
+	m_volume = volume;
+}
 void FlangerDSP::Process(float *out, uint32 numSamples)
 {
 	if (m_bufferLength <= 0)
@@ -553,14 +563,23 @@ void FlangerDSP::Process(float *out, uint32 numSamples)
 			samplePos = m_bufferLength + samplePos;
 
 		// Inject new sample
-		data[m_bufferOffset + 0] = out[i * 2];
-		data[m_bufferOffset + 1] = out[i * 2 + 1];
+		data[m_bufferOffset + 0] =
+			Math::Clamp((m_feedback * data[samplePos] + out[i * 2]) *
+							(mix * m_volume + (1.f - mix)),
+						-1.f, 1.f);
+		data[m_bufferOffset + 1] =
+			Math::Clamp((m_feedback * data[samplePos + 1] + out[i * 2 + 1]) *
+							(mix * m_volume + (1.f - mix)),
+						-1.f, 1.f);
 
 		// Apply delay
-		out[i * 2] = (data[samplePos] + out[i * 2]) * 0.5f * mix +
-					 out[i * 2] * (1 - mix);
-		out[i * 2 + 1] = (data[samplePos + 1] + out[i * 2 + 1]) * 0.5f * mix +
-						 out[i * 2 + 1] * (1 - mix);
+		out[i * 2] = Math::Clamp((mix * data[samplePos] + out[i * 2]) *
+									 (mix * m_volume + (1.f - mix)),
+								 -1.f, 1.f);
+		out[i * 2 + 1] =
+			Math::Clamp((mix * data[samplePos + 1] + out[i * 2 + 1]) *
+							(mix * m_volume + (1.f - mix)),
+						-1.f, 1.f);
 
 		m_bufferOffset += 2;
 		if (m_bufferOffset >= m_bufferLength)

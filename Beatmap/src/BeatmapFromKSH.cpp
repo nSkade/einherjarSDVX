@@ -212,7 +212,9 @@ static MultiParam ParseParam(const String &in)
 	else if (in.find("ms") != -1)
 	{
 		ret.type = MultiParam::Milliseconds;
-		sscanf(*in, "%i", &ret.ival);
+		float milliseconds = 0;
+		sscanf(*in, "%f", &milliseconds);
+		ret.ival = (int)(milliseconds);
 	}
 	else if (in.find("s") != -1)
 	{

@@ -554,9 +554,9 @@ void FlangerDSP::Process(float *out, uint32 numSamples)
 			continue;
 		}
 		// Determine where we want to sample past samples
-		float f = fmodf(((float)m_time / (float)m_length), 1.f);
+		float f = fmodf(((float)m_time / ((float)m_length * 2)), 1.f);
 		f = fabsf(f * 2 - 1);
-		uint32 dLeft = (uint32)(m_min + (depth * f));
+		uint32 dLeft = (uint32)(m_max - (depth * f));
 		uint32 dRight = dLeft + (uint32)(m_stereoWidth * depth);
 		// "fold" dRight to fit [m_min,m_max] range: matches KSM behavior
 		if (dRight > m_max) dRight = m_max - (dRight - m_max);

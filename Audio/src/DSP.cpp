@@ -520,7 +520,7 @@ void FlangerDSP::SetDelayRange(uint32 offset, uint32 depth)
 	const float mult = (float)m_sampleRate / 44100.f;
 	m_min = static_cast<uint32>(min * mult);
 	m_max = static_cast<uint32>(max * mult);
-	m_bufferLength = m_max * 2;
+	m_bufferLength = (m_max + 1) * 2;
 	m_sampleBuffer.resize(m_bufferLength);
 }
 void FlangerDSP::SetFeedback(float feedback)
@@ -545,6 +545,7 @@ void FlangerDSP::Process(float *out, uint32 numSamples)
 
 	const uint32 startSample = GetStartSample();
 	const uint32 currentSample = GetCurrentSample();
+	const uint32 depth = m_max - m_min;
 
 	for (uint32 i = 0; i < numSamples; i++)
 	{
@@ -555,31 +556,31 @@ void FlangerDSP::Process(float *out, uint32 numSamples)
 		// Determine where we want to sample past samples
 		float f = fmodf(((float)m_time / (float)m_length), 1.f);
 		f = fabsf(f * 2 - 1);
-		uint32 d = (uint32)(m_min + ((m_max - 1) - m_min) * (f));
+		uint32 dLeft = (uint32)(m_min + (depth * f));
+		uint32 dRight = dLeft + (uint32)(m_stereoWidth * depth);
+		// "fold" dRight to fit [m_min,m_max] range: matches KSM behavior
+		if (dRight > m_max) dRight = m_max - (dRight - m_max);
 
 		// TODO: clean up?
-		int32 samplePos = ((int)m_bufferOffset - (int)d * 2) % (int)m_bufferLength;
-		if (samplePos < 0)
-			samplePos = m_bufferLength + samplePos;
+		int32 samplePosLeft = ((int)m_bufferOffset - (int)dLeft * 2) % (int)m_bufferLength;
+		if (samplePosLeft < 0) samplePosLeft = m_bufferLength + samplePosLeft;
+		int32 samplePosRight = ((int)m_bufferOffset - (int)dRight * 2 + 1) % (int)m_bufferLength;
+		if (samplePosRight < 0) samplePosRight = m_bufferLength + samplePosRight;
 
 		// Inject new sample
-		data[m_bufferOffset + 0] =
-			Math::Clamp((m_feedback * data[samplePos] + out[i * 2]) *
-							(mix * m_volume + (1.f - mix)),
-						-1.f, 1.f);
-		data[m_bufferOffset + 1] =
-			Math::Clamp((m_feedback * data[samplePos + 1] + out[i * 2 + 1]) *
-							(mix * m_volume + (1.f - mix)),
-						-1.f, 1.f);
+		data[m_bufferOffset + 0] = Math::Clamp(
+			(m_feedback * data[samplePosLeft] + out[i * 2]) * (mix * m_volume + (1.f - mix)), -1.f,
+			1.f);
+		data[m_bufferOffset + 1] = Math::Clamp(
+			(m_feedback * data[samplePosRight] + out[i * 2 + 1]) * (mix * m_volume + (1.f - mix)),
+			-1.f, 1.f);
 
 		// Apply delay
-		out[i * 2] = Math::Clamp((mix * data[samplePos] + out[i * 2]) *
-									 (mix * m_volume + (1.f - mix)),
-								 -1.f, 1.f);
-		out[i * 2 + 1] =
-			Math::Clamp((mix * data[samplePos + 1] + out[i * 2 + 1]) *
-							(mix * m_volume + (1.f - mix)),
-						-1.f, 1.f);
+		out[i * 2] = Math::Clamp(
+			(mix * data[samplePosLeft] + out[i * 2]) * (mix * m_volume + (1.f - mix)), -1.f, 1.f);
+		out[i * 2 + 1] = Math::Clamp(
+			(mix * data[samplePosRight] + out[i * 2 + 1]) * (mix * m_volume + (1.f - mix)), -1.f,
+			1.f);
 
 		m_bufferOffset += 2;
 		if (m_bufferOffset >= m_bufferLength)

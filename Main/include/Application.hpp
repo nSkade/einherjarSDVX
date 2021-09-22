@@ -176,6 +176,7 @@ private:
 	int m_multiRoomSize = 0;
 	int m_multiRoomCount = 0;
 	bool m_gaugeRemovedWarn = true;
+	bool m_responsiveInputs = true;
 
 	Thread m_renderThread;
 };

@@ -141,7 +141,6 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	{
 		GateDSP *gateDSP = (GateDSP *)dsp;
 		gateDSP->SetLength(noteDuration / object->effectParams[0]);
-		gateDSP->SetGating(0.5f);
 		break;
 	}
 	case EffectType::TapeStop:
@@ -154,7 +153,6 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	{
 		RetriggerDSP *retriggerDSP = (RetriggerDSP *)dsp;
 		retriggerDSP->SetLength(noteDuration / object->effectParams[0]);
-		retriggerDSP->SetGating(0.65f);
 		break;
 	}
 	case EffectType::Echo:

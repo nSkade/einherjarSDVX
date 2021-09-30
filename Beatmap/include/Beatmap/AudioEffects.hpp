@@ -174,10 +174,12 @@ struct AudioEffect
 			EffectParam<float> min;
 			// Maximum frequency (Hz)
 			EffectParam<float> max;
-			// Depth of the effect (>=0)
-			EffectParam<float> depth;
+			// Q factor (0-1)
+			EffectParam<float> q;
 			// Feedback (0-1)
 			EffectParam<float> feedback;
+			// Stereo width (0-1)
+			EffectParam<float> stereoWidth;
 		} phaser;
 		struct
 		{

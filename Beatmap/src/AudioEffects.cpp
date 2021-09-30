@@ -94,8 +94,10 @@ static AudioEffect CreateDefault(EffectType type)
 		ret.mix = FloatRange(0.5f);
 		ret.phaser.min = FloatRange(1500.0f);
 		ret.phaser.max = FloatRange(20000.0f);
+		ret.phaser.q = FloatRange(0.707f);
 		ret.phaser.feedback = FloatRange(0.35f);
-		ret.duration = TimeRange(1.f);
+		ret.phaser.stereoWidth = FloatRange(0.0f);
+		ret.duration = TimeRange(0.5f);
 		break;
 	case EffectType::Wobble:
 		// wobble is 1/12 by default

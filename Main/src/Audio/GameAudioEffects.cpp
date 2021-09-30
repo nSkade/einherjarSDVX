@@ -80,7 +80,9 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 		phs->SetLength(actualLength);
 		phs->fmin = phaser.min.Sample(filterInput);
 		phs->fmax = phaser.max.Sample(filterInput);
+		phs->q = phaser.q.Sample(filterInput);
 		phs->feedback = phaser.feedback.Sample(filterInput);
+		phs->stereoWidth = phaser.stereoWidth.Sample(filterInput);
 		ret = phs;
 		break;
 	}

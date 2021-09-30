@@ -370,6 +370,14 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 		AssignDurationIfSet(effect.duration, "waveLength");
 		AssignFloatIfSet(effect.echo.feedback, "feedbackLevel");
 		break;
+	case EffectType::Phaser:
+		AssignDurationIfSet(effect.duration, "period");
+		AssignFloatIfSet(effect.phaser.min, "feedback");
+		AssignFloatIfSet(effect.phaser.max, "feedback");
+		AssignFloatIfSet(effect.phaser.q, "feedback");
+		AssignFloatIfSet(effect.phaser.feedback, "feedback");
+		AssignFloatIfSet(effect.phaser.stereoWidth, "stereoWidth");
+		break;
 	case EffectType::Flanger:
 		AssignDurationIfSet(effect.duration, "period");
 		AssignIntIfSet(effect.flanger.depth, "depth");

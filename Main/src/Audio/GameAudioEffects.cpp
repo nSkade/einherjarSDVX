@@ -78,9 +78,9 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 	{
 		PhaserDSP *phs = new PhaserDSP(sampleRate);
 		phs->SetLength(actualLength);
-		phs->dmin = phaser.min.Sample(filterInput);
-		phs->dmax = phaser.max.Sample(filterInput);
-		phs->fb = phaser.feedback.Sample(filterInput);
+		phs->fmin = phaser.min.Sample(filterInput);
+		phs->fmax = phaser.max.Sample(filterInput);
+		phs->feedback = phaser.feedback.Sample(filterInput);
 		ret = phs;
 		break;
 	}
@@ -171,7 +171,6 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	case EffectType::Phaser:
 	{
 		PhaserDSP *phs = (PhaserDSP *)dsp;
-		phs->time = object->time;
 		break;
 	}
 	case EffectType::Flanger:

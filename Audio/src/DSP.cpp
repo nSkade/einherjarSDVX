@@ -3,59 +3,7 @@
 #include "AudioOutput.hpp"
 #include "Audio_Impl.hpp"
 
-void PanDSP::Process(float *out, uint32 numSamples)
-{
-	for (uint32 i = 0; i < numSamples; i++)
-	{
-		if (panning > 0)
-			out[i * 2 + 0] = (out[i * 2 + 0] * (1.0f - panning)) * mix + out[i * 2 + 0] * (1 - mix);
-		if (panning < 0)
-			out[i * 2 + 1] = (out[i * 2 + 1] * (1.0f + panning)) * mix + out[i * 2 + 1] * (1 - mix);
-	}
-}
-
-BQFDSP::BQFDSP(uint32 sampleRate) : DSP()
-{
-	SetSampleRate(sampleRate);
-
-	for (size_t i = 0; i < 2; i++)
-	{
-		for (size_t j = 0; j < order; j++)
-		{
-			za[i][j] = 0.f;
-			zb[i][j] = 0.f;
-		}
-	}
-}
-void BQFDSP::Process(float *out, uint32 numSamples)
-{
-	for (uint32 c = 0; c < 2; c++)
-	{
-		for (uint32 i = 0; i < numSamples; i++)
-		{
-			float &sample = out[i * 2 + c];
-			float src = sample;
-
-			float filtered =
-				(b0 / a0) * src +
-				(b1 / a0) * zb[c][0] +
-				(b2 / a0) * zb[c][1] -
-				(a1 / a0) * za[c][0] -
-				(a2 / a0) * za[c][1];
-
-			// Shift delay buffers
-			zb[c][1] = zb[c][0];
-			zb[c][0] = src;
-
-			// Feedback the calculated value into the IIR delay buffers
-			za[c][1] = za[c][0];
-			za[c][0] = filtered;
-
-			sample = filtered;
-		}
-	}
-}
-void BQFDSP::SetLowPass(float q, float freq, float sampleRate)
+void BQF::SetLowPass(float q, float freq, float sampleRate)
 {
 	// Limit q
 	q = Math::Max(q, 0.01f);
@@ -72,11 +20,7 @@ void BQFDSP::SetLowPass(float q, float freq, float sampleRate)
 	a1 = (float)(-2 * cw0);
 	a2 = 1 - alpha;
 }
-void BQFDSP::SetLowPass(float q, float freq)
-{
-	SetLowPass(q, freq, (float)m_sampleRate);
-}
-void BQFDSP::SetHighPass(float q, float freq, float sampleRate)
+void BQF::SetHighPass(float q, float freq, float sampleRate)
 {
 	// Limit q
 	q = Math::Max(q, 0.01f);
@@ -93,11 +37,23 @@ void BQFDSP::SetHighPass(float q, float freq, float sampleRate)
 	a1 = (float)(-2 * cw0);
 	a2 = 1 - alpha;
 }
-void BQFDSP::SetHighPass(float q, float freq)
+void BQF::SetAllPass(float q, float freq, float sampleRate)
 {
-	SetHighPass(q, freq, (float)m_sampleRate);
+	// Limit q
+	q = Math::Max(q, 0.01f);
+
+	double w0 = (2 * Math::pi * freq) / sampleRate;
+	double cw0 = cos(w0);
+	float alpha = (float)(sin(w0) / (2 * q));
+
+	b0 = 1 - alpha;
+	b1 = (float)(-2 * cw0);
+	b2 = 1 + alpha;
+	a0 = 1 + alpha;
+	a1 = (float)(-2 * cw0);
+	a2 = 1 - alpha;
 }
-void BQFDSP::SetPeaking(float q, float freq, float gain, float sampleRate)
+void BQF::SetPeaking(float q, float freq, float gain, float sampleRate)
 {
 	// Limit q
 	q = Math::Max(q, 0.01f);
@@ -114,9 +70,71 @@ void BQFDSP::SetPeaking(float q, float freq, float gain, float sampleRate)
 	a1 = -2 * (float)cw0;
 	a2 = 1 - (float)(alpha / A);
 }
+float BQF::Update(float in)
+{
+	float filtered =
+		(b0 / a0) * in +
+		(b1 / a0) * zb[0] +
+		(b2 / a0) * zb[1] -
+		(a1 / a0) * za[0] -
+		(a2 / a0) * za[1];
+
+	// Shift delay buffers
+	zb[1] = zb[0];
+	zb[0] = in;
+
+	// Feedback the calculated value into the IIR delay buffers
+	za[1] = za[0];
+	za[0] = filtered;
+
+	return filtered;
+}
+
+void PanDSP::Process(float *out, uint32 numSamples)
+{
+	for (uint32 i = 0; i < numSamples; i++)
+	{
+		if (panning > 0)
+			out[i * 2 + 0] = (out[i * 2 + 0] * (1.0f - panning)) * mix + out[i * 2 + 0] * (1 - mix);
+		if (panning < 0)
+			out[i * 2 + 1] = (out[i * 2 + 1] * (1.0f + panning)) * mix + out[i * 2 + 1] * (1 - mix);
+	}
+}
+
+BQFDSP::BQFDSP(uint32 sampleRate) : DSP()
+{
+	SetSampleRate(sampleRate);
+}
+void BQFDSP::Process(float *out, uint32 numSamples)
+{
+	for (uint32 c = 0; c < 2; c++)
+	{
+		for (uint32 i = 0; i < numSamples; i++)
+		{
+			out[i * 2 + c] = m_filters[c].Update(out[i * 2 + c]);
+		}
+	}
+}
+void BQFDSP::SetLowPass(float q, float freq)
+{
+	for (uint32 c = 0; c < 2; c++)
+	{
+		m_filters[c].SetLowPass(q, freq, (float)m_sampleRate);
+	}
+}
+void BQFDSP::SetHighPass(float q, float freq)
+{
+	for (uint32 c = 0; c < 2; c++)
+	{
+		m_filters[c].SetHighPass(q, freq, (float)m_sampleRate);
+	}
+}
 void BQFDSP::SetPeaking(float q, float freq, float gain)
 {
-	SetPeaking(q, freq, gain, (float)m_sampleRate);
+	for (uint32 c = 0; c < 2; c++)
+	{
+		m_filters[c].SetPeaking(q, freq, gain, (float)m_sampleRate);
+	}
 }
 
 CombinedFilterDSP::CombinedFilterDSP(uint32 sampleRate) : DSP(), a(sampleRate), peak(sampleRate)
@@ -397,8 +415,9 @@ void RetriggerDSP::Process(float *out, uint32 numSamples)
 	}
 }
 
-WobbleDSP::WobbleDSP(uint32 sampleRate) : BQFDSP(sampleRate)
+WobbleDSP::WobbleDSP(uint32 sampleRate) : DSP()
 {
+	SetSampleRate(sampleRate);
 }
 void WobbleDSP::SetLength(double length)
 {
@@ -423,14 +442,11 @@ void WobbleDSP::Process(float *out, uint32 numSamples)
 		float f = abs(2.0f * ((float)m_currentSample / (float)m_length) - 1.0f);
 		f = easing.Sample(f);
 		float freq = fmin + (fmax - fmin) * f;
-		SetLowPass(q, freq);
 
-		float s[2] = {out[i * 2], out[i * 2 + 1]};
-
-		BQFDSP::Process(&out[i * 2], 1);
-
-		out[i * 2 + 0] = out[i * 2 + 0] * mix + s[0] * (1.0f - mix);
-		out[i * 2 + 1] = out[i * 2 + 1] * mix + s[1] * (1.0f - mix);
+		for (uint32 c = 0; c < 2; c++) {
+			m_filters[c].SetLowPass(q, freq, (float)m_sampleRate);
+			out[i * 2 + c] = m_filters[c].Update(out[i * 2 + c]) * mix + out[i * 2 + c] * (1.0f - mix);
+		}
 
 		m_currentSample++;
 		m_currentSample %= m_length;
@@ -446,6 +462,11 @@ void PhaserDSP::SetLength(double length)
 	double flength = length / 1000.0 * m_sampleRate;
 	m_length = (uint32)flength;
 }
+void PhaserDSP::SetStage(uint32 stage)
+{
+	stage = Math::Clamp(stage, 0u, 12u);
+	m_stage = (stage / 2) * 2;
+}
 void PhaserDSP::Process(float *out, uint32 numSamples)
 {
 	if (m_length == 0)
@@ -460,46 +481,25 @@ void PhaserDSP::Process(float *out, uint32 numSamples)
 		{
 			continue;
 		}
-		//float f = ((float)time / (float)m_length) * Math::pi * 2.0f;
-		float f = abs(2.0f * ((float)time / (float)m_length) - 1.0f);
 
-		//calculate and update phaser sweep lfo...
-		//float d = dmin + (dmax - dmin) * ((sin(f) + 1.0f) / 2.0f);
-		float d = dmin + (dmax - dmin) * f;
-		d /= (float)m_sampleRate;
-
-		//calculate output per channel
-		for (uint32 c = 0; c < 2; c++)
-		{
-			APF *filters1 = filters[c];
-
-			//update filter coeffs
-			float a1 = (1.f - d) / (1.f + d);
-			for (int i = 0; i < 6; i++)
-				filters1[i].a1 = a1;
-
-			float filtered = filters1[0].Update(
-				filters1[1].Update(
-					filters1[2].Update(
-						filters1[3].Update(
-							filters1[4].Update(
-								filters1[5].Update(out[i * 2 + c] + za[c] * fb))))));
-			// Store filter feedback
-			za[c] = filtered;
-
-			// Final sample
-			out[i * 2 + c] = out[i * 2 + c] * (1.f - lmix) + filtered * mix * lmix;
+		float fLeft = abs(2.0f * ((float)m_currentSample / (float)m_length) - 1.0f);
+		float fRight = abs(2.0f * fmodf((float)m_currentSample / (float)m_length + stereoWidth, 1.0f) - 1.0f);
+		float f[2] = {fLeft, fRight};
+		for (uint32 c = 0; c < 2; c++) {
+			// logarithmic interpolation
+			float freq = pow(fmin, 1-f[c]) * pow(fmax, f[c]);
+			float output = feedback * za[c] + out[i * 2 + c];
+			for (uint32 j = 0; j < m_stage; j++) {
+				m_apf[j][c].SetAllPass(q, freq, (float)m_sampleRate);
+				output = m_apf[j][c].Update(output);
+			}
+			// effect strongest when mix = 0.5
+			out[i * 2 + c] = (mix/2) * output + (1-mix/2) * out[i * 2 + c];
+			za[c] = output;
 		}
-
-		time++;
-		time %= m_length;
+		m_currentSample++;
+		m_currentSample %= m_length;
 	}
-}
-float PhaserDSP::APF::Update(float in)
-{
-	float y = in * -a1 + za;
-	za = y * a1 + in;
-	return y;
 }
 
 FlangerDSP::FlangerDSP(uint32 sampleRate) : DSP()

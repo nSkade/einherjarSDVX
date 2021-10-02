@@ -53,8 +53,10 @@ struct AutoplayInfo
     // Autoplay but for buttons
     bool autoplayButtons = false;
     float buttonAnimationTimer[6] = { 0 };
+	bool replay = false;
 
     bool IsAutoplayButtons() const { return autoplay || autoplayButtons; };
+	bool IsReplayingButtons() const { return replay; };
 };
 
 // Various information about all the objects in a map
@@ -99,6 +101,8 @@ public:
 	void Reset(const MapTimeRange& range = {});
 
 	void FinishGame();
+
+	void SetReplayForPlayback(ScoreReplay * replay);
 
 	// Updates the list of objects that are possible to hit
 	void Tick(float deltaTime);
@@ -343,6 +347,8 @@ private:
 
 	PlaybackOptions m_options;
 	MapTimeRange m_range;
+
+	ScoreReplay* m_replay = nullptr;
 
 	// A stack of gauges which are all calculated at the same time.
 	// The top gauge is what the user should see and if that one raches its fail state

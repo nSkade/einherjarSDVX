@@ -19,6 +19,11 @@ Scoring::~Scoring()
 	m_CleanupGauges();
 }
 
+void Scoring::SetReplayForPlayback(ScoreReplay* replay)
+{
+	m_replay = replay;
+}
+
 ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 {
 	if (score.score >= static_cast<int32>(MAX_SCORE)) //Perfect
@@ -200,7 +205,13 @@ void Scoring::Tick(float deltaTime)
             auto tick = m_ticks[i].front();
             if (tick->HasFlag(TickFlags::Hold))
             {
-                bool autoplayHold = autoplayInfo.IsAutoplayButtons() && tick->object->time <= m_playback->GetLastTime();
+                bool autoplayHold = (autoplayInfo.IsAutoplayButtons())
+					&& tick->object->time <= m_playback->GetLastTime();
+				if (m_replay && tick->object->time <= m_playback->GetLastTime())
+				{
+					const SimpleHitStat* shs = m_replay->FindNextHitstat(i,m_playback->GetLastTime() + 1000);
+					autoplayHold |= shs? (shs->rating > 0) : false;
+				}
                 if (autoplayHold)
                     m_SetHoldObject(tick->object, i);
                 // This check is only relevant if delay fade hit effects are on
@@ -605,6 +616,7 @@ void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTic
 }
 void Scoring::m_OnFXBegin(HoldObjectState* obj)
 {
+	//PLAY update
 	if (autoplayInfo.IsAutoplayButtons())
 		m_SetHoldObject((ObjectState*)obj, obj->index);
 }
@@ -715,9 +727,74 @@ void Scoring::m_UpdateTicks()
 			{
 				delta = currentTime - ticks[i]->time + m_inputOffset;
 			}
-			
+
+			const SimpleHitStat* replayHitstat = nullptr;
+
+			if (m_replay && !tick->HasFlag(TickFlags::Ignore) && !m_replay->playbackQueue[buttonCode].empty())
+			{
+				replayHitstat = m_replay->playbackQueue[buttonCode].front();
+				// XXX should we pop right away?
+				m_replay->playbackQueue[buttonCode].pop_front();
+			}
+
 			bool processed = false;
-			if (delta >= 0)
+
+			// We should only have something in the button queue if we are >= to its time
+			// so we can process it as soon as we see it
+
+			if (replayHitstat && tick->HasFlag(TickFlags::Button))
+			{
+				if (replayHitstat->rating == 0)
+					m_TickMiss(tick, buttonCode, replayHitstat->delta);
+				else
+					m_TickHit(tick, buttonCode, replayHitstat->delta);
+				processed = true;
+			}
+			else if (replayHitstat && tick->HasFlag(TickFlags::Hold) && !tick->HasFlag(TickFlags::Ignore))
+			{
+				if (replayHitstat->rating == 0)
+				{
+					m_TickMiss(tick, buttonCode, 0);
+				}
+				else
+				{
+					HoldObjectState* hos = (HoldObjectState*)tick->object;
+					hos = hos->GetRoot();
+					if (hos->time - currentTime <= hitWindow.hold)
+						m_SetHoldObject(tick->object, buttonCode);
+					m_TickHit(tick, buttonCode);
+				}
+				processed = true;
+			}
+			else if (replayHitstat && tick->HasFlag(TickFlags::Laser))
+			{
+				if (replayHitstat->rating == 0)
+				{
+					m_TickMiss(tick, buttonCode, 0);
+				}
+				else
+				{
+					m_TickHit(tick, buttonCode);
+					HitStat* stat = new HitStat(tick->object);
+					stat->time = currentTime;
+					stat->rating = ScoreHitRating::Perfect;
+					hitStats.Add(stat);
+				}
+
+				processed = true;
+			}
+			else if (replayHitstat)
+			{
+				assert(false); // Some other hitstat which we don't understand
+				processed = true;
+			}
+
+			else if (m_replay && !tick->HasFlag(TickFlags::Ignore))
+			{
+				// If we are doing a replay we should wait until we see the correct hitstat before actually processing
+				// XXX This is an issue if we are missing hitstats on older replays
+			}
+			else if (delta >= 0)
 			{
 				// Buttons are handled entirely by m_ConsumeTick, this is here to make sure auto doesn't get misses
 				if (tick->HasFlag(TickFlags::Button) && autoplayInfo.IsAutoplayButtons())
@@ -744,6 +821,11 @@ void Scoring::m_UpdateTicks()
 						else
 						{
 							m_TickMiss(tick, buttonCode, 0);
+							// Add miss replay hitstat
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Miss;
+							hitStats.Add(stat);
 
 							m_prevHoldHit[buttonCode] = false;
 						}
@@ -789,6 +871,11 @@ void Scoring::m_UpdateTicks()
 						else
 						{
 							m_TickMiss(tick, buttonCode, 0);
+							// Add miss replay hitstat
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Miss;
+							hitStats.Add(stat);
 						}
 						processed = true;
 					}
@@ -803,12 +890,26 @@ void Scoring::m_UpdateTicks()
 					tick->SetFlag(TickFlags::Processed);
 			}
 
-			bool miss = (tick->HasFlag(TickFlags::Slam) && delta > hitWindow.slam)
-			        || (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good);
-			if (miss && !processed)
+			if (m_replay && !tick->HasFlag(TickFlags::Ignore))
 			{
-				m_TickMiss(tick, buttonCode, delta);
-				processed = true;
+			}
+			else
+			{
+				bool miss = (tick->HasFlag(TickFlags::Slam) && delta > hitWindow.slam)
+					|| (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good);
+				if (miss && !processed)
+				{
+					m_TickMiss(tick, buttonCode, delta);
+					if (tick->HasFlag(TickFlags::Hold) || tick->HasFlag(TickFlags::Laser))
+					{
+						// Add miss replay hitstat
+						HitStat* stat = new HitStat(tick->object);
+						stat->time = currentTime;
+						stat->rating = ScoreHitRating::Miss;
+						hitStats.Add(stat);
+					}
+					processed = true;
+				}
 			}
 
 			if (processed)
@@ -1222,7 +1323,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			}
 		}
 
-		m_laserInput[i] = autoplayInfo.autoplay ? 0.0f : m_input->GetInputLaserDir(i);
+		m_laserInput[i] = (autoplayInfo.autoplay || m_replay != nullptr) ? 0.0f : m_input->GetInputLaserDir(i);
 		float inputDir = Math::Sign(m_laserInput[i]);
 
 		if (currentSegment)
@@ -1278,7 +1379,14 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 		if (currentlySlamNextSegmentStraight[i])
 			m_autoLaserTime[i] = 0;
-		if (autoplayInfo.autoplay || m_autoLaserTime[i] > 0)
+		//PLAY update the laser position *if* having hits with autoplay
+		bool replay_laser = false;
+		if (m_replay && currentSegment)
+		{
+			const SimpleHitStat* shs = m_replay->FindNextHitstat(6+i, mapTime + 1000);
+			replay_laser = shs ? (shs->rating > 0) : false;
+		}
+		if (autoplayInfo.autoplay || m_autoLaserTime[i] > 0 || replay_laser)
 			laserPositions[i] = laserTargetPositions[i];
 
 		// Clamp cursor between 0 and 1
@@ -1295,8 +1403,8 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 {
-	// Ignore buttons on autoplay
-	if (autoplayInfo.IsAutoplayButtons())
+	// Ignore buttons on autoplay or replay
+	if (autoplayInfo.IsAutoplayButtons() || m_replay != nullptr)
 		return;
 
 	if (buttonCode < Input::Button::BT_S)

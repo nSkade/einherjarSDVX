@@ -101,6 +101,9 @@ private:
 
 	bool m_delayedHitEffects;
 
+	bool m_playingReplay = false;
+	int m_playingReplayIndex = 0;
+
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
 	Texture m_jacketTexture;
@@ -168,6 +171,7 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
+	// TODO(itszn) this probably should be heap allocated so we can reference them safely
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
@@ -363,7 +367,11 @@ public:
 		}
 
 		// Load replays
+		// XXX Do we really need to load all replays every time?
+		//     seems like people probably only ever use the first index
 		if (m_chartIndex)
+		{
+			int index = 0;
 			for (ScoreIndex* score : m_chartIndex->scores)
 			{
 				File replayFile;
@@ -381,8 +389,36 @@ public:
 						replayReader.Serialize(&(replay.hitWindow.miss), 4);
 						replayReader.Serialize(&replay.hitWindow.slam, 4);
 					}
+
+					if (m_scoreReplays.size() == 1 && m_playingReplay)
+					{
+						m_playOptions.playbackOptions.gaugeType = score->gaugeType;
+						m_playOptions.playbackOptions.gaugeOption = score->gaugeOption;
+						m_playOptions.playbackOptions.mirror = score->mirror;
+						m_playingReplayIndex = index;
+					}
 				}
+
+				// Only load top 10
+				if (m_scoreReplays.size() >= 10) {
+					break;
+				}
+
+				index++;
 			}
+
+			// We have to do this here since the vec may grow (invalidating pointers) in the loop
+			if (m_scoreReplays.size() > 0 && m_playingReplay)
+			{
+				m_scoreReplays[0].InitPlayback();
+				m_scoring.SetReplayForPlayback(&m_scoreReplays[0]);
+			}
+			else if (m_playingReplay)
+			{
+				Logf("Could not find replay to playback!", Logger::Severity::Error);
+				return false;
+			}
+		}
 
         m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
 
@@ -540,7 +576,8 @@ public:
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
-		m_track->hitEffectAutoplay = m_scoring.autoplayInfo.IsAutoplayButtons();
+		m_track->hitEffectAutoplay |= m_scoring.autoplayInfo.IsAutoplayButtons();
+		m_track->hitEffectAutoplay |= m_scoring.autoplayInfo.IsReplayingButtons();
 
 		if (GetPlaybackOptions().random)
 		{
@@ -1407,10 +1444,17 @@ public:
 		}
 
 
+		MapTime lastTimeForScoring = m_playback.GetLastTime();
+		for (auto& replay : m_scoreReplays)
+		{
+			replay.FindCurrentHitstat(lastTimeForScoring);
+		}
+
 		// Update scoring
 		if (!m_ended)
 		{
 			m_scoring.Tick(deltaTime);
+
 		}
 
 		// Get the current timing point
@@ -1426,6 +1470,7 @@ public:
 		{
 			m_lastMapTime = playbackPositionMs;
 		}
+
 
 		SetGameplayLua(m_lua);
 		
@@ -1798,10 +1843,10 @@ public:
 		const BeatmapSettings& bms = m_beatmap->GetMapSettings();
 		const TimingPoint& tp = m_playback.GetCurrentTimingPoint();
 		//Vector2 textPos = topLeft + Vector2i(5, 0);
-		Vector2 textPos = Vector2i(5, 0);
+		Vector2 textPos = Vector2i(5, 125);
 		textPos.y += RenderText(bms.title, textPos).y;
 		textPos.y += RenderText(bms.artist, textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("%.2f FPS", g_application->GetRenderFPS()), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("%.2f FPS %.2f Delta", g_application->GetRenderFPS(), deltaTime), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Offset (ms): Global %d, Song %d, Audio %d (%d)",
 			m_globalOffset, m_songOffset, GetAudioOffset(), g_audio->audioLatency), textPos).y;
 
@@ -2479,6 +2524,13 @@ public:
 		m_triggerPause = true;
 	}
 
+	// Needs to be called before AsyncLoad
+	void InitPlayReplay()
+	{
+		m_playingReplay = true;
+		m_scoring.autoplayInfo.replay = true;
+	}
+
 	void LoadPracticeSetupIndex()
 	{
 		if (!m_db) return;
@@ -2751,6 +2803,7 @@ public:
 	{
 		if (m_scoring.autoplayInfo.IsAutoplayButtons()) return false;
 		if (m_isPracticeSetup) return false;
+		if (m_playingReplay) return false;
 
 		// GetPlaybackSpeed() returns 0 on end of a song
 		if (m_playOptions.playbackSpeed < 1.0f) return false;
@@ -2837,21 +2890,13 @@ public:
 		// Update score replays
 		lua_getfield(L, -1, "scoreReplays");
 		int replayCounter = 1;
+		int replayIndex = 0;
 		for (auto& replay: m_scoreReplays)
 		{
-			if (replay.replay.size() > 0)
-			{
-				while (replay.nextHitStat < replay.replay.size()
-					&& replay.replay[replay.nextHitStat].time < m_lastMapTime)
-				{
-					SimpleHitStat shs = replay.replay[replay.nextHitStat];
-					if (shs.rating < 3)
-					{
-						replay.currentMaxScore += 2;
-						replay.currentScore += shs.rating;
-					}
-					replay.nextHitStat++;
-				}
+			// If replaying, skip the index that we are replaying on
+			if (m_playingReplay && replayIndex == m_playingReplayIndex) {
+				replayIndex++;
+				continue;
 			}
 			lua_pushnumber(L, replayCounter);
 			lua_newtable(L);
@@ -2866,6 +2911,7 @@ public:
 
 			lua_settable(L, -3);
 			replayCounter++;
+			replayIndex++;
 		}
 		lua_setfield(L, -1, "scoreReplays");
 

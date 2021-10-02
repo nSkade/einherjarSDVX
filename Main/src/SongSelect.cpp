@@ -1114,6 +1114,41 @@ public:
 			g_transition->TransitionTo(game);
 		});
 
+		m_settDiag.onPressReplay.AddLambda([this]() {
+			if (m_multiplayer != nullptr) return;
+
+			ChartIndex* chart = GetCurrentSelectedChart();
+			if (chart == nullptr) return;
+
+			if (chart->scores.size() == 0) return;
+
+			bool hasReplay = false;
+			for (ScoreIndex* score : chart->scores)
+			{
+				if (!Path::FileExists(score->replayPath))
+					continue;
+				hasReplay = true;
+				break;
+			}
+
+			if (!hasReplay)
+				return;
+
+			Game* game = Game::Create(chart, Game::PlaybackOptionsFromSettings());
+			if (!game)
+			{
+				Log("Failed to start game", Logger::Severity::Error);
+				return;
+			}
+			game->InitPlayReplay();
+
+			if(m_settDiag.IsActive()) m_settDiag.Close();
+			m_suspended = true;
+
+			// Transition to game
+			g_transition->TransitionTo(game);
+		});
+
 		m_settDiag.onPressPractice.AddLambda([this]() {
 			if (m_multiplayer != nullptr) return;
 

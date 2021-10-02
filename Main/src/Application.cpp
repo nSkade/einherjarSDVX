@@ -2056,7 +2056,8 @@ static int lGetButton(lua_State *L /* int button */)
 {
     int button = luaL_checkinteger(L, 1);
     if (g_application->autoplayInfo
-        && (g_application->autoplayInfo->IsAutoplayButtons()) && button < 6)
+        && (g_application->autoplayInfo->IsAutoplayButtons() || g_application->autoplayInfo->IsReplayingButtons())
+		&& button < 6)
         lua_pushboolean(L, g_application->autoplayInfo->buttonAnimationTimer[button] > 0);
     else
         lua_pushboolean(L, g_input.GetButton((Input::Button)button));

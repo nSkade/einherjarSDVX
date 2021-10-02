@@ -33,8 +33,54 @@ struct ScoreReplay
 	int32 maxScore = 0;
 	size_t nextHitStat = 0;
 	Vector<SimpleHitStat> replay;
+	bool isPlayback = false;
 
 	HitWindow hitWindow = HitWindow::NORMAL;
+
+	std::deque<const SimpleHitStat*> playbackQueue[8];
+
+	void InitPlayback()
+	{
+		isPlayback = true;
+		for (int i = 0; i < 8; i++) {
+			playbackQueue[i] = std::deque<const SimpleHitStat*>();
+		}
+	}
+
+	void FindCurrentHitstat(MapTime lastTime)
+	{
+		while (nextHitStat < replay.size()
+			&& replay[nextHitStat].time <= lastTime)
+		{
+			const SimpleHitStat* shs = &replay[nextHitStat];
+
+			if (isPlayback)
+				playbackQueue[shs->lane].push_back(shs);
+			
+			if (shs->rating < 3)
+			{
+				currentMaxScore += 2;
+				currentScore += shs->rating;
+			}
+			nextHitStat++;
+		}
+	}
+
+	const SimpleHitStat* FindNextHitstat(int lane, MapTime endTime)
+	{
+		if (!playbackQueue[lane].empty())
+			return playbackQueue[lane].front();
+
+		for (int i = nextHitStat; i < replay.size(); i++)
+		{
+			if (replay[i].time > endTime)
+				return nullptr;
+
+			if (replay[i].lane == lane)
+				return &replay[i];
+		}
+		return nullptr;
+	}
 };
 
 GameFlags operator|(const GameFlags& a, const GameFlags& b);
@@ -122,6 +168,9 @@ public:
 	virtual struct lua_State* GetLuaState() = 0;
 	// Set demo mode
 	virtual void SetDemoMode(bool value) = 0; 
+	// Init replay mode (call before AsyncLoad)
+	virtual void InitPlayReplay() = 0;
+
 	// Set song db for random song selection and practice mode setups
 	virtual void SetSongDB(class MapDatabase* db) = 0;
 	// The folder that contians the map

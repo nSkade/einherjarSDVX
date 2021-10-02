@@ -3,6 +3,7 @@
 #include "HitStat.hpp"
 #include "Input.hpp"
 #include "Game.hpp"
+#include "Replay.hpp"
 
 #define AUTOPLAY_BUTTON_HIT_DURATION (4 / 60.f)
 
@@ -102,7 +103,7 @@ public:
 
 	void FinishGame();
 
-	void SetReplayForPlayback(ScoreReplay * replay);
+	void SetReplayForPlayback(Replay * replay);
 
 	// Updates the list of objects that are possible to hit
 	void Tick(float deltaTime);
@@ -142,7 +143,7 @@ public:
 	uint32 CalculateScore(uint32 hitScore) const;
 
 	uint32 CalculateCurrentDisplayScore() const;
-	uint32 CalculateCurrentDisplayScore(const ScoreReplay& replay) const;
+	uint32 CalculateCurrentDisplayScore(const Replay* replay) const;
 	uint32 CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const;
 
 	// The score if the rest would be played perfectly
@@ -348,7 +349,7 @@ private:
 	PlaybackOptions m_options;
 	MapTimeRange m_range;
 
-	ScoreReplay* m_replay = nullptr;
+	Replay* m_replay = nullptr;
 
 	// A stack of gauges which are all calculated at the same time.
 	// The top gauge is what the user should see and if that one raches its fail state

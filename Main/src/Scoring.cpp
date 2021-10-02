@@ -19,7 +19,7 @@ Scoring::~Scoring()
 	m_CleanupGauges();
 }
 
-void Scoring::SetReplayForPlayback(ScoreReplay* replay)
+void Scoring::SetReplayForPlayback(Replay* replay)
 {
 	m_replay = replay;
 }
@@ -194,6 +194,10 @@ void Scoring::FinishGame()
 
 void Scoring::Tick(float deltaTime)
 {
+	const MapTime currentTime = m_playback->GetLastTime();
+	if (m_replay)
+		m_replay->UpdateToTime(currentTime);
+
 	m_UpdateLasers(deltaTime);
 	m_UpdateTicks();
 	m_UpdateGaugeSamples();
@@ -209,8 +213,8 @@ void Scoring::Tick(float deltaTime)
 					&& tick->object->time <= m_playback->GetLastTime();
 				if (m_replay && tick->object->time <= m_playback->GetLastTime())
 				{
-					const SimpleHitStat* shs = m_replay->FindNextHitstat(i,m_playback->GetLastTime() + 1000);
-					autoplayHold |= shs? (shs->rating > 0) : false;
+					const ReplayJudgement* judge = m_replay->FindNextJudgement(i, 1000);
+					autoplayHold |= judge && (judge->rating > 0);
 				}
                 if (autoplayHold)
                     m_SetHoldObject(tick->object, i);
@@ -708,6 +712,7 @@ void Scoring::m_UpdateTicks()
 {
 	const MapTime currentTime = m_playback->GetLastTime();
 
+
 	// This loop checks for ticks that are missed
 	for (uint32 buttonCode = 0; buttonCode < 8; buttonCode++)
 	{
@@ -728,31 +733,33 @@ void Scoring::m_UpdateTicks()
 				delta = currentTime - ticks[i]->time + m_inputOffset;
 			}
 
-			const SimpleHitStat* replayHitstat = nullptr;
+			const ReplayJudgement* replayJudgement = nullptr;
 
-			if (m_replay && !tick->HasFlag(TickFlags::Ignore) && !m_replay->playbackQueue[buttonCode].empty())
+			if (m_replay && !tick->HasFlag(TickFlags::Ignore))
 			{
-				replayHitstat = m_replay->playbackQueue[buttonCode].front();
-				// XXX should we pop right away?
-				m_replay->playbackQueue[buttonCode].pop_front();
+				// We should only have something in the button queue if we are >= to its judgement time
+				// so we can process it as soon as we see it
+				replayJudgement = m_replay->PopNextJudgement(buttonCode);
+
+				// However this won't be the case for some miss ticks on legacy replays
+				// We will handle those later in this function
 			}
 
 			bool processed = false;
 
-			// We should only have something in the button queue if we are >= to its time
-			// so we can process it as soon as we see it
 
-			if (replayHitstat && tick->HasFlag(TickFlags::Button))
+			if (replayJudgement && tick->HasFlag(TickFlags::Button))
 			{
-				if (replayHitstat->rating == 0)
-					m_TickMiss(tick, buttonCode, replayHitstat->delta);
+				//assert(replayJudgement->time == tick->time);
+				if (replayJudgement->rating == 0)
+					m_TickMiss(tick, buttonCode, replayJudgement->delta);
 				else
-					m_TickHit(tick, buttonCode, replayHitstat->delta);
+					m_TickHit(tick, buttonCode, replayJudgement->delta);
 				processed = true;
 			}
-			else if (replayHitstat && tick->HasFlag(TickFlags::Hold) && !tick->HasFlag(TickFlags::Ignore))
+			else if (replayJudgement && tick->HasFlag(TickFlags::Hold) && !tick->HasFlag(TickFlags::Ignore))
 			{
-				if (replayHitstat->rating == 0)
+				if (replayJudgement->rating == 0)
 				{
 					m_TickMiss(tick, buttonCode, 0);
 				}
@@ -766,9 +773,9 @@ void Scoring::m_UpdateTicks()
 				}
 				processed = true;
 			}
-			else if (replayHitstat && tick->HasFlag(TickFlags::Laser))
+			else if (replayJudgement && tick->HasFlag(TickFlags::Laser))
 			{
-				if (replayHitstat->rating == 0)
+				if (replayJudgement->rating == 0)
 				{
 					m_TickMiss(tick, buttonCode, 0);
 				}
@@ -783,16 +790,19 @@ void Scoring::m_UpdateTicks()
 
 				processed = true;
 			}
-			else if (replayHitstat)
+			else if (replayJudgement)
 			{
-				assert(false); // Some other hitstat which we don't understand
+				// Some other hitstat which we don't understand
+				assert(false); 
 				processed = true;
 			}
 
 			else if (m_replay && !tick->HasFlag(TickFlags::Ignore))
 			{
 				// If we are doing a replay we should wait until we see the correct hitstat before actually processing
+
 				// XXX This is an issue if we are missing hitstats on older replays
+				//     We should judge as a miss if enough time has passed
 			}
 			else if (delta >= 0)
 			{
@@ -892,6 +902,10 @@ void Scoring::m_UpdateTicks()
 
 			if (m_replay && !tick->HasFlag(TickFlags::Ignore))
 			{
+				// If we are doing a replay we should wait until we see the correct hitstat before actually processing
+
+				// XXX This is an issue if we are missing hitstats on older replays
+				//     We should judge as a miss if enough time has passed
 			}
 			else
 			{
@@ -1379,12 +1393,12 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 		if (currentlySlamNextSegmentStraight[i])
 			m_autoLaserTime[i] = 0;
-		//PLAY update the laser position *if* having hits with autoplay
+		//TODO(replay) update the laser position *if* having hits with autoplay
 		bool replay_laser = false;
 		if (m_replay && currentSegment)
 		{
-			const SimpleHitStat* shs = m_replay->FindNextHitstat(6+i, mapTime + 1000);
-			replay_laser = shs ? (shs->rating > 0) : false;
+			const ReplayJudgement* judge = m_replay->FindNextJudgement(6+i, 1000);
+			replay_laser = judge && judge->rating > 0;
 		}
 		if (autoplayInfo.autoplay || m_autoLaserTime[i] > 0 || replay_laser)
 			laserPositions[i] = laserTargetPositions[i];
@@ -1514,9 +1528,9 @@ uint32 Scoring::CalculateCurrentDisplayScore() const
 	return CalculateCurrentDisplayScore(currentHitScore, currentMaxScore);
 }
 
-uint32 Scoring::CalculateCurrentDisplayScore(const ScoreReplay& replay) const
+uint32 Scoring::CalculateCurrentDisplayScore(const Replay* replay) const
 {
-	return CalculateCurrentDisplayScore(replay.currentScore, replay.currentMaxScore);
+	return CalculateCurrentDisplayScore(replay->CurrentScore(), replay->CurrentMaxScore());
 }
 
 uint32 Scoring::CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const

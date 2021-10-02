@@ -218,6 +218,7 @@ private:
 		// If chart file can't be opened, use existing hash.
 		String hash = chart->hash;
 
+
 		File chartFile;
 		if (chartFile.OpenRead(chart->path))
 		{
@@ -246,18 +247,17 @@ private:
 
 		Path::CreateDir(Path::Absolute("replays/" + hash));
 		m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
-		File replayFile;
 
-		if (replayFile.OpenWrite(m_replayPath))
-		{
-			FileWriter fw(replayFile);
-			fw.SerializeObject(m_simpleHitStats);
-			fw.Serialize(&(m_hitWindow.perfect), 4);
-			fw.Serialize(&(m_hitWindow.good), 4);
-			fw.Serialize(&(m_hitWindow.hold), 4);
-			fw.Serialize(&(m_hitWindow.miss), 4);
-			fw.Serialize(&m_hitWindow.slam, 4);
-		}
+		Replay* replay = new Replay();
+		replay->AttachChartInfo(m_chartIndex);
+		replay->AttachScoreInfo(&m_scoredata);
+		replay->AttachJudgementEvents(m_simpleHitStats);
+		replay->SetHitWindow(m_hitWindow);
+		replay->SetOffsets({ 0, 0, 0, 0 });
+		//TODO save offsets
+		replay->DoneInit();
+
+		replay->Save(m_replayPath);
 
 		newScore->score = m_score;
 		newScore->crit = m_categorizedHits[2];
@@ -524,6 +524,7 @@ public:
 			loadScoresFromGame(game);
 		}
 
+
 		for (HitStat* stat : scoring.hitStats)
 		{
 			if (!stat->forReplay)
@@ -552,6 +553,7 @@ public:
 			shs.holdMax = stat->holdMax;
 
 			m_simpleHitStats.Add(shs);
+
 
 			if (stat->object && stat->object->type == ObjectType::Single)
 			{

@@ -24,6 +24,7 @@
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
 #include "Gauge.hpp"
+#include "Replay.hpp"
 
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
@@ -102,7 +103,6 @@ private:
 	bool m_delayedHitEffects;
 
 	bool m_playingReplay = false;
-	int m_playingReplayIndex = 0;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -172,7 +172,7 @@ private:
 	bool m_showCover = true;
 
 	// TODO(itszn) this probably should be heap allocated so we can reference them safely
-	Vector<ScoreReplay> m_scoreReplays;
+	Vector<Replay*> m_scoreReplays;
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
 
@@ -213,6 +213,11 @@ public:
 
 	~Game_Impl()
 	{
+		m_scoring.SetReplayForPlayback(nullptr);
+		for (Replay* r : m_scoreReplays)
+			delete r;
+		m_scoreReplays.clear();
+
         delete m_track;
 		delete m_background;
 		delete m_foreground;
@@ -367,53 +372,46 @@ public:
 		}
 
 		// Load replays
-		// XXX Do we really need to load all replays every time?
-		//     seems like people probably only ever use the first index
 		if (m_chartIndex)
 		{
 			int index = 0;
 			for (ScoreIndex* score : m_chartIndex->scores)
 			{
-				File replayFile;
-				if (replayFile.OpenRead(score->replayPath)) {
-					ScoreReplay& replay = m_scoreReplays.Add(ScoreReplay());
-					replay.maxScore = score->score;
-					FileReader replayReader(replayFile);
-					replayReader.SerializeObject(replay.replay);
+				Replay* replay = Replay::Load(
+					score->replayPath,
+					index == 0?
+						Replay::ReplayType::Normal : Replay::ReplayType::NoInput
+				);
 
-					if (replayReader.Tell() + 16 <= replayReader.GetSize())
-					{
-						replayReader.Serialize(&(replay.hitWindow.perfect), 4);
-						replayReader.Serialize(&(replay.hitWindow.good), 4);
-						replayReader.Serialize(&(replay.hitWindow.hold), 4);
-						replayReader.Serialize(&(replay.hitWindow.miss), 4);
-						replayReader.Serialize(&replay.hitWindow.slam, 4);
-					}
-
-					if (m_scoreReplays.size() == 1 && m_playingReplay)
-					{
-						m_playOptions.playbackOptions.gaugeType = score->gaugeType;
-						m_playOptions.playbackOptions.gaugeOption = score->gaugeOption;
-						m_playOptions.playbackOptions.mirror = score->mirror;
-						m_playingReplayIndex = index;
-					}
+				if (!replay)
+				{
+					Logf("Failed to load replay '%s'", Logger::Severity::Info, *(score->replayPath));
+					continue;
 				}
 
-				// Only load top 10
-				if (m_scoreReplays.size() >= 10) {
-					break;
+				replay->AttachChartInfo(m_chartIndex);
+				replay->AttachScoreInfo(score);
+
+				m_scoreReplays.push_back(replay);
+
+				if (index == 0 && m_playingReplay)
+				{
+					replay->StartPlaying();
+					m_scoring.SetReplayForPlayback(replay);
+
+					m_playOptions.playbackOptions.gaugeType = score->gaugeType;
+					m_playOptions.playbackOptions.gaugeOption = score->gaugeOption;
+					m_playOptions.playbackOptions.mirror = score->mirror;
 				}
 
 				index++;
+
+				// Only load top 10
+				if (index >= 10)
+					break;
 			}
 
-			// We have to do this here since the vec may grow (invalidating pointers) in the loop
-			if (m_scoreReplays.size() > 0 && m_playingReplay)
-			{
-				m_scoreReplays[0].InitPlayback();
-				m_scoring.SetReplayForPlayback(&m_scoreReplays[0]);
-			}
-			else if (m_playingReplay)
+			if (m_playingReplay && m_scoreReplays.size() == 0)
 			{
 				Logf("Could not find replay to playback!", Logger::Severity::Error);
 				return false;
@@ -756,9 +754,7 @@ public:
 
 		for (auto& replay : m_scoreReplays)
 		{
-			replay.currentScore = 0;
-			replay.currentMaxScore = 0;
-			replay.nextHitStat = 0;
+			replay->Restart();
 		}
 
 		m_particleSystem->Reset();
@@ -1447,7 +1443,7 @@ public:
 		MapTime lastTimeForScoring = m_playback.GetLastTime();
 		for (auto& replay : m_scoreReplays)
 		{
-			replay.FindCurrentHitstat(lastTimeForScoring);
+			replay->UpdateToTime(lastTimeForScoring);
 		}
 
 		// Update scoring
@@ -2894,7 +2890,7 @@ public:
 		for (auto& replay: m_scoreReplays)
 		{
 			// If replaying, skip the index that we are replaying on
-			if (m_playingReplay && replayIndex == m_playingReplayIndex) {
+			if (m_playingReplay && replay->IsPlaying()) {
 				replayIndex++;
 				continue;
 			}
@@ -2902,7 +2898,7 @@ public:
 			lua_newtable(L);
 
 			lua_pushstring(L, "maxScore");
-			lua_pushnumber(L, replay.maxScore);
+			lua_pushnumber(L, replay->GetScoreStruct()->score);
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "currentScore");

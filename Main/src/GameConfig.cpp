@@ -195,6 +195,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DelayedHitEffects, true);
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
+	SetEnum<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay, AutoSaveReplaySettings::Highscore);
 
 	Set(GameConfigKeys::EditorPath, "PathToEditor");
 	Set(GameConfigKeys::EditorParamsFormat, "%s");

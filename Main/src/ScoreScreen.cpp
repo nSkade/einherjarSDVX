@@ -210,6 +210,24 @@ private:
 		lua_settable(m_lua, -3);
 	}
 
+	void m_SaveReplay()
+	{
+		Replay* replay = new Replay();
+		replay->AttachChartInfo(m_chartIndex);
+		replay->AttachScoreInfo(&m_scoredata);
+		replay->AttachJudgementEvents(m_simpleHitStats);
+		replay->SetHitWindow(m_hitWindow);
+		replay->SetOffsets(ReplayOffsets(
+			g_gameConfig.GetInt(GameConfigKeys::GlobalOffset),
+			g_gameConfig.GetInt(GameConfigKeys::InputOffset),
+			g_gameConfig.GetInt(GameConfigKeys::LaserOffset),
+			m_chartIndex->custom_offset
+		));
+		replay->DoneInit();
+
+		replay->Save(m_replayPath);
+	}
+
 	void m_AddNewScore(class Game* game)
 	{
 		ScoreIndex* newScore = new ScoreIndex();
@@ -248,16 +266,13 @@ private:
 		Path::CreateDir(Path::Absolute("replays/" + hash));
 		m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
 
-		Replay* replay = new Replay();
-		replay->AttachChartInfo(m_chartIndex);
-		replay->AttachScoreInfo(&m_scoredata);
-		replay->AttachJudgementEvents(m_simpleHitStats);
-		replay->SetHitWindow(m_hitWindow);
-		replay->SetOffsets({ 0, 0, 0, 0 });
-		//TODO save offsets
-		replay->DoneInit();
-
-		replay->Save(m_replayPath);
+		AutoSaveReplaySettings replaySetting = g_gameConfig.GetEnum<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay);
+		if (replaySetting == AutoSaveReplaySettings::Always ||
+			(replaySetting == AutoSaveReplaySettings::Highscore && m_highScores.empty()) ||
+			(replaySetting == AutoSaveReplaySettings::Highscore && m_score > (uint32)m_highScores.front()->score))
+		{
+			m_SaveReplay();
+		}
 
 		newScore->score = m_score;
 		newScore->crit = m_categorizedHits[2];
@@ -870,6 +885,10 @@ public:
 		if (code == SDL_SCANCODE_F12)
 		{
 			Capture();
+		}
+		if (code == SDL_SCANCODE_F11)
+		{
+			m_SaveReplay();
 		}
 		if (code == SDL_SCANCODE_F9)
 		{

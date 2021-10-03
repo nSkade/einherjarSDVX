@@ -51,6 +51,9 @@ struct ReplayOffsets : ForwardCompatStruct<1>
 	int32 input;
 	int32 laser;
 	int32 song;
+	ReplayOffsets() = default;
+	ReplayOffsets(int32 g, int32 i, int32 l, int32 s) :
+		global(g), input(i), laser(l), song(s) {};
 	static bool StaticSerialize(BinaryStream& stream, ReplayOffsets*& t)
 	{
 		if (!t->Version(stream)) return false;

@@ -52,7 +52,7 @@ bool Replay::SerializeLegacy(BinaryStream& stream, Replay*& obj)
 	stream << obj->m_hitWindow;
 
 	// Maybe use current offset instead?
-	obj->m_offsets = { 0 };
+	obj->SetOffsets(ReplayOffsets(0,0,0,0));
 	// TODO set player and other info?
 
 	obj->m_initialized = true;

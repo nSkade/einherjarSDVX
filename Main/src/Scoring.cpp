@@ -712,7 +712,6 @@ void Scoring::m_UpdateTicks()
 {
 	const MapTime currentTime = m_playback->GetLastTime();
 
-
 	// This loop checks for ticks that are missed
 	for (uint32 buttonCode = 0; buttonCode < 8; buttonCode++)
 	{
@@ -750,7 +749,10 @@ void Scoring::m_UpdateTicks()
 
 			if (replayJudgement && tick->HasFlag(TickFlags::Button))
 			{
-				//assert(replayJudgement->time == tick->time);
+				if (replayJudgement->time != tick->time)
+				{
+					Logf("[replay] replayJudgement->time (%u) != tick->time (%u)", Logger::Severity::Debug, replayJudgement->time, tick->time);
+				}
 				if (replayJudgement->rating == 0)
 					m_TickMiss(tick, buttonCode, replayJudgement->delta);
 				else

@@ -155,6 +155,7 @@ DefineEnum(GameConfigKeys,
 		   EditorParamsFormat,
 
 		   AutoScoreScreenshot,
+		   AutoSaveReplay,
 
 		   WASAPI_Exclusive,
 		   MuteUnfocused,
@@ -217,6 +218,11 @@ DefineEnum(LaserAxisOption,
 	       Both)
 
 DefineEnum(AutoScoreScreenshotSettings,
+		   Off,
+		   Highscore,
+		   Always)
+
+DefineEnum(AutoSaveReplaySettings,
 		   Off,
 		   Highscore,
 		   Always)

@@ -18,10 +18,11 @@ public:
 	float a1 = 0.0f;
 	float a2 = 0.0f;
 
-	void SetPeaking(float q, float freq, float gain, float sampleRate);
 	void SetLowPass(float q, float freq, float sampleRate);
 	void SetHighPass(float q, float freq, float sampleRate);
 	void SetAllPass(float q, float freq, float sampleRate);
+	void SetPeaking(float q, float freq, float gain, float sampleRate);
+	void SetHighShelf(float q, float freq, float gain, float sampleRate);
 	float Update(float in);
 private:
 	// FIR Delay buffers
@@ -200,6 +201,7 @@ public:
 	float q = 0.707f;
 	float feedback = 0.35f;
 	float stereoWidth = 0.0f;
+	float hiCutGain = -8.0f;
 
 	void SetLength(double length);
 	void SetStage(uint32 stage);
@@ -211,6 +213,7 @@ private:
 	uint32 m_length = 0;
 	uint32 m_stage = 6;
 	BQF m_apf[12][2];
+	BQF m_hiShelf[2];
 	float za[2] = {0.0f};
 	uint32 m_currentSample = 0;
 };

@@ -170,6 +170,8 @@ struct AudioEffect
 		} flanger;
 		struct
 		{
+			// Number of stages
+			EffectParam<int32> stage;
 			// Minimum frequency (Hz)
 			EffectParam<float> min;
 			// Maximum frequency (Hz)
@@ -180,6 +182,8 @@ struct AudioEffect
 			EffectParam<float> feedback;
 			// Stereo width (0-1)
 			EffectParam<float> stereoWidth;
+			// High cut gain (dB)
+			EffectParam<float> hiCutGain;
 		} phaser;
 		struct
 		{

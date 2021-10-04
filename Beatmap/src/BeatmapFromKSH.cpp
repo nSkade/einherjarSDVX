@@ -372,11 +372,13 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 		break;
 	case EffectType::Phaser:
 		AssignDurationIfSet(effect.duration, "period");
-		AssignFloatIfSet(effect.phaser.min, "feedback");
-		AssignFloatIfSet(effect.phaser.max, "feedback");
-		AssignFloatIfSet(effect.phaser.q, "feedback");
+		AssignIntIfSet(effect.phaser.stage, "stage");
+		AssignFloatIfSet(effect.phaser.min, "loFreq");
+		AssignFloatIfSet(effect.phaser.max, "hiFreq");
+		AssignFloatIfSet(effect.phaser.q, "Q");
 		AssignFloatIfSet(effect.phaser.feedback, "feedback");
 		AssignFloatIfSet(effect.phaser.stereoWidth, "stereoWidth");
+		AssignFloatIfSet(effect.phaser.hiCutGain, "hiCutGain");
 		break;
 	case EffectType::Flanger:
 		AssignDurationIfSet(effect.duration, "period");

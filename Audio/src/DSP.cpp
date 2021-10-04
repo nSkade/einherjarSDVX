@@ -70,6 +70,24 @@ void BQF::SetPeaking(float q, float freq, float gain, float sampleRate)
 	a1 = -2 * (float)cw0;
 	a2 = 1 - (float)(alpha / A);
 }
+void BQF::SetHighShelf(float q, float freq, float gain, float sampleRate)
+{
+	// Limit q
+	q = Math::Max(q, 0.01f);
+
+	double w0 = (2 * Math::pi * freq) / sampleRate;
+	double cw0 = cos(w0);
+	float alpha = (float)(sin(w0) / (2 * q));
+	double A = pow(10, (gain / 40));
+	double _2sqrtAalpha = 2 * sqrt(A) * alpha;
+
+	b0 = A * ((A+1) + (A-1)*cw0 + _2sqrtAalpha);
+	b1 = -2 * A * ((A-1) + (A+1)*cw0);
+	b2 = A * ((A+1) + (A-1)*cw0 - _2sqrtAalpha);
+	a0 = (A+1) - (A-1)*cw0 + _2sqrtAalpha;
+	a1 = 2 * ((A-1) - (A+1)*cw0);
+	a2 = (A+1) - (A-1)*cw0 - _2sqrtAalpha;
+}
 float BQF::Update(float in)
 {
 	float filtered =
@@ -475,6 +493,12 @@ void PhaserDSP::Process(float *out, uint32 numSamples)
 	const uint32 startSample = GetStartSample();
 	const uint32 currentSample = GetCurrentSample();
 
+	// logarithmic center
+	float freqCenter = sqrt(fmin*fmax);
+	for (uint32 c = 0; c < 2; c++) {
+		m_hiShelf[c].SetHighShelf(1.5f, freqCenter, hiCutGain, (float)m_sampleRate);
+	}
+
 	for (uint32 i = 0; i < numSamples; i++)
 	{
 		if (currentSample + i < startSample)
@@ -487,15 +511,17 @@ void PhaserDSP::Process(float *out, uint32 numSamples)
 		float f[2] = {fLeft, fRight};
 		for (uint32 c = 0; c < 2; c++) {
 			// logarithmic interpolation
-			float freq = pow(fmin, 1-f[c]) * pow(fmax, f[c]);
+			float freq = pow(fmin, f[c]) * pow(fmax, 1-f[c]);
 			float output = feedback * za[c] + out[i * 2 + c];
 			for (uint32 j = 0; j < m_stage; j++) {
 				m_apf[j][c].SetAllPass(q, freq, (float)m_sampleRate);
 				output = m_apf[j][c].Update(output);
 			}
-			// effect strongest when mix = 0.5
-			out[i * 2 + c] = (mix/2) * output + (1-mix/2) * out[i * 2 + c];
 			za[c] = output;
+			// effect strongest when mix = 0.5
+			output = (mix/2) * output + (1-mix/2) * out[i * 2 + c];
+			float shelved = m_hiShelf[c].Update(output);
+			out[i * 2 + c] = mix * shelved + (1-mix) * output;
 		}
 		m_currentSample++;
 		m_currentSample %= m_length;

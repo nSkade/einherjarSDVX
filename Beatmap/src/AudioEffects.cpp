@@ -91,13 +91,15 @@ static AudioEffect CreateDefault(EffectType type)
 	case EffectType::TapeStop:
 		break;
 	case EffectType::Phaser:
+		ret.duration = TimeRange(0.5f);
 		ret.mix = FloatRange(0.5f);
+		ret.phaser.stage = IntRange(6);
 		ret.phaser.min = FloatRange(1500.0f);
 		ret.phaser.max = FloatRange(20000.0f);
 		ret.phaser.q = FloatRange(0.707f);
 		ret.phaser.feedback = FloatRange(0.35f);
 		ret.phaser.stereoWidth = FloatRange(0.0f);
-		ret.duration = TimeRange(0.5f);
+		ret.phaser.hiCutGain = FloatRange(-8.0f);
 		break;
 	case EffectType::Wobble:
 		// wobble is 1/12 by default

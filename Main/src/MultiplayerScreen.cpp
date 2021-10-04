@@ -871,6 +871,11 @@ bool MultiplayerScreen::m_returnToMainList()
 	g_application->DiscordPresenceMulti("", 0, 0, "");
 	m_roomId = "";
 	m_hasSelectedMap = false;
+	m_selectedMapId = 0;
+	m_selectedDiffIndex = 0;
+	m_selectedMapHash = "";
+	m_selectedMapShortPath = "";
+	m_clearLuaMap();
 	return true;
 }
 
@@ -1211,9 +1216,12 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard)
 			{
 				// In this case we want them to hit escape so we don't exit on text inputs
-				break;
+				int backScancode = g_gameConfig.GetInt(GameConfigKeys::Key_Back);
+				if (backScancode != SDL_SCANCODE_ESCAPE)
+					break;
 			}
 			// Otherwise fall though
+            [[fallthrough]];
 		default:
 			if (m_returnToMainList())
 				return;

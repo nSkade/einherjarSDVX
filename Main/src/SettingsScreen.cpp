@@ -28,6 +28,21 @@ protected:
 		{
 			m_gamePads.Add(gamePadName.data());
 		}
+
+		//Look for selected gamepad and if none are set use 0
+		m_selectedPad = 0;
+		const auto deviceId = g_gameConfig.GetBlob<16>(GameConfigKeys::Controller_DeviceID);
+		for (size_t i = 0; i < m_gamePads.size(); i++)
+		{
+			auto id = SDL_JoystickGetDeviceGUID(i);
+			if (memcmp(deviceId.data(), id.data, 16) == 0)
+			{
+				m_selectedPad = i;
+				break;
+			}
+		}
+
+
 	}
 	
 	void Save() override
@@ -36,10 +51,18 @@ protected:
 		{
 			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
 		}
+
+		if (!m_gamePads.empty())
+		{
+			std::array<uint8, 16> newId;
+			memcpy(newId.data(), SDL_JoystickGetDeviceGUID(m_selectedPad).data, 16);
+			g_gameConfig.SetBlob<16>(GameConfigKeys::Controller_DeviceID, newId);
+		}
 	}
 
 	Vector<String> m_gamePadsStr;
 	Vector<const char*> m_gamePads;
+	int m_selectedPad;
 
 	String m_controllerButtonNames[8];
 	String m_controllerLaserNames[2];
@@ -112,7 +135,14 @@ protected:
 
 		if (m_gamePads.size() > 0)
 		{
-			SelectionSetting(GameConfigKeys::Controller_DeviceID, m_gamePads, "Controller to use:");
+			int newPad = SelectionInput(m_selectedPad, m_gamePads, "Controller to use:");
+			if (newPad != m_selectedPad)
+			{
+				m_selectedPad = newPad;
+				std::array<uint8, 16> newId;
+				memcpy(newId.data(), SDL_JoystickGetDeviceGUID(m_selectedPad).data, 16);
+				g_gameConfig.SetBlob<16>(GameConfigKeys::Controller_DeviceID, newId);
+			}
 		}
 
 		LayoutRowDynamic(2, m_lineHeight * 6);
@@ -304,6 +334,7 @@ private:
 			break;
 		case InputDevice::Mouse:
 			laserSensKey = GameConfigKeys::Mouse_Sensitivity;
+			Label(Utility::Sprintf("Estimated PPR: %.0f", Input::EstimatePprFromSens(g_gameConfig.GetFloat(laserSensKey))));
 			break;
 		case InputDevice::Keyboard:
 		default:
@@ -329,7 +360,7 @@ private:
 	}
 	inline void OpenButtonBind(GameConfigKeys key, bool gamepad)
 	{
-		g_application->AddTickable(ButtonBindingScreen::Create(key, gamepad, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID), m_altBinds));
+		g_application->AddTickable(ButtonBindingScreen::Create(key, gamepad, m_selectedPad, m_altBinds));
 	}
 
 	inline void OpenCalibrateSensitivity()
@@ -587,6 +618,10 @@ protected:
 
 		SectionHeader("Game UI");
 
+		//TODO: Move these somewhere else?
+		ToggleSetting(GameConfigKeys::FastGUI, "Use Lightweight GUI (no skin)");
+		ToggleSetting(GameConfigKeys::SkinDevMode, "Skin Development Mode");
+
 		EnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "In-game score display is:");
 		ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice-mode info during gameplay");
 	}
@@ -691,6 +726,7 @@ protected:
 		SectionHeader("Audio");
 
 		PercentSetting(GameConfigKeys::MasterVolume, "Master volume (%.1f%%):");
+		PercentSetting(GameConfigKeys::SlamVolume, "Slam/Clap volume (%.1f%%):");
 		ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
 #ifdef _WIN32
 		ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI exclusive mode (requires restart)");
@@ -709,6 +745,9 @@ protected:
 		SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti-aliasing (requires restart):");
 		SetApply(ToggleSetting(GameConfigKeys::VSync, "VSync"));
 		SetApply(ToggleSetting(GameConfigKeys::ShowFps, "Show FPS"));
+		SetApply(ToggleSetting(GameConfigKeys::KeepFontTexture, "Save font texture (settings load faster but uses more memory)"));
+
+
 
 		SectionHeader("Update");
 
@@ -1301,6 +1340,7 @@ private:
 	float m_delta = 0.f;
 	float m_currentSetting = 0.f;
 	bool m_firstStart = false;
+	MouseLockHandle m_mouseLock;
 public:
 	LaserSensCalibrationScreen_Impl()
 	{
@@ -1317,9 +1357,14 @@ public:
 		g_input.GetInputLaserDir(0); //poll because there might be something idk
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller)
+		{
 			m_currentSetting = g_gameConfig.GetFloat(GameConfigKeys::Controller_Sensitivity);
+		}
 		else
+		{
 			m_currentSetting = g_gameConfig.GetFloat(GameConfigKeys::Mouse_Sensitivity);
+			m_mouseLock = g_input.LockMouse();
+		}
 
 		g_input.OnButtonPressed.Add(this, &LaserSensCalibrationScreen_Impl::OnButtonPressed);
 		return true;
@@ -1337,11 +1382,19 @@ public:
 
 		if (m_state)
 		{
-			const float sens = 6.0f / m_delta;
+			float sens = 6.0f / m_delta;
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+			{
+				sens = Input::CalculateSensFromPpr(m_delta);
+			}
+
 
 			g_application->FastText("Turn left knob one revolution clockwise", center.x, center.y, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText("then press start.", center.x, center.y + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
-			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+				g_application->FastText(Utility::Sprintf("Current Sens: %.2f, ppr: (%.0f)", sens, fabs(m_delta)), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			else
+				g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);	
 
 		}
 		else
@@ -1360,7 +1413,12 @@ public:
 				if (m_state)
 				{
 					// calc sens and then call delegate
-					SensSet.Call(6.0f / m_delta);
+					float sens = 6.0f / m_delta;
+					if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+					{
+						sens = Input::CalculateSensFromPpr(m_delta);
+					}
+					SensSet.Call(sens);
 					g_application->RemoveTickable(this);
 				}
 				else

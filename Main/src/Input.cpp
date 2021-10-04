@@ -29,7 +29,8 @@ void Input::Init(Graphics::Window& wnd)
 
 	m_mouseAxisMapping[0] = g_gameConfig.GetInt(GameConfigKeys::Mouse_Laser0Axis);
 	m_mouseAxisMapping[1] = g_gameConfig.GetInt(GameConfigKeys::Mouse_Laser1Axis);
-	m_mouseSensitivity = g_gameConfig.GetFloat(GameConfigKeys::Mouse_Sensitivity);
+
+	m_mouseSensitivity = CalculateRealMouseSens(g_gameConfig.GetFloat(GameConfigKeys::Mouse_Sensitivity));
 
 	m_controllerAxisMapping[0] = g_gameConfig.GetInt(GameConfigKeys::Controller_Laser0Axis);
 	m_controllerAxisMapping[1] = g_gameConfig.GetInt(GameConfigKeys::Controller_Laser1Axis);
@@ -63,10 +64,24 @@ void Input::Init(Graphics::Window& wnd)
 	// Init controller mapping
 	if(m_laserDevice == InputDevice::Controller || m_buttonDevice == InputDevice::Controller)
 	{
-		int32 deviceIndex = g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID);
-		if(deviceIndex >= m_window->GetNumGamepads())
+		const auto deviceId = g_gameConfig.GetBlob<16>(GameConfigKeys::Controller_DeviceID);
+		int deviceIndex = -1;
+
+		for (int32 i = 0; i < m_window->GetNumGamepads(); i++)
 		{
-			Logf("Out of range controller [%d], number of available controllers is %d", Logger::Severity::Error, deviceIndex, m_window->GetNumGamepads());
+			auto id = SDL_JoystickGetDeviceGUID(i);
+			if (memcmp(deviceId.data(), id.data, 16) == 0)
+			{
+				deviceIndex = i;
+				break;
+			}
+		}
+
+
+
+		if(deviceIndex < 0)
+		{
+			Log("Could not find bound gamepad", Logger::Severity::Warning);
 		}
 		else
 		{
@@ -274,6 +289,26 @@ float Input::GetAbsoluteInputLaserDir(uint32 laserIdx)
 {
 	return m_rawLaserStates[laserIdx];
 }
+
+//To give the sensitivity slider a good feel and put reasonable sensitivities in a reasonable range.
+const double Input::mouseSensVars[] = { 20.0, 0.1, 1.2 };
+
+double Input::CalculateSensFromPpr(double ppr)
+{
+	double pprSign = Math::Sign(ppr);
+
+	return pprSign * (mouseSensVars[0] / mouseSensVars[1]) / pow(fabs(ppr), 1.0 / mouseSensVars[2]);
+}
+double Input::CalculateRealMouseSens(double sensSetting)
+{
+	double sensSign = Math::Sign(sensSetting);
+	double ppr = EstimatePprFromSens(abs(sensSetting));
+	return sensSign * 6.0 / (ppr);
+}
+double Input::EstimatePprFromSens(double sens)
+{
+	return pow(mouseSensVars[0] / (fmax(sens, 0.001) * mouseSensVars[1]), mouseSensVars[2]);
+}
 void Input::m_InitKeyboardMapping()
 {
 	memset(m_buttonStates, 0, sizeof(m_buttonStates));
@@ -365,7 +400,7 @@ void Input::m_OnButtonInput(Button b, bool pressed)
 	}
 
 	static Timer t;
-	if(b >= Button::LS_0Neg)
+	if(b >= Button::LS_0Neg && b <= Button::LS_1Pos)
 	{
 		int32 btnIdx = (int32)b - (int32)Button::LS_0Neg;
 		int32 laserIdx = btnIdx / 2;

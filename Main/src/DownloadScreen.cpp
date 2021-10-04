@@ -3,6 +3,7 @@
 
 #include "Application.hpp"
 #include "lua.hpp"
+#include "Shared/Time.hpp"
 #include "archive.h"
 #include "archive_entry.h"
 #include "SkinHttp.hpp"
@@ -41,6 +42,7 @@ bool DownloadScreen::Init()
 	m_bindable->AddFunction("Exit", this, &DownloadScreen::m_Exit);
 	m_bindable->AddFunction("DownloadArchive", this, &DownloadScreen::m_DownloadArchive);
 	m_bindable->AddFunction("PlayPreview", this, &DownloadScreen::m_PlayPreview);
+	m_bindable->AddFunction("StopPreview", this, &DownloadScreen::m_StopPreview);
 	m_bindable->AddFunction("GetSongsPath", this, &DownloadScreen::m_GetSongsPath);
 	m_bindable->Push();
 	lua_settop(m_lua, 0);
@@ -136,6 +138,28 @@ void DownloadScreen::OnKeyReleased(SDL_Scancode code)
 
 void DownloadScreen::m_ArchiveLoop()
 {
+	{
+		String preview_path = Path::Normalize(Path::Absolute("preview/"));
+		Vector<String> exts = { "mp3", "oog", "wav" };
+		Map<String, Vector<FileInfo>> previews = Files::ScanFilesRecursive(preview_path, exts, nullptr);
+		uint64 now = Shared::Time::Now().Data();
+		Log("Checking for old preview files", Logger::Severity::Info);
+		int removed = 0;
+		for (const auto& ext : exts)
+		{
+			for (const FileInfo& fi : previews[ext])
+			{
+				uint64 writeTime = File::FileTimeToUnixTimestamp(fi.lastWriteTime);
+
+				if (now - writeTime < 24 * 60 * 60)
+					continue;
+				Path::Delete(fi.fullPath);
+				removed++;
+			}
+		}
+		if (removed > 0)
+			Logf("Removed %u preview files", Logger::Severity::Info, removed);
+	}
 	while (m_running)
 	{
 		m_archiveLock.lock();
@@ -483,5 +507,11 @@ int DownloadScreen::m_PlayPreview(lua_State* L)
 		m_previewPlayer.FadeTo(Ref<AudioStream>());
 	}
 
+	return 0;
+}
+
+int DownloadScreen::m_StopPreview(lua_State* L)
+{
+	m_previewPlayer.FadeTo(Ref<AudioStream>());
 	return 0;
 }

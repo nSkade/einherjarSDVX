@@ -36,6 +36,7 @@ game.LoadSkinSample("applause")
 local played = false
 local shotTimer = 0;
 local shotPath = "";
+local shotType = "screenshot"
 game.LoadSkinSample("shutter")
 local highScores = nil
 
@@ -323,7 +324,11 @@ draw_shotnotif = function(x,y)
     gfx.Stroke()
     gfx.FillColor(255,255,255)
     gfx.FontSize(15)
-    gfx.Text("Screenshot saved to:", 3,5)
+    if shotType == "screenshot" then
+        gfx.Text("Screenshot saved to:", 3,5)
+    else
+        gfx.Text("Replay saved to:", 3,5)
+    end
     gfx.Text(shotPath, 3,20)
     gfx.Restore()
 end
@@ -1347,5 +1352,12 @@ end
 screenshot_captured = function(path)
     shotTimer = 10;
     shotPath = path;
+    shotType = "screenshot";
     game.PlaySample("shutter")
+end
+
+replay_saved = function(path)
+    shotTimer = 10;
+    shotPath = path;
+    shotType = "replay";
 end

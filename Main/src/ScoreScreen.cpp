@@ -210,8 +210,11 @@ private:
 		lua_settable(m_lua, -3);
 	}
 
-	void m_SaveReplay()
+	void m_SaveReplay(bool alert=false)
 	{
+		if (m_badge == ClearMark::NotPlayed)
+			return;
+
 		Replay* replay = new Replay();
 		replay->AttachChartInfo(m_chartIndex);
 		replay->AttachScoreInfo(&m_scoredata);
@@ -225,7 +228,23 @@ private:
 		));
 		replay->DoneInit();
 
-		replay->Save(m_replayPath);
+		bool good = replay->Save(m_replayPath);
+
+		if (!alert)
+			return;
+
+		String relpath = Path::Normalize("replays/" + m_chartHash + "/" + Shared::Time::Now().ToString() + ".urf");
+
+		lua_getglobal(m_lua, "replay_saved");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (good)
+				lua_pushstring(m_lua, *relpath);
+			else
+				lua_pushstring(m_lua, "Failed to save replay");
+			lua_call(m_lua, 1, 0);
+		}
+		lua_settop(m_lua, 0);
 	}
 
 	void m_AddNewScore(class Game* game)
@@ -937,7 +956,7 @@ public:
 		}
 		if (code == SDL_SCANCODE_F11)
 		{
-			m_SaveReplay();
+			m_SaveReplay(true);
 		}
 		if (code == SDL_SCANCODE_F9)
 		{
@@ -1131,7 +1150,9 @@ public:
 		}
 		Vector2i size(w, h);
 		Image screenshot = ImageRes::Screenshot(g_gl, size, { x,y });
-		String screenshotPath = Path::Absolute("screenshots/" + Shared::Time::Now().ToString() + ".png");
+		String relpath = "screenshots/" + Shared::Time::Now().ToString() + ".png";
+		String screenshotPath = Path::Absolute(relpath);
+		relpath = Path::Normalize(relpath);
 		if (screenshot.get() != nullptr)
 		{
 			screenshot->SavePNG(screenshotPath);
@@ -1139,13 +1160,13 @@ public:
 		}
 		else
 		{
-			screenshotPath = "Failed to capture screenshot";
+			relpath = "Failed to capture screenshot";
 		}
 
 		lua_getglobal(m_lua, "screenshot_captured");
 		if (lua_isfunction(m_lua, -1))
 		{
-			lua_pushstring(m_lua, *screenshotPath);
+			lua_pushstring(m_lua, *relpath);
 			lua_call(m_lua, 1, 0);
 		}
 		lua_settop(m_lua, 0);

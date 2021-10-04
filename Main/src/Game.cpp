@@ -434,7 +434,7 @@ public:
 
 			if (m_playingReplay && m_scoreReplays.size() == 0)
 			{
-				Logf("Could not find replay to playback!", Logger::Severity::Error);
+				Log("Could not find replay to playback!", Logger::Severity::Error);
 				return false;
 			}
 		}

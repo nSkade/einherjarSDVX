@@ -71,7 +71,7 @@ struct ScoreReplay
 		if (!playbackQueue[lane].empty())
 			return playbackQueue[lane].front();
 
-		for (int i = nextHitStat; i < replay.size(); i++)
+		for (size_t i = nextHitStat; i < replay.size(); i++)
 		{
 			if (replay[i].time > endTime)
 				return nullptr;

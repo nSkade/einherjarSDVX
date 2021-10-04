@@ -32,7 +32,7 @@ struct ForwardCompatStruct
 
 		version = V;
 		stream << this->version;
-		if (!stream.IsOk() || stream.IsReading() && version > V)
+		if (!stream.IsOk() || (stream.IsReading() && version > V))
 			return false;
 		return true;
 	}
@@ -239,7 +239,7 @@ public:
 		m_lastEvalTime = lastTime;
 	}
 
-	const bool HasJudgement(int lane) const
+	bool HasJudgement(int lane) const
 	{
 		assert(m_isPlaying);
 		assert(lane < 8);

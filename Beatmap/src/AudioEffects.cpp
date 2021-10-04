@@ -98,7 +98,7 @@ static AudioEffect CreateDefault(EffectType type)
 		ret.phaser.max = FloatRange(20000.0f);
 		ret.phaser.q = FloatRange(0.707f);
 		ret.phaser.feedback = FloatRange(0.35f);
-		ret.phaser.stereoWidth = FloatRange(0.0f);
+		ret.phaser.stereoWidth = FloatRange(0.75f);
 		ret.phaser.hiCutGain = FloatRange(-8.0f);
 		break;
 	case EffectType::Wobble:

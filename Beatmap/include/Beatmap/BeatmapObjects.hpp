@@ -112,7 +112,7 @@ struct TObjectState<void> : public ObjectTypeData_Base
 	TObjectState() : ObjectTypeData_Base(ObjectType::Invalid){};
 
 	// Sort object states by their time and other properties
-	static void SortArray(Vector<TObjectState<void> *> &arr);
+	static void SortArray(std::vector<std::unique_ptr<TObjectState<void>>>& arr);
 
 	// Always allow casting from typeless object to Union State object
 	operator MultiObjectState *() { return (MultiObjectState *)this; }
@@ -180,9 +180,14 @@ struct SpinStruct
 struct ObjectTypeData_Laser
 {
 	// Retrieves the starting laser point
-	TObjectState<ObjectTypeData_Laser> *GetRoot();
+	TObjectState<ObjectTypeData_Laser>* GetRoot();
+	inline const TObjectState<ObjectTypeData_Laser>* GetRoot() const
+	{
+		return const_cast<ObjectTypeData_Laser*>(this)->GetRoot();
+	}
+
 	// Ending point of laser
-	TObjectState<ObjectTypeData_Laser> *GetTail();
+	TObjectState<ObjectTypeData_Laser>* GetTail();
 	float GetDirection() const;
 	float SamplePosition(MapTime time) const;
 	// Convert extended range to normal range
@@ -316,34 +321,10 @@ struct TimingPoint
 	int8 tickrateOffset = 0;
 };
 
-struct LaneHideTogglePoint
-{
+struct LaneHideTogglePoint {
 	// Position in ms when to hide or show the lane
 	MapTime time;
 
 	// How long the transition to/from hidden should take in 1/192nd notes
 	uint32 duration = 192;
-};
-
-// Control point for track zoom levels
-struct ZoomControlPoint
-{
-	MapTime time;
-	// What zoom to control
-	// 0 = bottom
-	// 1 = top
-	uint8 index = 0;
-	// The zoom value
-	// in the range -1 to 1
-	// 1 being fully zoomed in
-	float zoom = 0.0f;
-	// Used to check if a manual tilt assignment is instant
-	bool instant = false;
-};
-
-// Chart stop object
-struct ChartStop
-{
-	MapTime time;
-	MapTime duration;
 };

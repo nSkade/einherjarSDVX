@@ -128,7 +128,7 @@ double TimeFromTicks(uint32 tick, const Map<uint32, TimingPoint *> &timingpoints
 
 MapTime MapTimeFromTicks(uint32 tick, const Map<uint32, TimingPoint *> &timingpoints, double resolution)
 {
-	return Math::Round(TimeFromTicks(tick, timingpoints, resolution));
+	return Math::RoundToInt(TimeFromTicks(tick, timingpoints, resolution));
 }
 
 struct MultiParam
@@ -228,7 +228,7 @@ static MultiParam ParseParam(const String &in)
 		ret.type = MultiParam::Float;
 		int percentage = 0;
 		sscanf(*in, "%i", &percentage);
-		ret.fval = percentage / 100.0;
+		ret.fval = percentage / 100.0f;
 	}
 	else if (in.find('.') != -1)
 	{
@@ -275,12 +275,12 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 				auto it = std::find(switchablePaths.begin(), switchablePaths.end(), s.second);
 				if (it == switchablePaths.end())
 				{
-					switchableIndex.ival = switchablePaths.size();
+					switchableIndex.ival = static_cast<int32>(switchablePaths.size());
 					switchablePaths.Add(s.second);
 				}
 				else
 				{
-					switchableIndex.ival = std::distance(switchablePaths.begin(), it);
+					switchableIndex.ival = static_cast<int32>(std::distance(switchablePaths.begin(), it));
 				}
 
 				params.Add("index", switchableIndex);
@@ -430,16 +430,16 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	for (auto it = kshootMap.fxDefines.begin(); it != kshootMap.fxDefines.end(); it++)
 	{
 		EffectType type = effectTypeMap.FindOrAddEffectType(it->first);
-		if (m_customEffects.Contains(type))
+		if (m_customAudioEffects.Contains(type))
 			continue;
-		m_customEffects.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
+		m_customAudioEffects.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
 	}
 	for (auto it = kshootMap.filterDefines.begin(); it != kshootMap.filterDefines.end(); it++)
 	{
 		EffectType type = filterTypeMap.FindOrAddEffectType(it->first);
-		if (m_customFilters.Contains(type))
+		if (m_customAudioFilters.Contains(type))
 			continue;
-		m_customFilters.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
+		m_customAudioFilters.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
 	}
 
 	auto ParseFilterType = [&](const String &str) {
@@ -574,6 +574,13 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	// Used for accurate time calculations
 	Map<uint32, TimingPoint *> timingPointTicks;
 
+	auto FlushTimingPoints = [&]() {
+		for (const auto& it : timingPointMap)
+		{
+			m_timingPoints.Add(std::move(*(it.second)));
+		}
+	};
+
 	// Process initial timing point
 	TimingPoint *lastTimingPoint = new TimingPoint();
 	lastTimingPoint->time = atol(*kshootMap.settings["o"]);
@@ -587,20 +594,24 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	uint32 timingTickOffset = 0;
 
 	// Add First timing point
-	m_timingPoints.Add(lastTimingPoint);
 	timingPointMap.Add(lastTimingPoint->time, lastTimingPoint);
 	timingPointTicks.Add(0, lastTimingPoint);
 	int tickResolution = 240;
 
 	// Add First Lane Toggle Point
-	LaneHideTogglePoint *startLaneTogglePoint = new LaneHideTogglePoint();
-	startLaneTogglePoint->time = 0;
-	startLaneTogglePoint->duration = 1;
-	m_laneTogglePoints.Add(startLaneTogglePoint);
+	{
+		LaneHideTogglePoint startLaneTogglePoint;
+		startLaneTogglePoint.time = 0;
+		startLaneTogglePoint.duration = 1;
+		m_laneTogglePoints.Add(std::move(startLaneTogglePoint));
+	}
 
 	// Stop here if we're only going for metadata
 	if (metadataOnly)
+	{
+		FlushTimingPoints();
 		return true;
+	}
 
 	// Button hold states
 	TempButtonState *buttonStates[6] = {nullptr};
@@ -614,10 +625,10 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	float laserRanges[2] = {1.0f, 1.0f};
 	MapTime lastLaserPointTime[2] = {0, 0};
 
-	ZoomControlPoint *firstControlPoints[5] = {nullptr};
 	MapTime lastMapTime = 0;
 	uint32 currentTick = 0;
-	ZoomControlPoint* lastManualTiltPoint = nullptr;
+
+	bool isManualTilt = false;
 	for (KShootMap::TickIterator it(kshootMap); it; ++it)
 	{
 		const KShootBlock &block = it.GetCurrentBlock();
@@ -632,7 +643,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 
 		// flag set when a new effect parameter is set and a new hold notes should be created
 		bool splitupHoldNotes[2] = {false, false};
-		bool isManualTilt = false;
 
 		uint32 tickSettingIndex = 0;
 		// Process settings
@@ -645,7 +655,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				{
 					lastTimingPoint = new TimingPoint(*lastTimingPoint);
 					lastTimingPoint->time = mapTime;
-					m_timingPoints.Add(lastTimingPoint);
 					timingPointMap.Add(mapTime, lastTimingPoint);
 					timingPointTicks.Add(currentTick, lastTimingPoint);
 					timingPointBlockOffset = time.block;
@@ -707,7 +716,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 						}
 					}
 					else {
-						m_customEffects.at(*type).SetDefaultEffectParams(paramsOut);
+						m_customAudioEffects.at(*type).SetDefaultEffectParams(paramsOut);
 					}
 				}
 
@@ -766,63 +775,48 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			else if (p.first == "filtertype")
 			{
 				// Inser filter type change event
-				EventObjectState *evt = new EventObjectState();
+				EventObjectState* evt = new EventObjectState();
 				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectType;
 				evt->data.effectVal = ParseFilterType(p.second);
-				m_objectStates.Add(*evt);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 			}
 			else if (p.first == "pfiltergain")
 			{
 				// Inser filter type change event
 				float gain = (float)atol(*p.second) / 100.0f;
-				EventObjectState *evt = new EventObjectState();
+				EventObjectState* evt = new EventObjectState();
 				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectMix;
 				evt->data.floatVal = gain;
-				m_objectStates.Add(*evt);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 			}
 			else if (p.first == "chokkakuvol")
 			{
 				float vol = (float)atol(*p.second) / 100.0f;
-				EventObjectState *evt = new EventObjectState();
+				EventObjectState* evt = new EventObjectState();
 				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectMix;
 				evt->data.floatVal = vol;
-				m_objectStates.Add(*evt);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 			}
-#define CHECK_FIRST                        \
-	if (!firstControlPoints[point->index]) \
-	firstControlPoints[point->index] = point
 			else if (p.first == "zoom_bottom")
 			{
-				ZoomControlPoint *point = new ZoomControlPoint();
-				point->time = mapTime;
-				point->index = 0;
-				point->zoom = (float)atol(*p.second) / 100.0f;
-				m_zoomControlPoints.Add(point);
-				CHECK_FIRST;
+				const double value = atol(p.second.data()) / 100.0;
+				m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_BOTTOM, mapTime, value);
 			}
 			else if (p.first == "zoom_top")
 			{
-				ZoomControlPoint *point = new ZoomControlPoint();
-				point->time = mapTime;
-				point->index = 1;
-				point->zoom = (float)(atol(*p.second) / 100.0);
-				m_zoomControlPoints.Add(point);
-				CHECK_FIRST;
+				const double value = atol(p.second.data()) / 100.0;
+				m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_TOP, mapTime, value);
 			}
 			else if (p.first == "zoom_side")
 			{
-				ZoomControlPoint *point = new ZoomControlPoint();
-				point->time = mapTime;
-				point->index = 2;
-				point->zoom = (float)atol(*p.second) / 100.0f;
-				m_zoomControlPoints.Add(point);
-				CHECK_FIRST;
+				const double value = atol(p.second.data()) / 100.0;
+				m_effects.InsertGraphValue(EffectTimeline::GraphType::SHIFT_X, mapTime, value);
 			}
 			/* OLD USC MANUAL ROLL, KEPT JUST IN CASE
 			else if (p.first == "roll")
@@ -837,20 +831,15 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			*/
 			else if (p.first == "lane_toggle")
 			{
-				LaneHideTogglePoint *point = new LaneHideTogglePoint();
-				point->time = mapTime;
-				point->duration = atol(*p.second);
-				m_laneTogglePoints.Add(point);
+				LaneHideTogglePoint point;
+				point.time = mapTime;
+				point.duration = atol(*p.second);
+				m_laneTogglePoints.Add(std::move(point));
 			}
 			else if (p.first == "center_split")
 			{
-				ZoomControlPoint *point = new ZoomControlPoint();
-				point->time = mapTime;
-				point->index = 4;
-				int value = atol(*p.second);
-				point->zoom = (double)value / 100.0;
-				m_zoomControlPoints.Add(point);
-				CHECK_FIRST;
+				const double value = atol(*p.second) / 100.0;
+				m_centerSplit.Insert(mapTime, value);
 			}
 			else if (p.first == "tilt")
 			{
@@ -880,14 +869,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				{
 					evt->data.rollVal = TrackRollBehaviour::Manual;
 
-					ZoomControlPoint *point = new ZoomControlPoint();
-					point->time = mapTime;
-					point->index = 3;
-					point->zoom = atof(*p.second) * -(10.0 / 360.0);
-					point->instant = lastManualTiltPoint ? lastManualTiltPoint->time == point->time : false;
-					
-					lastManualTiltPoint = m_zoomControlPoints.Add(point);
-					CHECK_FIRST;
+					const double rotation = atof(p.second.data()) * -(10.0 / 360.0);
+					m_effects.InsertGraphValue(EffectTimeline::GraphType::ROTATION_Z, mapTime, rotation);
 
 					isManualTilt = true;
 					goto after_manual_check;
@@ -895,16 +878,11 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 
 				if (isManualTilt)
 				{
-					ZoomControlPoint *point = new ZoomControlPoint();
-					point->time = mapTime;
-					point->index = 3;
-					point->zoom = m_zoomControlPoints.back()->zoom;
-					m_zoomControlPoints.Add(point);
-					CHECK_FIRST; // unnecessary but hey
+					m_effects.GetGraph(EffectTimeline::GraphType::ROTATION_Z).Extend(mapTime);
 				}
 
 			after_manual_check:
-				m_objectStates.Add(*evt);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 			}
 			else if (p.first == "fx-r_se")
 			{
@@ -923,12 +901,12 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				auto it = std::find(m_samplePaths.begin(), m_samplePaths.end(), filename);
 				if (it == m_samplePaths.end())
 				{
-					fxSampleIndex[fxi] = m_samplePaths.size();
+					fxSampleIndex[fxi] = static_cast<uint8>(m_samplePaths.size());
 					m_samplePaths.Add(filename);
 				}
 				else
 				{
-					fxSampleIndex[fxi] = std::distance(m_samplePaths.begin(), it);
+					fxSampleIndex[fxi] = static_cast<uint8>(std::distance(m_samplePaths.begin(), it));
 				}
 			}
 			else if (p.first == "fx-l_se")
@@ -948,7 +926,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				auto it = std::find(m_samplePaths.begin(), m_samplePaths.end(), filename);
 				if (it == m_samplePaths.end())
 				{
-					fxSampleIndex[fxi] = m_samplePaths.size();
+					fxSampleIndex[fxi] = static_cast<uint8>(m_samplePaths.size());
 					m_samplePaths.Add(filename);
 				}
 				else
@@ -958,10 +936,19 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			}
 			else if (p.first == "stop")
 			{
-				ChartStop *cs = new ChartStop();
-				cs->time = mapTime;
-				cs->duration = (atol(*p.second) / 192.0f) * (lastTimingPoint->beatDuration) * 4;
-				m_chartStops.Add(cs);
+				MapTime stopDuration = Math::RoundToInt((atol(*p.second) / 192.0f) * (lastTimingPoint->beatDuration) * 4);
+
+				LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
+
+				const double endValue = scrollSpeedGraph.ValueAt(mapTime + stopDuration);
+				scrollSpeedGraph.Extend(mapTime);
+				scrollSpeedGraph.Insert(mapTime, 0.0);
+				scrollSpeedGraph.Insert(mapTime + stopDuration, LineGraph::Point{0.0, endValue});
+			}
+			else if (p.first == "scroll_speed")
+			{
+				LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
+				scrollSpeedGraph.Insert(mapTime, atol(p.second.data()) / 100.0);
 			}
 			else
 			{
@@ -992,7 +979,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 						state->lastHoldObject->next = obj;
 					obj->prev = state->lastHoldObject;
 					memcpy(obj->effectParams, state->effectParams, sizeof(state->effectParams));
-					m_objectStates.Add(*obj);
+					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*obj));;
 				}
 				else
 				{
@@ -1003,7 +990,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					obj->hasSample = state->usingSample;
 					obj->sampleIndex = state->sampleIndex;
 					obj->sampleVolume = state->sampleVolume;
-					m_objectStates.Add(*obj);
+					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*obj));
 				}
 
 				// Reset
@@ -1268,14 +1255,14 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					midobj->next = obj;
 					midobj->prev->next = midobj;
 
-					m_objectStates.Add(*midobj);
+					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*midobj));
 				}
 
 				// Add to list of objects
 
 				assert(obj->GetRoot() != nullptr);
 
-				m_objectStates.Add(*obj);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*obj));
 
 				return obj;
 			};
@@ -1361,31 +1348,19 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		}
 
 		lastMapTime = mapTime;
-		currentTick += (tickResolution * 4 * lastTimingPoint->numerator / lastTimingPoint->denominator) / block.ticks.size();
-	}
-
-	for (int i = 0; i < sizeof(firstControlPoints) / sizeof(ZoomControlPoint *); i++)
-	{
-		ZoomControlPoint *point = firstControlPoints[i];
-		if (!point)
-			continue;
-
-		ZoomControlPoint *dup = new ZoomControlPoint();
-		dup->index = point->index;
-		dup->zoom = point->zoom;
-		dup->time = INT32_MIN;
-
-		m_zoomControlPoints.insert(m_zoomControlPoints.begin(), dup);
+		currentTick += static_cast<uint32>((tickResolution * 4 * lastTimingPoint->numerator / lastTimingPoint->denominator) / block.ticks.size());
 	}
 
 	//Add chart end event
 	EventObjectState *evt = new EventObjectState();
 	evt->time = lastMapTime + 2000;
 	evt->key = EventKey::ChartEnd;
-	m_objectStates.Add(*evt);
+	m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 
 	// Re-sort collection to fix some inconsistencies caused by corrections after laser slams
 	ObjectState::SortArray(m_objectStates);
+
+	FlushTimingPoints();
 
 	return true;
 }

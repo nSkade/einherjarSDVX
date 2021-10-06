@@ -290,41 +290,8 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 	trackViewRange = Vector2((float)currentTime, 0.0f);
 	trackViewRange.y = trackViewRange.x + GetViewRange();
 
-	// Update ticks separating bars to draw
-	double tickTime = (double)currentTime;
-	MapTime rangeEnd = currentTime + playback.ViewDistanceToDuration(m_viewRange);
-	const TimingPoint* tp = playback.GetTimingPointAt((MapTime)tickTime);
-	double stepTime = tp->GetBarDuration(); // Every xth note based on signature
-
-	// Overflow on first tick
-	double firstOverflow = fmod((double)tickTime - tp->time, stepTime);
-	if(fabs(firstOverflow) > 1)
-		tickTime -= firstOverflow;
-
 	m_barTicks.clear();
-
-	// Add first tick
-	m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
-
-	while (tickTime < rangeEnd)
-	{
-		double next = tickTime + stepTime;
-
-		const TimingPoint* tpNext = playback.GetTimingPointAt((MapTime)tickTime);
-		if(tpNext != tp)
-		{
-			tp = tpNext;
-			tickTime = tp->time;
-			stepTime = tp->GetBarDuration(); // Every xth note based on signature
-		}
-		else
-		{
-			tickTime = next;
-		}
-
-		// Add tick
-		m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
-	}
+	playback.GetBarPositionsInViewRange(m_viewRange, m_barTicks);
 
 	// Update track hide status
 	m_trackHide += m_trackHideSpeed * deltaTime;
@@ -441,8 +408,15 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 {
 	// Calculate height based on time on current track
 	float viewRange = GetViewRange();
-	float position = playback.TimeToViewDistance(obj->time) / viewRange;
 	float glow = 0.0f;
+
+	const bool dontUseScrollSpeedForPos =
+		obj->type == ObjectType::Hold ? ((MultiObjectState*)obj)->hold.GetRoot()->time <= playback.GetLastTime()
+		: obj->type == ObjectType::Laser ? obj->time <= playback.GetLastTime()
+		: false;
+
+	float position = dontUseScrollSpeedForPos ? playback.TimeToViewDistanceIgnoringScrollSpeed(obj->time) : playback.TimeToViewDistance(obj->time);
+	position /= viewRange;
 
 	if(obj->type == ObjectType::Single || obj->type == ObjectType::Hold)
 	{
@@ -519,7 +493,25 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		float scale;
 		if(isHold) // Hold Note?
 		{
-			float trackScale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length;
+			float trackScale = 0.0f;
+			if (dontUseScrollSpeedForPos)
+			{
+				if (mobj->time + mobj->hold.duration <= playback.GetLastTime())
+				{
+					trackScale = playback.ToViewDistanceIgnoringScrollSpeed(mobj->time, mobj->hold.duration);
+				}
+				else
+				{
+					const float remainingDistance = playback.TimeToViewDistance(mobj->time + mobj->hold.duration);
+					trackScale = Math::Max(0.0f, remainingDistance) - playback.TimeToViewDistanceIgnoringScrollSpeed(mobj->time);
+				}
+			}
+			else
+			{
+				trackScale = playback.ToViewDistance(mobj->time, mobj->hold.duration);
+			}
+
+			trackScale /= viewRange * length;
 			scale = trackScale * trackLength;
 
 			params.SetParameter("trackScale", trackScale);

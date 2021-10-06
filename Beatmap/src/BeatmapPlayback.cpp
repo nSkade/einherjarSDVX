@@ -317,7 +317,7 @@ const ObjectState* BeatmapPlayback::GetFirstButtonOrHoldAfterTime(MapTime time, 
 void BeatmapPlayback::GetObjectsInViewRange(float numBeats, Vector<ObjectState*>& objects)
 {
 	// TODO: properly implement backwards scroll speed support...
-	numBeats *= 3;
+	// numBeats *= 3;
 
 	const static MapTime earlyVisibility = 200;
 
@@ -380,38 +380,45 @@ void BeatmapPlayback::GetObjectsInViewRange(float numBeats, Vector<ObjectState*>
 
 void BeatmapPlayback::GetBarPositionsInViewRange(float numBeats, Vector<float>& barPositions) const
 {
-	// TODO
-	/*
-	// Update ticks separating bars to draw
-	double tickTime = (double)currentTime;
-	MapTime rangeEnd = currentTime + playback.OLD_ViewDistanceToDuration(m_viewRange);
-	const TimingPoint* tp = playback.GetTimingPointAt((MapTime)tickTime);
-	double stepTime = tp->GetBarDuration(); // Every xth note based on signature
-	// Overflow on first tick
-	double firstOverflow = fmod((double)tickTime - tp->time, stepTime);
-	if(fabs(firstOverflow) > 1)
-		tickTime -= firstOverflow;
-	m_barTicks.clear();
-	// Add first tick
-	m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
-	while(tickTime < rangeEnd)
+	Beatmap::TimingPointsIterator tp = m_SelectTimingPoint(m_playbackTime);
+	assert(!IsEndTiming(tp));
+
+	uint64 measureNo = 0;
+
 	{
-		double next = tickTime + stepTime;
-		const TimingPoint* tpNext = playback.GetTimingPointAt((MapTime)tickTime);
-		if(tpNext != tp)
-		{
-			tp = tpNext;
-			tickTime = tp->time;
-			stepTime = tp->GetBarDuration(); // Every xth note based on signature
-		}
-		else
-		{
-			tickTime = next;
-		}
-		// Add tick
-		m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
+		MapTime offset = m_playbackTime - tp->time;
+		if (offset < 0) offset = 0;
+
+		measureNo = static_cast<uint64>(static_cast<double>(offset) / tp->GetBarDuration());
 	}
-	*/
+
+	MapTime currTime = tp->time + static_cast<MapTime>(measureNo * tp->GetBarDuration());
+
+	while (true)
+	{
+		barPositions.Add(TimeToViewDistance(currTime));
+		
+		Beatmap::TimingPointsIterator ntp = next(tp);
+		currTime = tp->time + static_cast<MapTime>(++measureNo * tp->GetBarDuration());
+
+		if (!IsEndTiming(ntp) && currTime >= ntp->time)
+		{
+			tp = ntp;
+			currTime = ntp->time;
+			measureNo = 0;
+		}
+
+		// Arbitrary cutoff
+		if (measureNo >= 1000)
+		{
+			return;
+		}
+
+		if (m_beatmap->GetBeatCountWithScrollSpeedApplied(m_playbackTime, currTime, tp) >= numBeats)
+		{
+			return;
+		}
+	}
 }
 
 const TimingPoint& BeatmapPlayback::GetCurrentTimingPoint() const
@@ -536,12 +543,12 @@ bool BeatmapPlayback::CheckIfManualTiltInstant()
 	return m_beatmap->CheckIfManualTiltInstant(m_lastTrackRollBehaviourChange, m_playbackTime);
 }
 
-Beatmap::TimingPointsIterator BeatmapPlayback::m_SelectTimingPoint(MapTime time, bool allowReset)
+Beatmap::TimingPointsIterator BeatmapPlayback::m_SelectTimingPoint(MapTime time, bool allowReset) const
 {
 	return m_beatmap->GetTimingPoint(time, m_currentTiming, !allowReset);
 }
 
-Beatmap::LaneTogglePointsIterator BeatmapPlayback::m_SelectLaneTogglePoint(MapTime time, bool allowReset)
+Beatmap::LaneTogglePointsIterator BeatmapPlayback::m_SelectLaneTogglePoint(MapTime time, bool allowReset) const
 {
 	Beatmap::LaneTogglePointsIterator objStart = m_currentLaneTogglePoint;
 
@@ -565,7 +572,7 @@ Beatmap::LaneTogglePointsIterator BeatmapPlayback::m_SelectLaneTogglePoint(MapTi
 	return objStart;
 }
 
-Beatmap::ObjectsIterator BeatmapPlayback::m_SelectHitObject(MapTime time, bool allowReset)
+Beatmap::ObjectsIterator BeatmapPlayback::m_SelectHitObject(MapTime time, bool allowReset) const
 {
 	Beatmap::ObjectsIterator objStart = m_currObject;
 	if (IsEndObject(objStart))

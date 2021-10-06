@@ -128,9 +128,9 @@ public:
 private:
 	// Selects an object or timing point based on a given input state
 	// if allowReset is true the search starts from the start of the object list if current point lies beyond given input time
-	Beatmap::ObjectsIterator m_SelectHitObject(MapTime time, bool allowReset = false);
-	Beatmap::TimingPointsIterator m_SelectTimingPoint(MapTime time, bool allowReset = false);
-	Beatmap::LaneTogglePointsIterator m_SelectLaneTogglePoint(MapTime time, bool allowReset = false);
+	Beatmap::ObjectsIterator m_SelectHitObject(MapTime time, bool allowReset = false) const;
+	Beatmap::TimingPointsIterator m_SelectTimingPoint(MapTime time, bool allowReset = false) const;
+	Beatmap::LaneTogglePointsIterator m_SelectLaneTogglePoint(MapTime time, bool allowReset = false) const;
 
 	// End object iterator, this is not a valid iterator, but points to the element after the last element
 	bool IsEndObject(const Beatmap::ObjectsIterator& obj) const;

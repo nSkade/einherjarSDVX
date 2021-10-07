@@ -305,26 +305,22 @@ struct TimingPoint
 	double GetBarDuration() const { return GetWholeNoteLength() * ((double)numerator / (double)denominator); }
 	double GetBPM() const { return 60000.0 / beatDuration; }
 
-	// Position in ms when this timing point appears
+	/// Position in ms when this timing point appears
 	MapTime time = 0;
-	// Beat duration of a 4th note in milliseconds
-	//	this is a double so the least precision is lost
-	//	can be cast back to integer format once is has been multiplied by the amount of beats you want the length of.
-	// Calculated by taking (60000.0 / BPM)
+	/// Beat duration of a 4th note in milliseconds (equals 60000.0 / BPM)
 	double beatDuration;
-	// Upper part of the time signature
-	// how many beats per bar
+	/// Upper part of the time signature (how many beats per bar)
 	uint8 numerator = 4;
-	// Lower part of the time signature
-	// the note value (4th, 3th, 8th notes, etc.) for a beat
+	/// Lower part of the time signature (the note value (4th, 3th, 8th notes, etc.) for a beat)
 	uint8 denominator = 4;
+	/// Multiplier for tickrates (x 2^tickrateOffset)
 	int8 tickrateOffset = 0;
 };
 
 struct LaneHideTogglePoint {
-	// Position in ms when to hide or show the lane
+	/// Position in ms when to hide or show the lane
 	MapTime time;
 
-	// How long the transition to/from hidden should take in 1/192nd notes
+	/// How long the transition to/from hidden should take in 1/192nd notes
 	uint32 duration = 192;
 };

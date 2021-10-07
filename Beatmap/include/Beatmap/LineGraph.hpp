@@ -109,6 +109,4 @@ public:
     }
 
     double ValueAt(MapTime mapTime) const;
-
-    String StringValueAt(MapTime mapTime) const;
 };

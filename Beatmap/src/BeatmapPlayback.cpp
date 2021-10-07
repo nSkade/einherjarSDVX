@@ -447,7 +447,8 @@ const TimingPoint* BeatmapPlayback::GetTimingPointAt(MapTime time) const
 	if (IsEndTiming(it))
 	{
 		return nullptr;
-	} 	else
+	}
+	else
 	{
 		return &(*it);
 	}
@@ -565,7 +566,8 @@ Beatmap::LaneTogglePointsIterator BeatmapPlayback::m_SelectLaneTogglePoint(MapTi
 		if (!IsEndLaneToggle(objStart + 1) && (objStart + 1)->time <= time)
 		{
 			objStart = objStart + 1;
-		} 		else
+		} 
+		else
 			break;
 	}
 
@@ -588,7 +590,8 @@ Beatmap::ObjectsIterator BeatmapPlayback::m_SelectHitObject(MapTime time, bool a
 		if (!IsEndObject(objStart) && objStart[0]->time < time)
 		{
 			objStart = std::next(objStart);
-		} 		else
+		} 
+		else
 			break;
 	}
 

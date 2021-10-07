@@ -9,7 +9,8 @@ void LineGraph::Insert(MapTime mapTime, double point)
     if (it == m_points.end())
     {
         m_points.emplace_hint(it, mapTime, Point{point});
-    }     else
+    }
+    else
     {
         it->second.value.second = point;
     }
@@ -21,7 +22,8 @@ void LineGraph::Insert(MapTime mapTime, const LineGraph::Point& point)
     if (it == m_points.end())
     {
         m_points.emplace_hint(it, mapTime, point);
-    }     else
+    }
+    else
     {
         it->second.value.second = point.value.second;
     }
@@ -35,8 +37,11 @@ void LineGraph::Insert(MapTime mapTime, const std::string& point)
         try
         {
             Insert(mapTime, std::stod(point));
-        }         catch (const std::invalid_argument&) {}         catch (const std::out_of_range&) {}
-    }     else
+        }
+        catch (const std::invalid_argument&) {}
+        catch (const std::out_of_range&) {}
+    }
+    else
     {
         Insert(mapTime, LineGraph::Point{std::stod(point.substr(semicolonIdx + 1)), std::stod(point.substr(semicolonIdx + 1))});
     }
@@ -103,7 +108,8 @@ double LineGraph::Integrate(MapTime begin, MapTime end) const
         {
             // Integration range is before the first point
             return sign * beginIt->second.value.first * (end - begin);
-        }         else
+        }
+        else
         {
             // Integration range contained in a single segment
             return sign * Integrate(std::prev(beginIt), begin, end);
@@ -116,7 +122,8 @@ double LineGraph::Integrate(MapTime begin, MapTime end) const
     if (beginIt == m_points.begin())
     {
         result = beginIt->second.value.first * (beginIt->first - begin);
-    }     else if (begin != beginIt->first)
+    }
+    else if (begin != beginIt->first)
     {
         auto beginPrev = std::prev(beginIt);
         result = Integrate(beginPrev, begin, beginIt->first);
@@ -253,33 +260,5 @@ double LineGraph::ValueAt(MapTime mapTime) const
         return secondValue;
     }
 
-    // TODO: apply bezier curve
     return Math::Lerp(firstValue, secondValue, (mapTime - firstTime) / static_cast<double>(secondTime - firstTime));
-}
-
-String LineGraph::StringValueAt(MapTime mapTime) const
-{
-    std::stringstream ss;
-    ss << std::fixed; // Avoid scientific notation
-
-    auto it = m_points.find(mapTime);
-
-    if (it != m_points.end())
-    {
-        const Point& point = it->second;
-        if (point.IsSlam())
-        {
-            ss << point.value.first << ';' << point.value.second;
-        }         else
-        {
-            ss << point.value.first;
-        }
-    }
-
-    String str = ss.str();
-
-    while (!str.empty() && *str.rbegin() == '0') str.pop_back();
-    if (!str.empty() && *str.rbegin() == '.') str.pop_back();
-
-    return str;
 }

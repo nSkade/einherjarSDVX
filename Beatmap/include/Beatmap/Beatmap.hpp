@@ -70,7 +70,6 @@ public:
 
 public:
 	bool Load(BinaryStream& input, bool metadataOnly = false);
-	bool Save(BinaryStream& output) const;
 
 	/// Returns the settings of the map, contains metadata + song/image paths.
 	const BeatmapSettings& GetMapSettings() const;
@@ -158,7 +157,6 @@ public:
 
 private:
 	bool m_ProcessKShootMap(BinaryStream& input, bool metadataOnly);
-	bool m_Serialize(BinaryStream& stream, bool metadataOnly);
 
 	Map<EffectType, AudioEffect> m_customAudioEffects;
 	Map<EffectType, AudioEffect> m_customAudioFilters;

@@ -11,24 +11,7 @@ bool Beatmap::Load(BinaryStream& input, bool metadataOnly)
 {
 	ProfilerScope $("Load Beatmap");
 
-	// Load KSH format first
-	if(!m_ProcessKShootMap(input, metadataOnly))
-	{
-		// Note: support for the binary file format is dropped.
-		input.Seek(0);
-		if (!m_Serialize(input, metadataOnly))
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
-
-bool Beatmap::Save(BinaryStream& output) const
-{
-	// Note: support for binary file format is dropped.
-	return false;
+	return m_ProcessKShootMap(input, metadataOnly);
 }
 
 const BeatmapSettings& Beatmap::GetMapSettings() const
@@ -285,7 +268,8 @@ void Beatmap::Shuffle(int seed, bool random, bool mirror)
 		{
 			swaps[4] = 4;
 			swaps[5] = 5;
-		} 		else
+		}
+		else
 		{
 			swaps[4] = 5;
 			swaps[5] = 4;
@@ -303,7 +287,8 @@ void Beatmap::ApplyShuffle(const std::array<int, 6>& swaps, bool flipLaser)
 		{
 			ButtonObjectState* bos = (ButtonObjectState*)object.get();
 			bos->index = swaps[bos->index];
-		} 		else if (object->type == ObjectType::Laser)
+		}
+		else if (object->type == ObjectType::Laser)
 		{
 			LaserObjectState* los = (LaserObjectState*)object.get();
 
@@ -414,20 +399,25 @@ Beatmap::TimingPointsIterator Beatmap::GetTimingPoint(MapTime mapTime, TimingPoi
 			if (mapTime < std::next(hint)->time)
 			{
 				return hint;
-			} 			else
+			}
+			else
 			{
 				++hint;
 			}
-		} 		else if (forwardOnly)
+		}
+		else if (forwardOnly)
 		{
 			return hint;
-		} 		else if (hint == m_timingPoints.begin())
+		}
+		else if (hint == m_timingPoints.begin())
 		{
 			return hint;
-		} 		else if (std::prev(hint)->time <= mapTime)
+		}
+		else if (std::prev(hint)->time <= mapTime)
 		{
 			return std::prev(hint);
-		} 		else
+		}
+		else
 		{
 			--hint;
 		}
@@ -456,10 +446,12 @@ Beatmap::TimingPointsIterator Beatmap::GetTimingPoint(MapTime mapTime, TimingPoi
 			diff = hintInd;
 		}
 		return GetTimingPoint(mapTime, hintInd - diff, hintInd - prevDiff);
-	} 	else if (hint->time == mapTime)
+	}
+	else if (hint->time == mapTime)
 	{
 		return hint;
-	} 	else
+	}
+	else
 	{
 		// mapTime after hint
 		size_t diff = 1;
@@ -507,10 +499,12 @@ Beatmap::TimingPointsIterator Beatmap::GetTimingPoint(MapTime mapTime, size_t be
 		if (m_timingPoints[mid].time < mapTime)
 		{
 			begin = mid;
-		} 		else if (m_timingPoints[mid].time > mapTime)
+		}
+		else if (m_timingPoints[mid].time > mapTime)
 		{
 			end = mid;
-		} 		else
+		}
+		else
 		{
 			return m_timingPoints.begin() + mid;
 		}
@@ -519,7 +513,8 @@ Beatmap::TimingPointsIterator Beatmap::GetTimingPoint(MapTime mapTime, size_t be
 	if (begin + 1 < end && m_timingPoints[begin + 1].time <= mapTime)
 	{
 		return m_timingPoints.begin() + (begin + 1);
-	} 	else
+	}
+	else
 	{
 		return m_timingPoints.begin() + begin;
 	}
@@ -566,11 +561,6 @@ float Beatmap::GetCenterSplitValueAt(MapTime mapTime) const
 float Beatmap::GetScrollSpeedAt(MapTime mapTime) const
 {
 	return static_cast<float>(m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED).ValueAt(mapTime));
-}
-
-bool Beatmap::m_Serialize(BinaryStream& stream, bool metadataOnly)
-{
-	return false;
 }
 
 BinaryStream& operator<<(BinaryStream& stream, BeatmapSettings& settings)

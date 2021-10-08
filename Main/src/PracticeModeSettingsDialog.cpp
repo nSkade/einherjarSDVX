@@ -184,7 +184,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopControlT
         incSpeedAmount->getter.AddLambda([this](SettingData& data) {data.intSetting.val = Math::RoundToInt(m_playOptions.incSpeedAmount * 100); });
         loopControlTab->settings.emplace_back(std::move(incSpeedAmount));
 
-        Setting incStreak = CreateIntSetting("- required streakes", m_playOptions.incStreak, { 1, 10 });
+        Setting incStreak = CreateIntSetting("- required streaks", m_playOptions.incStreak, { 1, 10 });
         incStreak->setter.AddLambda([this](const SettingData&) { m_playOptions.incSpeedOnSuccess = m_playOptions.loopOnSuccess = true; });
         loopControlTab->settings.emplace_back(std::move(incStreak));
     }
@@ -207,8 +207,8 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopControlT
         loopControlTab->settings.emplace_back(std::move(decSpeedAmount));
 
         Setting minSpeed = std::make_unique<SettingData>("- minimum speed (%)", SettingType::Integer);
-        minSpeed->intSetting.min = 1;
-        minSpeed->intSetting.max = 10;
+        minSpeed->intSetting.min = 25;
+        minSpeed->intSetting.max = 100;
         minSpeed->intSetting.val = Math::RoundToInt(m_playOptions.minPlaybackSpeed * 100);
         minSpeed->setter.AddLambda([this](const SettingData& data) {
             m_playOptions.minPlaybackSpeed = data.intSetting.val / 100.0f;

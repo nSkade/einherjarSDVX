@@ -35,6 +35,8 @@ private:
 	bool m_showStats;
 	ClearMark m_badge;
 	uint32 m_score;
+	uint32 m_hitScore;
+	uint32 m_maxHitScore;
 	uint32 m_maxCombo;
 	uint32 m_categorizedHits[3];
 	float m_finalGaugeValue;
@@ -226,6 +228,9 @@ private:
 			g_gameConfig.GetInt(GameConfigKeys::LaserOffset),
 			m_chartIndex->custom_offset
 		));
+		auto& scoreInfo = replay->GetScoreInfo();
+		scoreInfo.maxHitScore = m_maxHitScore;
+		scoreInfo.maxHitScore = m_hitScore;
 		replay->DoneInit();
 
 		bool good = replay->Save(m_replayPath);
@@ -417,6 +422,8 @@ public:
 		// Calculate hitstats
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
 		m_score = scoring.CalculateCurrentScore();
+		m_hitScore = scoring.currentHitScore;
+		m_maxHitScore = scoring.currentMaxScore;
 		m_maxCombo = scoring.maxComboCounter;
 		m_finalGaugeValue = gauge->GetValue();
 		m_gaugeOption = gauge->GetOpts();
@@ -558,43 +565,76 @@ public:
 			loadScoresFromGame(game);
 		}
 
-
-		for (HitStat* stat : scoring.hitStats)
+		if (Replay* replay = game->GetCurrentReplay())
 		{
-			if (!stat->forReplay)
-				continue;
-			SimpleHitStat shs;
-			if (stat->object)
-			{
-				if (stat->object->type == ObjectType::Hold)
+			m_autoplay = true;
+
+			if (replay->filePath != "")
+				m_replayPath = replay->filePath;
+
+			auto& judgements = replay->GetJudgements();
+			for (size_t i = 0; i < judgements.size(); i++) {
+				const auto& j = judgements[i];
+
+				SimpleHitStat shs;
+				j.ToSimpleHitStat(shs);
+
+				m_simpleHitStats.Add(shs);
+
+				switch (j.GetType())
 				{
-					shs.lane = ((HoldObjectState*)stat->object)->index;
-				}
-				else if (stat->object->type == ObjectType::Single)
-				{
-					shs.lane = ((ButtonObjectState*)stat->object)->index;
-				}
-				else
-				{
-					shs.lane = ((LaserObjectState*)stat->object)->index + 6;
+				case ReplayJudgementType::Unknown:
+					if (j.lane >= 6 || j.delta == 0) //Heuristic
+						break;
+					m_simpleNoteHitStats.Add(shs);
+					break;
+				case ReplayJudgementType::Button:
+					m_simpleNoteHitStats.Add(shs);
+					break;
+				default:
+					break;
 				}
 			}
-
-			shs.rating = (int8)stat->rating;
-			shs.time = stat->time;
-			shs.delta = stat->delta;
-			shs.hold = stat->hold;
-			shs.holdMax = stat->holdMax;
-
-			m_simpleHitStats.Add(shs);
-
-
-			if (stat->object && stat->object->type == ObjectType::Single)
+		}
+		else
+		{
+			for (HitStat* stat : scoring.hitStats)
 			{
-				m_simpleNoteHitStats.Add(shs);
-			}
-			else {
-				assert(shs.lane >= 6 || shs.hold > 0);
+				if (!stat->forReplay)
+					continue;
+				SimpleHitStat shs;
+				if (stat->object)
+				{
+					if (stat->object->type == ObjectType::Hold)
+					{
+						shs.lane = ((HoldObjectState*)stat->object)->index;
+					}
+					else if (stat->object->type == ObjectType::Single)
+					{
+						shs.lane = ((ButtonObjectState*)stat->object)->index;
+					}
+					else
+					{
+						shs.lane = ((LaserObjectState*)stat->object)->index + 6;
+					}
+				}
+
+				shs.rating = (int8)stat->rating;
+				shs.time = stat->time;
+				shs.delta = stat->delta;
+				shs.hold = stat->hold;
+				shs.holdMax = stat->holdMax;
+
+				m_simpleHitStats.Add(shs);
+
+
+				if (stat->object && stat->object->type == ObjectType::Single)
+				{
+					m_simpleNoteHitStats.Add(shs);
+				}
+				else {
+					assert(shs.lane >= 6 || shs.hold > 0);
+				}
 			}
 		}
 

@@ -6,7 +6,8 @@
 struct SimpleHitStat
 {
 	// 0 = miss, 1 = near, 2 = crit, 3 = idle
-	int8 rating;
+	int8 rating:3;
+	int8 type:5; // We use this to save info about a tick
 	int8 lane;
 	int32 time;
 	int32 delta;
@@ -16,6 +17,8 @@ struct SimpleHitStat
 	// This is the amount of total ticks in this hold sequence
 	uint32 holdMax = 0;
 };
+// Need to ensure it is the same size as old replays use this
+static_assert(sizeof(SimpleHitStat) == 20);
 
 struct ScoreIndex
 {

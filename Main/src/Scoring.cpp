@@ -207,6 +207,39 @@ void Scoring::Reset(const MapTimeRange& range)
 	OnComboChanged.Call(0);
 }
 
+void Scoring::SetScoreForReplay()
+{
+	if (!m_replay)
+		return;
+
+	auto* score = m_replay->GetScoreIndex();
+
+	auto& scoreInfo = m_replay->GetScoreInfo();
+
+	if (m_replay->GetType() == Replay::ReplayType::Legacy || scoreInfo.maxHitScore == 0)
+	{
+		// Can't really use the score index bc we need hitscore
+		currentHitScore = m_replay->CurrentScore();
+		currentMaxScore = m_replay->CurrentMaxScore();
+	}
+	else
+	{
+		currentHitScore = scoreInfo.hitScore;
+		currentMaxScore = scoreInfo.maxHitScore;
+	}
+
+	categorizedHits[2] = score->crit;
+	categorizedHits[1] = score->almost;
+	categorizedHits[1] = score->miss;
+	GetTopGauge()->SetValue(score->gauge);
+
+	// Legacy won't have this info
+	if (m_replay->GetType() != Replay::ReplayType::Legacy)
+	{
+		maxComboCounter = m_replay->GetMaxChain();
+	}
+}
+
 void Scoring::FinishGame()
 {
 	m_CleanupInput();
@@ -733,6 +766,32 @@ void Scoring::m_OnObjectLeaved(ObjectState* obj)
 	m_ReleaseHoldObject(obj);
 }
 
+void Scoring::RenderDebugHUD(float deltaTime, Vector2& textPos)
+{
+	auto RenderText = [&](const String& text, const Vector2& pos, const Color& color = {1.0f, 1.0f, 0.5f, 1.0f})
+	{
+		g_application->FastText(text, pos.x + 1, pos.y + 1, 12, 0, Color::Black);
+		g_application->FastText(text, pos.x, pos.y, 12, 0, color);
+		return Vector2(0, 12);
+	};
+	if (m_replay)
+	{
+		const auto& d = m_replayDebugInfo;
+		textPos.y += RenderText(Utility::Sprintf("ReplayInfo: ticks:%u judges:%u (%d more)",
+			d.ticksProcessed,
+			d.judgementsProcessed,
+			d.judgementsProcessed - d.ticksProcessed
+		), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("ReplayErrors: mt:%u of:%u bn:%u nj:%u uj:%u",
+			d.missingTickCount,
+			d.tickOffTimingCount,
+			d.nearOnNonButtonCount,
+			d.tickProcessedWithoutJudgement,
+			d.unkownJudgementType
+		), textPos).y;
+	}
+}
+
 void Scoring::m_UpdateTicks()
 {
 	const MapTime currentTime = m_playback->GetLastTime();
@@ -744,6 +803,24 @@ void Scoring::m_UpdateTicks()
 
 		// List of ticks for the current button code
 		auto& ticks = m_ticks[buttonCode];
+
+		while (m_replay && ticks.size() == 0 && m_replay->HasJudgement(buttonCode))
+		{
+			auto* j = m_replay->PeekNextJudgement(buttonCode);
+
+			// Check if we are trying to judge the wrong tick
+			if (currentTime - j->time < hitWindow.miss)
+				break;
+
+			auto max = m_replay->CurrentMaxScore();
+			Logf("[replay] judgement %u (time:%u lane:%u delta:%d j:%u) could not find a tick...", Logger::Severity::Warning,
+				max, j->time, j->lane, j->delta, j->rating);
+			m_replay->PopNextJudgement(buttonCode);
+			m_replayDebugInfo.missingTickCount++;
+			m_replayDebugInfo.judgementsProcessed++;
+			m_AddScore(j->rating);
+			currentMaxScore += 2;
+		}
 		for (uint32 i = 0; i < ticks.size(); i++)
 		{
 			ScoreTick* tick = ticks[i];
@@ -765,27 +842,51 @@ void Scoring::m_UpdateTicks()
 				// so we can process it as soon as we see it
 				replayJudgement = m_replay->PopNextJudgement(buttonCode);
 
+				if (replayJudgement) {
+					m_replayDebugInfo.judgementsProcessed++;
+
+					auto cm = m_replay->CurrentMaxScore();
+					if (cm >= 776) {
+						m_replay = m_replay;
+					}
+				}
+
 				// However this won't be the case for some miss ticks on legacy replays
 				// We will handle those later in this function
 			}
 
 			bool processed = false;
+			bool replayHandled = false;
 
+
+			if (replayJudgement && std::abs((replayJudgement->time) - tick->time) > hitWindow.good)
+			{
+				auto max = m_replay->CurrentMaxScore();
+				const auto& j = replayJudgement;
+				Logf("[replay] judgement %u (time:%u lane:%u delta:%d j:%u) had a bad time j=%u - t=%u d=%d", Logger::Severity::Warning,
+					max, j->time, j->lane, j->delta, j->rating,
+					replayJudgement->time, tick->time, (replayJudgement->time) - tick->time
+				);
+				m_replayDebugInfo.tickOffTimingCount++;
+			}
 
 			if (replayJudgement && tick->HasFlag(TickFlags::Button))
 			{
-				if (replayJudgement->time != tick->time)
-				{
-					Logf("[replay] replayJudgement->time (%u) != tick->time (%u)", Logger::Severity::Debug, replayJudgement->time, tick->time);
-				}
 				if (replayJudgement->rating == 0)
 					m_TickMiss(tick, buttonCode, replayJudgement->delta);
 				else
 					m_TickHit(tick, buttonCode, replayJudgement->delta);
 				processed = true;
+				replayHandled = true;
 			}
 			else if (replayJudgement && tick->HasFlag(TickFlags::Hold) && !tick->HasFlag(TickFlags::Ignore))
 			{
+				if (replayJudgement && replayJudgement->rating == 1)
+				{
+					auto max = m_replay->CurrentMaxScore();
+					Logf("[replay] Encountered hold with near judgement %u %u[%u]", Logger::Severity::Warning, max, tick->time, buttonCode);
+					m_replayDebugInfo.nearOnNonButtonCount++;
+				}
 				if (replayJudgement->rating == 0)
 				{
 					m_TickMiss(tick, buttonCode, 0);
@@ -798,10 +899,21 @@ void Scoring::m_UpdateTicks()
 						m_SetHoldObject(tick->object, buttonCode);
 					m_TickHit(tick, buttonCode);
 				}
+
+				if (tick->HasFlag(TickFlags::End))
+					OnHoldLeave.Call(button);
+
 				processed = true;
+				replayHandled = true;
 			}
 			else if (replayJudgement && tick->HasFlag(TickFlags::Laser))
 			{
+				if (replayJudgement && replayJudgement->rating == 1)
+				{
+					auto max = m_replay->CurrentMaxScore();
+					Logf("[replay] Encountered laser with near judgement %u %u[%u]", Logger::Severity::Warning, max, tick->time, buttonCode);
+					m_replayDebugInfo.nearOnNonButtonCount++;
+				}
 				if (replayJudgement->rating == 0)
 				{
 					m_TickMiss(tick, buttonCode, 0);
@@ -816,12 +928,14 @@ void Scoring::m_UpdateTicks()
 				}
 
 				processed = true;
+				replayHandled = true;
 			}
 			else if (replayJudgement)
 			{
 				// Some other hitstat which we don't understand
 				assert(false); 
 				processed = true;
+				m_replayDebugInfo.unkownJudgementType++;
 			}
 
 			else if (m_replay && !tick->HasFlag(TickFlags::Ignore))
@@ -957,6 +1071,37 @@ void Scoring::m_UpdateTicks()
 
 			if (processed)
 			{
+				if (m_replay)
+				{
+					if (!tick->HasFlag(TickFlags::Ignore)) {
+						m_replayDebugInfo.ticksProcessed++;
+						if (!replayHandled || replayJudgement == nullptr)
+						{
+							m_replayDebugInfo.tickProcessedWithoutJudgement++;
+							Logf("[replay] Scoring tick %u[l%u] was processed without replay judgement", Logger::Severity::Warning, tick->time, buttonCode);
+						}
+					}
+
+					if (replayJudgement) {
+						Logf("[replay] tick %u[l%u][h%u l%u s%u e%u i%u] was processed with j %u[d%d][r%u] (diff %d)", Logger::Severity::Debug,
+							tick->time, buttonCode,
+							tick->HasFlag(TickFlags::Hold), tick->HasFlag(TickFlags::Laser),
+							tick->HasFlag(TickFlags::Slam), tick->HasFlag(TickFlags::End),
+							tick->HasFlag(TickFlags::Ignore),
+
+							replayJudgement->time, replayJudgement->delta, replayJudgement->rating,
+
+							tick->time - replayJudgement->time);
+					}
+					else {
+						Logf("[replay] tick %u[l%u][h%u l%u s%u e%u i%u] was processed", Logger::Severity::Debug,
+							tick->time, buttonCode,
+							tick->HasFlag(TickFlags::Hold), tick->HasFlag(TickFlags::Laser),
+							tick->HasFlag(TickFlags::Slam), tick->HasFlag(TickFlags::End),
+							tick->HasFlag(TickFlags::Ignore)
+						);
+					}
+				}
 				delete tick;
 				ticks.Remove(tick, false);
 				i--;

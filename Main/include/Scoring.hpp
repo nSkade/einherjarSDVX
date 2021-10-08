@@ -102,6 +102,7 @@ public:
 	void Reset(const MapTimeRange& range = {});
 
 	void FinishGame();
+	void SetScoreForReplay();
 
 	void SetReplayForPlayback(Replay * replay);
 
@@ -160,6 +161,8 @@ public:
 	inline bool IsFullCombo() const { return GetMisses() == 0; }
 
 	bool HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine);
+
+	void RenderDebugHUD(float deltaTime, Vector2& textPos);
 
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))
@@ -359,4 +362,14 @@ private:
 	// then the next gauge is to be used. If the last gauge fails out then the player
 	// shall be put on the score screen.
 	Vector<class Gauge*> m_gaugeStack;
+
+	struct {
+		uint32 missingTickCount = 0;
+		uint32 tickOffTimingCount = 0;
+		uint32 nearOnNonButtonCount = 0;
+		uint32 tickProcessedWithoutJudgement = 0;
+		uint32 unkownJudgementType = 0;
+		uint32 ticksProcessed = 0;
+		uint32 judgementsProcessed = 0;
+	} m_replayDebugInfo;
 };

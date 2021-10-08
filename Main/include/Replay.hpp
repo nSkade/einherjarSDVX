@@ -3,21 +3,52 @@
 #include "HitStat.hpp"
 #include "Beatmap/MapDatabase.hpp"
 
+
+enum class ReplayJudgementType : uint8
+{
+	Unknown = 0,
+	Button,
+	Laser,
+	Slam,
+	Hold,
+	_TYPE_MAX,
+};
+
+enum class TickFlags : uint8;
+
 struct ReplayJudgement
 {
-	int8 rating = 0;
-	int8 lane = 0;
+	uint8 rating:3;
+	uint8 type:5;
+	uint8 lane = 0;
 	int16 delta = 0;
 	MapTime time = 0;
+
+	static_assert((uint8)ReplayJudgementType::_TYPE_MAX <= (1 << 5));
+
 	ReplayJudgement() = default;
 	ReplayJudgement(const SimpleHitStat& s) :
-		ReplayJudgement(s.rating, s.lane, s.delta, s.time) {};
-	ReplayJudgement(int8 r, int8 l, int16 d, MapTime t) :
-		rating(r), lane(l), delta(d), time(t) {};
-	inline MapTime GetHitTime() const {
-		return time + delta;
+		ReplayJudgement(s.rating, ReplayJudgementType::Unknown, s.lane, s.delta, s.time) {};
+	ReplayJudgement(int8 r, ReplayJudgementType ty, int8 l, int16 d, MapTime t) :
+		rating(r), type((uint8)ty), lane(l), delta(d), time(t) {};
+
+	static inline ReplayJudgementType JudgementTypeFromFlags(TickFlags flags);
+
+	inline MapTime GetHitTime() const { return time + delta; }
+	inline ReplayJudgementType GetType() const { return ReplayJudgementType(type); }
+	inline void ToSimpleHitStat(SimpleHitStat& stat) const
+	{
+		stat.rating = rating;
+		stat.type = type;
+		stat.lane = lane;
+		stat.time = time;
+		stat.delta = delta;
+		stat.hold = (GetType() == ReplayJudgementType::Hold) ? 1 : 0;
+		stat.holdMax = stat.hold;
 	}
 };
+
+static_assert(sizeof(ReplayJudgement) == 8);
 
 
 template<int V>
@@ -81,7 +112,7 @@ struct ReplayChartInfo : ForwardCompatStruct<1>
 	}
 };
 
-struct ReplayScoreInfo : ForwardCompatStruct<1>
+struct ReplayScoreInfo : ForwardCompatStruct<2>
 {
 	int32 score;
 	int32 crit;
@@ -95,6 +126,9 @@ struct ReplayScoreInfo : ForwardCompatStruct<1>
 	uint64 timestamp;
 	String userName;
 	String userId;
+	uint32 chain = 0;
+	uint32 hitScore = 0;
+	uint32 maxHitScore = 0;
 	ReplayScoreInfo() = default;
 	ReplayScoreInfo(const ScoreIndex* s) :
 		score(s->score), crit(s->crit), almost(s->almost), miss(s->miss),
@@ -105,8 +139,12 @@ struct ReplayScoreInfo : ForwardCompatStruct<1>
 	{
 		if (!t->Version(stream)) return false;
 		stream << t->score << t->crit << t->almost << t->miss << t->gauge <<
-			t->gaugeType << t->gaugeOption << t->random << t->mirror <<
-			t->timestamp << t->userName << t->userId;
+			t->gaugeType << t->gaugeOption << t->random << t->mirror;
+		if (t->version >= 2)
+		{
+			stream << t->chain << t->hitScore << t->maxHitScore;
+		}
+		stream << t->timestamp << t->userName << t->userId;
 		return stream.IsOk();
 	}
 };
@@ -121,7 +159,8 @@ struct ReplayInput
 class Replay
 {
 public:
-	enum class ReplayType {
+	enum class ReplayType
+	{
 		Legacy,
 		NoInput, // No inputs loaded
 		Normal
@@ -135,18 +174,20 @@ public:
 	static bool StaticSerialize(BinaryStream& stream, Replay*& obj);
 	static bool SerializeLegacy(BinaryStream& stream, Replay*& obj);
 
-	void AttachChartInfo(const ChartIndex* chart) {
+	void AttachChartInfo(const ChartIndex* chart)
+	{
 		m_chartInfo = chart;
 		m_chartInfo.SetDone();
 	}
 	const ReplayChartInfo& GetChartInfo() const { return m_chartInfo; }
 
-	void AttachScoreInfo(ScoreIndex* score) {
+	void AttachScoreInfo(ScoreIndex* score)
+	{
 		m_scoreIndex = score;
 		m_scoreInfo = score;
 		m_scoreInfo.SetDone();
 	}
-	const ReplayScoreInfo& GetScoreInfo() const { return m_scoreInfo; }
+	ReplayScoreInfo& GetScoreInfo() { return m_scoreInfo; }
 
 	void AttachJudgementEvents(const Vector<SimpleHitStat>& v)
 	{
@@ -156,11 +197,16 @@ public:
 			m_judgementEvents.push_back(hs);
 	}
 
-	void SetHitWindow(const HitWindow& window) {
-		m_hitWindow = window;
+	ReplayType GetType() const
+	{
+		return m_type;
 	}
 
-	void SetOffsets(const ReplayOffsets& offs) {
+	void SetHitWindow(const HitWindow& window) { m_hitWindow = window; }
+	const HitWindow& GetHitWindow() const { return m_hitWindow; }
+
+	void SetOffsets(const ReplayOffsets& offs)
+	{
 		m_offsets = offs;
 		m_offsets.SetDone();
 	}
@@ -170,15 +216,12 @@ public:
 		m_initialized = true;
 	}
 
-	ScoreIndex* GetScoreStruct() const {
-		return m_scoreIndex;
-	}
+	ScoreIndex* GetScoreIndex() const { return m_scoreIndex; }
 
-	bool IsPlaying() const {
-		return m_isPlaying;
-	}
+	bool IsPlaying() const { return m_isPlaying; }
 
-	void Restart() {
+	void Restart()
+	{
 		m_currentMaxScore = 0;
 		m_currentScore = 0;
 		m_nextJudgementIndex = 0;
@@ -191,13 +234,11 @@ public:
 		}
 	}
 
-	uint32 CurrentMaxScore() const {
-		return m_currentMaxScore;
-	}
+	uint32 CurrentMaxScore() const { return m_currentMaxScore; }
 
-	uint32 CurrentScore() const {
-		return m_currentScore;
-	}
+	uint32 CurrentScore() const { return m_currentScore; }
+
+	uint32 GetMaxChain() const { return m_maxChain; }
 
 	// Put this replay into playback mode
 	void StartPlaying()
@@ -206,96 +247,27 @@ public:
 		Restart();
 	}
 
-	void UpdateToTime(MapTime lastTime)
-	{
-		if (lastTime < m_lastEvalTime)
-			return;
-
-		// TODO(replay) adjust the time using the offsets?
-		for (; m_nextJudgementIndex < m_judgementEvents.size(); m_nextJudgementIndex++)
-		{
-			const ReplayJudgement* j = &m_judgementEvents[m_nextJudgementIndex];
-
-			// Legacy has the recorded time in the time field
-			MapTime time = (m_type == ReplayType::Legacy ?
-				j->time : j->GetHitTime());
-
-			if (time > lastTime)
-				break;
-
-			if (m_isPlaying)
-			{
-				// We can only do this if we don't reallocate this vector
-				// so we use m_initialized to keep it immutable after init
-				m_playbackQueue[j->lane].push_back(j);
-			}
-
-			if (j->rating < 3)
-			{
-				m_currentMaxScore += 2;
-				m_currentScore += j->rating;
-			}
-		}
-		m_lastEvalTime = lastTime;
-	}
+	void UpdateToTime(MapTime lastTime);
 
 	bool HasJudgement(int lane) const
 	{
 		assert(m_isPlaying);
 		assert(lane < 8);
-		return m_playbackQueue[lane].empty();
+		return !m_playbackQueue[lane].empty();
 	}
 
-	const ReplayJudgement* PeekNextJudgement(int lane) const
+	const Vector<ReplayJudgement>& GetJudgements() const
 	{
-		assert(m_isPlaying);
-		assert(lane < 8);
-		const auto& q = m_playbackQueue[lane];
-		if (!q.empty())
-			return q.front();
-		return nullptr;
+		return m_judgementEvents;
 	}
 
-	const ReplayJudgement* PopNextJudgement(int lane)
-	{
-		assert(m_isPlaying);
-		assert(lane < 8);
-		auto& q = m_playbackQueue[lane];
-		if (q.empty())
-			return nullptr;
+	const ReplayJudgement* PeekNextJudgement(int lane) const;
 
-		auto* ret = q.front();
-		q.pop_front();
-		return ret;
-	}
+	const ReplayJudgement* PopNextJudgement(int lane, bool score=true);
 
+	const ReplayJudgement* FindNextJudgement(int lane, MapTime future = 0) const;
 
-	const ReplayJudgement* FindNextJudgement(int lane, MapTime future = 0) const
-	{
-		assert(m_isPlaying);
-		assert(lane < 8);
-		if (auto* ret = PeekNextJudgement(lane))
-			return ret;
-
-		for (size_t i = m_nextJudgementIndex; i < m_judgementEvents.size(); i++)
-		{
-			const ReplayJudgement* j = &m_judgementEvents[i];
-
-			// Legacy has the recorded time in the time field
-			MapTime time = (m_type == ReplayType::Legacy ?
-				j->time : j->GetHitTime());
-
-			if (time > m_lastEvalTime + future)
-				break;
-
-			if (j->lane != lane)
-				continue;
-
-			return j;
-		}
-		return nullptr;
-	}
-
+	String filePath = "";
 protected:
 	ReplayType m_type = ReplayType::Normal;
 
@@ -305,6 +277,8 @@ protected:
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 	ReplayOffsets m_offsets;
 
+	uint32 m_maxChain = 0;
+
 	Vector<ReplayJudgement> m_judgementEvents;
 	Vector<ReplayInput> m_inputEvents;
 	bool m_initialized = false;
@@ -312,43 +286,13 @@ protected:
 	ScoreIndex* m_scoreIndex = nullptr;
 
 	// Playback related vars
+
 	bool m_isPlaying = false;
 	int32 m_currentScore = 0;
 	int32 m_currentMaxScore = 0; // May be wrong for some legacy replays
 	std::deque<const ReplayJudgement*> m_playbackQueue[8];
 	size_t m_nextJudgementIndex = 0;
 	MapTime m_lastEvalTime = 0;
+
 };
 
-
-
-
-
-/*
-struct ScoreReplay
-{
-	int32 currentScore = 0; //< Current score; updated during playback
-	int32 currentMaxScore = 0; //< Current max possible score; updated during playback
-	int32 maxScore = 0;
-	size_t nextHitStat = 0;
-	Vector<SimpleHitStat> replay;
-	bool isPlayback = false;
-
-	HitWindow hitWindow = HitWindow::NORMAL;
-
-	std::deque<const SimpleHitStat*> playbackQueue[8];
-
-struct SimpleHitStat
-{
-	// 0 = miss, 1 = near, 2 = crit, 3 = idle
-	int8 rating;
-	int8 lane;
-	int32 time;
-	int32 delta;
-	// Hold state
-	// This is the amount of gotten ticks in a hold sequence
-	uint32 hold = 0;
-	// This is the amount of total ticks in this hold sequence
-	uint32 holdMax = 0;
-};
-*/

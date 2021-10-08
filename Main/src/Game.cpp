@@ -412,6 +412,14 @@ public:
 
 				replay->AttachChartInfo(m_chartIndex);
 				replay->AttachScoreInfo(score);
+				/*
+				replay->SetHitWindow(HitWindow(
+					score->hitWindowPerfect,
+					score->hitWindowGood,
+					score->hitWindowHold,
+					score->hitWindowSlam
+				));
+				*/
 
 				m_scoreReplays.push_back(replay);
 
@@ -423,6 +431,7 @@ public:
 					m_playOptions.playbackOptions.gaugeType = score->gaugeType;
 					m_playOptions.playbackOptions.gaugeOption = score->gaugeOption;
 					m_playOptions.playbackOptions.mirror = score->mirror;
+					m_hitWindow = replay->GetHitWindow();
 				}
 
 				index++;
@@ -1247,6 +1256,8 @@ public:
 			}
 			if (m_ended)
 			{
+				if (m_playingReplay)
+					m_scoring.SetScoreForReplay();
 				// Render Lua Outro
 				lua_getglobal(m_lua, "render_outro");
 				if (lua_isfunction(m_lua, -1))
@@ -1689,6 +1700,8 @@ public:
 		}
 		else
 		{
+			if (m_playingReplay)
+				m_scoring.SetScoreForReplay();
 			FinishGame();
 		}
 	}
@@ -1703,6 +1716,8 @@ public:
 		}
 		else
 		{
+			if (m_playingReplay)
+				m_scoring.SetScoreForReplay();
 			FinishGame();
 		}
 	}
@@ -1970,7 +1985,7 @@ public:
 		const BeatmapSettings& bms = m_beatmap->GetMapSettings();
 		const TimingPoint& tp = m_playback.GetCurrentTimingPoint();
 		//Vector2 textPos = topLeft + Vector2i(5, 0);
-		Vector2 textPos = Vector2i(5, 125);
+		Vector2 textPos = Vector2i(5, 5);
 		textPos.y += RenderText(bms.title, textPos).y;
 		textPos.y += RenderText(bms.artist, textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("%.2f FPS %.2f Delta", g_application->GetRenderFPS(), deltaTime), textPos).y;
@@ -1986,8 +2001,31 @@ public:
 			textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
 
-		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Score:  %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
+		if (m_playingReplay)
+		{
+			auto& replay = m_scoreReplays[0];
+			auto rs = replay->CurrentScore();
+			auto rm = replay->CurrentMaxScore();
+
+			auto s = m_scoring.currentHitScore;
+			auto m = m_scoring.currentMaxScore;
+
+			textPos.y += RenderText(Utility::Sprintf("Replay: %d/%d %s", 
+				rs, rm, 
+				(replay->GetType() == Replay::ReplayType::Legacy? "[legacy]":"")
+			), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf("Replay score is off by: %d (%d)",
+				rs - s,
+				rm - m
+			), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf("Replay: %s",
+				*replay->filePath
+			), textPos).y;
+		}
+		m_scoring.RenderDebugHUD(deltaTime, textPos);
+
 		Gauge* gauge = m_scoring.GetTopGauge();
 
 		if (gauge)
@@ -3055,6 +3093,12 @@ public:
 	{
 		return m_challengeManager != nullptr;
 	}
+	virtual Replay* GetCurrentReplay() const override
+	{
+		if (!m_playingReplay)
+			return nullptr;
+		return m_scoreReplays[0];
+	}
 	ChartIndex* GetChartIndex() override
 	{
 		return m_chartIndex;
@@ -3110,7 +3154,7 @@ public:
 			lua_newtable(L);
 
 			lua_pushstring(L, "maxScore");
-			lua_pushnumber(L, replay->GetScoreStruct()->score);
+			lua_pushnumber(L, replay->GetScoreIndex()->score);
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "currentScore");

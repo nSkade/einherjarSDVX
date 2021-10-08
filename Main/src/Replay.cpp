@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Replay.hpp"
+#include "Scoring.hpp"
 #include "Shared/FileStream.hpp"
 #include "Beatmap/MapDatabase.hpp"
 
@@ -29,6 +30,7 @@ Replay* Replay::Load(String path, ReplayType type)
 		return nullptr;
 	}
 	replayFile.Close();
+	replay->filePath = path;
 	return replay;
 }
 
@@ -44,16 +46,27 @@ bool Replay::SerializeLegacy(BinaryStream& stream, Replay*& obj)
 	Vector<SimpleHitStat> legacy;
 	if (!stream.SerializeObject(legacy))
 		return false;
-	for (auto& l : legacy) {
+	for (auto& l : legacy)
+	{
 		obj->m_judgementEvents.push_back(l);
 	}
 
-	// Its ok if this fails, the default is normal
-	stream << obj->m_hitWindow;
+	// If we have an old legacy replay it will use the old hitwindows
+	//https://github.com/Drewol/unnamed-sdvx-clone/blob/ae736ebd0d497ea1004e07941fbe43ab9c86d5aa/Main/src/Scoring.cpp#L7
+	if (!stream.Serialize(&(obj->m_hitWindow.perfect), 4))
+		obj->m_hitWindow.perfect = 46;
+	if (!stream.Serialize(&(obj->m_hitWindow.good), 4))
+		obj->m_hitWindow.good = 92;
+	if (!stream.Serialize(&(obj->m_hitWindow.hold), 4))
+		obj->m_hitWindow.hold = 138;
+	if (!stream.Serialize(&(obj->m_hitWindow.miss), 4))
+		obj->m_hitWindow.miss = 250;
+	if (!stream.Serialize(&(obj->m_hitWindow.slam), 4))
+		obj->m_hitWindow.slam = 75;
 
 	// Maybe use current offset instead?
 	obj->SetOffsets(ReplayOffsets(0,0,0,0));
-	// TODO set player and other info?
+
 
 	obj->m_initialized = true;
 	obj->m_type = Replay::ReplayType::Legacy;
@@ -106,7 +119,6 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 	}
 
 	// c++ is mean :(
-
 	auto* ci = &obj->m_chartInfo;
 	if (!ReplayChartInfo::StaticSerialize(stream, ci))
 		return false;
@@ -130,4 +142,104 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 		obj->m_initialized = true;
 
 	return stream.IsOk();
+}
+
+void Replay::UpdateToTime(MapTime lastTime)
+{
+	if (lastTime <= m_lastEvalTime)
+		return;
+
+	// TODO(replay) adjust the time using the offsets?
+	for (; m_nextJudgementIndex < m_judgementEvents.size(); m_nextJudgementIndex++)
+	{
+		const ReplayJudgement* j = &m_judgementEvents[m_nextJudgementIndex];
+
+		// Legacy has the recorded time in the time field
+		MapTime time = (m_type == ReplayType::Legacy ?
+			j->time : j->GetHitTime());
+
+		if (time > lastTime)
+			break;
+
+		if (m_isPlaying)
+		{
+			// We can only do this if we don't reallocate this vector
+			// so we use m_initialized to keep it immutable after init
+			m_playbackQueue[j->lane].push_back(j);
+			Logf("[replay] queueing j %u[l%u][d%d][r%u]", Logger::Severity::Debug,
+				j->time, j->lane, j->delta, j->rating
+			);
+		}
+		else if (j->rating < 3)
+		{
+			m_currentMaxScore += 2;
+			m_currentScore += j->rating;
+		}
+	}
+	m_lastEvalTime = lastTime;
+}
+
+const ReplayJudgement* Replay::FindNextJudgement(int lane, MapTime future/*=0*/) const
+{
+	assert(m_isPlaying);
+	assert(lane < 8);
+	if (auto* ret = PeekNextJudgement(lane))
+		return ret;
+
+	for (size_t i = m_nextJudgementIndex; i < m_judgementEvents.size(); i++)
+	{
+		const ReplayJudgement* j = &m_judgementEvents[i];
+
+		MapTime time = j->GetHitTime();
+
+		if (time > m_lastEvalTime + future)
+			break;
+
+		if (j->lane != lane)
+			continue;
+
+		return j;
+	}
+	return nullptr;
+}
+
+const ReplayJudgement* Replay::PeekNextJudgement(int lane) const
+{
+	assert(m_isPlaying);
+	assert(lane < 8);
+	const auto& q = m_playbackQueue[lane];
+	if (!q.empty())
+		return q.front();
+	return nullptr;
+}
+
+const ReplayJudgement* Replay::PopNextJudgement(int lane, bool score)
+{
+	assert(m_isPlaying);
+	assert(lane < 8);
+	auto& q = m_playbackQueue[lane];
+	if (q.empty())
+		return nullptr;
+
+	auto* ret = q.front();
+	q.pop_front();
+	if (score && ret->rating < 3)
+	{
+		m_currentMaxScore += 2;
+		m_currentScore += ret->rating;
+	}
+	return ret;
+}
+
+inline ReplayJudgementType ReplayJudgement::JudgementTypeFromFlags(TickFlags flags)
+{
+	if ((flags & TickFlags::Slam) != TickFlags::None)
+		return ReplayJudgementType::Slam;
+	if ((flags & TickFlags::Laser) != TickFlags::None)
+		return ReplayJudgementType::Laser;
+	if ((flags & TickFlags::Hold) != TickFlags::None)
+		return ReplayJudgementType::Hold;
+	if ((flags & TickFlags::Button) != TickFlags::None)
+		return ReplayJudgementType::Button;
+	return ReplayJudgementType::Unknown;
 }

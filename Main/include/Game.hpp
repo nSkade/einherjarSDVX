@@ -6,6 +6,7 @@
 #include "GameFailCondition.hpp"
 #include "HitStat.hpp"
 
+class Replay;
 class MultiplayerScreen;
 class ChallengeManager;
 
@@ -187,8 +188,10 @@ public:
 
 	virtual int GetRetryCount() const = 0;
 	virtual String GetMissionStr() const = 0;
+	virtual Replay* GetCurrentReplay() const = 0;
 
 	virtual void SetGauge(float) = 0;
+
 
 	virtual void SetAllGaugeValues(const Vector<float> values) = 0;
 

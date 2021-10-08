@@ -125,7 +125,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DefaultMaxRewindMeasure, 1);
 
 	Set(GameConfigKeys::DefaultFailConditionType, 0);
-	Set(GameConfigKeys::DefaultFailConditionScore, (const int32) MAX_SCORE);
+	Set(GameConfigKeys::DefaultFailConditionScore, (int32) MAX_SCORE);
 	Set(GameConfigKeys::DefaultFailConditionGrade, 0);
 	Set(GameConfigKeys::DefaultFailConditionMiss, 0);
 	Set(GameConfigKeys::DefaultFailConditionMissNear, 0);

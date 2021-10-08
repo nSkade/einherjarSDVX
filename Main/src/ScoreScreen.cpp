@@ -217,6 +217,22 @@ private:
 		if (m_badge == ClearMark::NotPlayed)
 			return;
 
+		if (g_gameConfig.GetBool(GameConfigKeys::UseLegacyReplay))
+		{
+			File replayFile;
+			if (replayFile.OpenWrite(m_replayPath))
+			{
+				FileWriter fw(replayFile);
+				fw.SerializeObject(m_simpleHitStats);
+				fw.Serialize(&(m_hitWindow.perfect), 4);
+				fw.Serialize(&(m_hitWindow.good), 4);
+				fw.Serialize(&(m_hitWindow.hold), 4);
+				fw.Serialize(&(m_hitWindow.miss), 4);
+				fw.Serialize(&m_hitWindow.slam, 4);
+			}
+			return;
+		}
+
 		Replay* replay = new Replay();
 		replay->AttachChartInfo(m_chartIndex);
 		replay->AttachScoreInfo(&m_scoredata);

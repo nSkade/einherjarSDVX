@@ -158,6 +158,7 @@ DefineEnum(GameConfigKeys,
 
 		   AutoScoreScreenshot,
 		   AutoSaveReplay,
+		   UseLegacyReplay,
 
 		   WASAPI_Exclusive,
 		   MuteUnfocused,

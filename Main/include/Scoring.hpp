@@ -28,6 +28,7 @@ enum class TickFlags : uint8
 };
 TickFlags operator|(const TickFlags& a, const TickFlags& b);
 TickFlags operator&(const TickFlags& a, const TickFlags& b);
+inline HitStatType HitStatTypeFromFlags(TickFlags flags);
 
 // Tick object to record hits
 struct ScoreTick
@@ -373,3 +374,4 @@ private:
 		uint32 judgementsProcessed = 0;
 	} m_replayDebugInfo;
 };
+

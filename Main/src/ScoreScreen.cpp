@@ -599,12 +599,12 @@ public:
 
 				switch (j.GetType())
 				{
-				case ReplayJudgementType::Unknown:
+				case HitStatType::Unknown:
 					if (j.lane >= 6 || j.delta == 0) //Heuristic
 						break;
 					m_simpleNoteHitStats.Add(shs);
 					break;
-				case ReplayJudgementType::Button:
+				case HitStatType::Button:
 					m_simpleNoteHitStats.Add(shs);
 					break;
 				default:
@@ -624,14 +624,21 @@ public:
 					if (stat->object->type == ObjectType::Hold)
 					{
 						shs.lane = ((HoldObjectState*)stat->object)->index;
+						shs.type = (uint8)HitStatType::Hold;
 					}
 					else if (stat->object->type == ObjectType::Single)
 					{
 						shs.lane = ((ButtonObjectState*)stat->object)->index;
+						shs.type = (uint8)HitStatType::Button;
 					}
 					else
 					{
-						shs.lane = ((LaserObjectState*)stat->object)->index + 6;
+						auto* obj = (LaserObjectState*)stat->object;
+						shs.lane = obj->index + 6;
+						if (obj->flag_Instant)
+							shs.type = (uint8)HitStatType::Slam;
+						else
+							shs.type = (uint8)HitStatType::Laser;
 					}
 				}
 

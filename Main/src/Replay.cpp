@@ -231,15 +231,3 @@ const ReplayJudgement* Replay::PopNextJudgement(int lane, bool score)
 	return ret;
 }
 
-inline ReplayJudgementType ReplayJudgement::JudgementTypeFromFlags(TickFlags flags)
-{
-	if ((flags & TickFlags::Slam) != TickFlags::None)
-		return ReplayJudgementType::Slam;
-	if ((flags & TickFlags::Laser) != TickFlags::None)
-		return ReplayJudgementType::Laser;
-	if ((flags & TickFlags::Hold) != TickFlags::None)
-		return ReplayJudgementType::Hold;
-	if ((flags & TickFlags::Button) != TickFlags::None)
-		return ReplayJudgementType::Button;
-	return ReplayJudgementType::Unknown;
-}

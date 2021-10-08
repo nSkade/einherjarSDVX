@@ -92,3 +92,14 @@ struct HitWindow
 		return stream.IsOk();
 	}
 };
+
+// A type enum that can be used for replays
+enum class HitStatType : uint8
+{
+	Unknown = 0,
+	Button,
+	Laser,
+	Slam,
+	Hold,
+	_TYPE_MAX,
+};

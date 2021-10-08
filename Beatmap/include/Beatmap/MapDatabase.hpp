@@ -6,9 +6,9 @@
 struct SimpleHitStat
 {
 	// 0 = miss, 1 = near, 2 = crit, 3 = idle
-	int8 rating:3;
-	int8 type:5; // We use this to save info about a tick
-	int8 lane;
+	uint8 rating:3;
+	uint8 type:5; // We use this to save info about a tick
+	uint8 lane;
 	int32 time;
 	int32 delta;
 	// Hold state

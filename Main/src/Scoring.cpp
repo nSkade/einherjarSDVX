@@ -922,7 +922,7 @@ void Scoring::m_UpdateTicks()
 				{
 					m_TickHit(tick, buttonCode);
 					HitStat* stat = new HitStat(tick->object);
-					stat->time = currentTime;
+					stat->time = tick->time;
 					stat->rating = ScoreHitRating::Perfect;
 					hitStats.Add(stat);
 				}
@@ -963,7 +963,7 @@ void Scoring::m_UpdateTicks()
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
+							stat->time = tick->time;
 							stat->rating = ScoreHitRating::Perfect;
 							stat->hold = ((HoldObjectState*)tick->object)->duration;
 							hitStats.Add(stat);
@@ -975,7 +975,7 @@ void Scoring::m_UpdateTicks()
 							m_TickMiss(tick, buttonCode, 0);
 							// Add miss replay hitstat
 							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
+							stat->time = tick->time;
 							stat->rating = ScoreHitRating::Miss;
 							stat->hold = ((HoldObjectState*)tick->object)->duration;
 							hitStats.Add(stat);
@@ -1002,7 +1002,7 @@ void Scoring::m_UpdateTicks()
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
+							stat->time = tick->time;
 							stat->rating = ScoreHitRating::Perfect;
 							hitStats.Add(stat);
 							processed = true;
@@ -1017,7 +1017,7 @@ void Scoring::m_UpdateTicks()
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
+							stat->time = tick->time;
 							stat->rating = ScoreHitRating::Perfect;
 							hitStats.Add(stat);
 						}
@@ -1026,7 +1026,7 @@ void Scoring::m_UpdateTicks()
 							m_TickMiss(tick, buttonCode, 0);
 							// Add miss replay hitstat
 							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
+							stat->time = tick->time;
 							stat->rating = ScoreHitRating::Miss;
 							hitStats.Add(stat);
 						}
@@ -1788,4 +1788,16 @@ TickFlags operator|(const TickFlags& a, const TickFlags& b)
 TickFlags operator&(const TickFlags& a, const TickFlags& b)
 {
 	return (TickFlags)((uint8)a & (uint8)b);
+}
+inline HitStatType HitStatTypeFromFlags(TickFlags flags)
+{
+	if ((flags & TickFlags::Slam) != TickFlags::None)
+		return HitStatType::Slam;
+	if ((flags & TickFlags::Laser) != TickFlags::None)
+		return HitStatType::Laser;
+	if ((flags & TickFlags::Hold) != TickFlags::None)
+		return HitStatType::Hold;
+	if ((flags & TickFlags::Button) != TickFlags::None)
+		return HitStatType::Button;
+	return HitStatType::Unknown;
 }

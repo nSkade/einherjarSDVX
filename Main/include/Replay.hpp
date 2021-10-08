@@ -4,15 +4,6 @@
 #include "Beatmap/MapDatabase.hpp"
 
 
-enum class ReplayJudgementType : uint8
-{
-	Unknown = 0,
-	Button,
-	Laser,
-	Slam,
-	Hold,
-	_TYPE_MAX,
-};
 
 enum class TickFlags : uint8;
 
@@ -24,18 +15,16 @@ struct ReplayJudgement
 	int16 delta = 0;
 	MapTime time = 0;
 
-	static_assert((uint8)ReplayJudgementType::_TYPE_MAX <= (1 << 5));
+	static_assert((uint8)HitStatType::_TYPE_MAX <= (1 << 5));
 
 	ReplayJudgement() = default;
 	ReplayJudgement(const SimpleHitStat& s) :
-		ReplayJudgement(s.rating, ReplayJudgementType::Unknown, s.lane, s.delta, s.time) {};
-	ReplayJudgement(int8 r, ReplayJudgementType ty, int8 l, int16 d, MapTime t) :
+		ReplayJudgement(s.rating, HitStatType::Unknown, s.lane, s.delta, s.time) {};
+	ReplayJudgement(int8 r, HitStatType ty, int8 l, int16 d, MapTime t) :
 		rating(r), type((uint8)ty), lane(l), delta(d), time(t) {};
 
-	static inline ReplayJudgementType JudgementTypeFromFlags(TickFlags flags);
-
 	inline MapTime GetHitTime() const { return time + delta; }
-	inline ReplayJudgementType GetType() const { return ReplayJudgementType(type); }
+	inline HitStatType GetType() const { return HitStatType(type); }
 	inline void ToSimpleHitStat(SimpleHitStat& stat) const
 	{
 		stat.rating = rating;
@@ -43,7 +32,7 @@ struct ReplayJudgement
 		stat.lane = lane;
 		stat.time = time;
 		stat.delta = delta;
-		stat.hold = (GetType() == ReplayJudgementType::Hold) ? 1 : 0;
+		stat.hold = (GetType() == HitStatType::Hold) ? 1 : 0;
 		stat.holdMax = stat.hold;
 	}
 };

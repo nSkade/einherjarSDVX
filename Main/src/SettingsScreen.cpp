@@ -789,12 +789,14 @@ protected:
 
 		Separator();
 
+		ToggleSetting(GameConfigKeys::DefaultLoopOnSuccess, "Loop on success");
 		ToggleSetting(GameConfigKeys::DefaultIncSpeedOnSuccess, "Increase speed on success");
 		IntSetting(GameConfigKeys::DefaultIncSpeedAmount, "Increment (%p)", 1, 10);
 		IntSetting(GameConfigKeys::DefaultIncStreak, "Required streaks", 1, 10);
 		
 		Separator();
 
+		ToggleSetting(GameConfigKeys::DefaultLoopOnSuccess, "Loop on fail");
 		ToggleSetting(GameConfigKeys::DefaultDecSpeedOnFail, "Decrease speed on fail");
 		IntSetting(GameConfigKeys::DefaultDecSpeedAmount, "Decrement (%p)", 1, 10);
 		IntSetting(GameConfigKeys::DefaultMinPlaybackSpeed, "Minimum speed (%)", 25, 100);

@@ -9,6 +9,12 @@ PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& last
     m_tempOffset(tempOffset), m_playOptions(playOptions), m_range(range)
 {
     m_pos = { 0.75f, 0.75f };
+
+    m_condScore = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionScore);
+    m_condGrade = static_cast<GradeMark>(g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionGrade));
+    m_condMiss = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionMiss);
+    m_condMissNear = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionMissNear);
+    m_condGauge = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionGauge);
 }
 
 void PracticeModeSettingsDialog::InitTabs()

@@ -2645,6 +2645,8 @@ public:
 			m_playOptions.failCondition = std::make_unique<GameFailCondition::MissAndNearCount>(g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionMissNear)); break;
 		case GameFailCondition::Type::Gauge:
 			m_playOptions.failCondition = std::make_unique<GameFailCondition::Gauge>(g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionGauge)); break;
+		default:
+			m_playOptions.failCondition = nullptr; break;
 		}
 		
 		m_playOnDialogClose = true;

@@ -27,63 +27,6 @@ enum class GameFlags : uint32
 	AutoLaser = 0b100000,
 End};
 
-struct ScoreReplay
-{
-	int32 currentScore = 0; //< Current score; updated during playback
-	int32 currentMaxScore = 0; //< Current max possible score; updated during playback
-	int32 maxScore = 0;
-	size_t nextHitStat = 0;
-	Vector<SimpleHitStat> replay;
-	bool isPlayback = false;
-
-	HitWindow hitWindow = HitWindow::NORMAL;
-
-	std::deque<const SimpleHitStat*> playbackQueue[8];
-
-	void InitPlayback()
-	{
-		isPlayback = true;
-		for (int i = 0; i < 8; i++) {
-			playbackQueue[i] = std::deque<const SimpleHitStat*>();
-		}
-	}
-
-	void FindCurrentHitstat(MapTime lastTime)
-	{
-		while (nextHitStat < replay.size()
-			&& replay[nextHitStat].time <= lastTime)
-		{
-			const SimpleHitStat* shs = &replay[nextHitStat];
-
-			if (isPlayback)
-				playbackQueue[shs->lane].push_back(shs);
-			
-			if (shs->rating < 3)
-			{
-				currentMaxScore += 2;
-				currentScore += shs->rating;
-			}
-			nextHitStat++;
-		}
-	}
-
-	const SimpleHitStat* FindNextHitstat(int lane, MapTime endTime)
-	{
-		if (!playbackQueue[lane].empty())
-			return playbackQueue[lane].front();
-
-		for (size_t i = nextHitStat; i < replay.size(); i++)
-		{
-			if (replay[i].time > endTime)
-				return nullptr;
-
-			if (replay[i].lane == lane)
-				return &replay[i];
-		}
-		return nullptr;
-	}
-};
-
 GameFlags operator|(const GameFlags& a, const GameFlags& b);
 GameFlags operator&(const GameFlags& a, const GameFlags& b);
 GameFlags operator~(const GameFlags& a);

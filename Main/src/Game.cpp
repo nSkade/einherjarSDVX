@@ -3393,6 +3393,44 @@ public:
 		lua_pushboolean(L, m_multiplayer != nullptr);
 		lua_settable(L, -3);
 
+		lua_pushstring(L, "replay");
+		if (m_playingReplay)
+		{
+			lua_newtable(L);
+
+			lua_pushstring(L, "score");
+			{
+				lua_newtable(L);
+				auto* score = m_scoreReplays[0]->GetScoreIndex();
+				pushFloatToTable("gauge", score->gauge);
+				
+				pushIntToTable("gauge_type", (uint32)score->gaugeType);
+				pushIntToTable("gauge_option", score->gaugeOption);
+				pushIntToTable("random", score->random);
+				pushIntToTable("mirror", score->mirror);
+				pushIntToTable("auto_flags", (uint32)score->autoFlags);
+
+				pushStringToTable("name", score->userName);
+				pushStringToTable("uid", score->userId);
+
+				pushIntToTable("score", score->score);
+				pushIntToTable("perfects", score->crit);
+				pushIntToTable("goods", score->almost);
+				pushIntToTable("misses", score->miss);
+				pushIntToTable("timestamp", score->timestamp);
+				pushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
+				lua_pushstring(L, "hitWindow");
+				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(L);
+				lua_settable(L, -3);
+			}
+			lua_settable(L, -3);
+		}
+		else
+		{
+			lua_pushnil(L);
+		}
+		lua_settable(L, -3);
+
 		lua_pushstring(L, "hitWindow");
 		GetHitWindow().ToLuaTable(L);
 		lua_settable(L, -3);

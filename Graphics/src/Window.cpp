@@ -280,7 +280,7 @@ namespace Graphics
 			do
 			{
 				eventCount = SDL_PeepEvents(&events[0], SIZE_EVENTS, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
-				// Don't use ranged loop since it could loop through previously processed events on the last loop
+				// Don't use range loop since it could loop through previously processed events on the last loop
 				for (int i = 0; i < eventCount; ++i)
 				{
 					auto evt = events[i];

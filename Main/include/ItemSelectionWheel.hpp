@@ -1,6 +1,7 @@
 #pragma once
 #include "SongSort.hpp"
 #include "SongFilter.hpp"
+#include "Search.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 // ItemIndex represents the current item selected

@@ -4,6 +4,8 @@
 #include "Input.hpp"
 #include "PreviewPlayer.hpp"
 
+class TextInput;
+
 struct ArchiveRequest
 {
 	cpr::AsyncResponse response;
@@ -25,6 +27,7 @@ public:
 	DownloadScreen();
 	~DownloadScreen();
 	bool Init() override;
+	void OnSearchTermChanged(const String& search);
 	// Tick for tickable
 	void Tick(float deltaTime) override;
 	void Render(float deltaTime) override;
@@ -40,6 +43,8 @@ private:
 	std::queue<ArchiveResponse> m_archiveResps;
 	Thread m_archiveThread;
 	bool m_running = true;
+
+	Ref<TextInput> m_searchInput;
 
 	void m_ArchiveLoop();
 	void m_OnButtonPressed(Input::Button buttonCode);
@@ -57,4 +62,7 @@ private:
 	PreviewPlayer m_previewPlayer;
 	PreviewParams m_previewParams;
 
+	// -1 if no search update needed
+	float m_timeSinceSearchChange = -1;
+	String m_lastSearch = "";
 };

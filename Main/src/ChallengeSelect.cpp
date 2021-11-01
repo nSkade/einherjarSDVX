@@ -21,6 +21,7 @@
 #include "ItemSelectionWheel.hpp"
 #include <Audio/Audio.hpp>
 #include "Gauge.hpp"
+#include "Search.hpp"
 
 
 using ChalItemSelectionWheel = ItemSelectionWheel<ChallengeSelectIndex, ChallengeIndex>;

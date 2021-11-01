@@ -13,6 +13,7 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 #include "Gauge.hpp"
+#include "Search.hpp"
 
 #define MULTIPLAYER_VERSION "v0.19"
 

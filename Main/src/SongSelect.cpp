@@ -23,6 +23,7 @@
 #include "PreviewPlayer.hpp"
 #include "ItemSelectionWheel.hpp"
 #include "Audio/OffsetComputer.hpp"
+#include "Search.hpp"
 
 /*
 	Song preview player with fade-in/out
@@ -1229,7 +1230,19 @@ public:
 			m_filterSelection->AdvanceSelection(0);
 		else
 		{
-			Map<int32, FolderIndex *> filter = m_mapDatabase->FindFolders(search);
+			String effector;
+			String author;
+			String bpm;
+			const String query = SearchParser::Parse(search, {
+				{ "effector", &effector },
+				{ "author", &author },
+				{ "bpm", &bpm },
+			});
+			Map<int32, FolderIndex*> filter = m_mapDatabase->FindFoldersWithFilter(query, {
+				{ "effector", effector },
+				{ "author", author },
+				{ "bpm", bpm }
+			});
 			m_selectionWheel->SetFilter(filter);
 		}
 	}

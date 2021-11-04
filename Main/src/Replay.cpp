@@ -31,6 +31,10 @@ Replay* Replay::Load(String path, ReplayType type)
 	}
 	replayFile.Close();
 	replay->filePath = path;
+
+	if (replay->m_requiresRewrite)
+		replay->Save(path);
+
 	return replay;
 }
 
@@ -90,11 +94,20 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 		if (!stream.SerializeObject(magic))
 			return false;
 
+		bool hasNullPadding = magic == 0;
+
+		// The first 4 bytes may be null to prevent crashes on old versions
+		if (hasNullPadding && !stream.SerializeObject(magic))
+			return false;
+
 		if (magic != REPLAY_MAGIC)
 		{
 			stream.Seek(0);
 			return Replay::SerializeLegacy(stream, obj);
 		}
+
+		if (!hasNullPadding)
+			obj->m_requiresRewrite = true;
 
 		// File is not legacy
 		if (obj->m_type == Replay::ReplayType::Legacy)
@@ -108,8 +121,9 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 	}
 	else if (obj->m_initialized)
 	{
+		uint32 padding = 0;
 		uint32 magic = REPLAY_MAGIC;
-		stream << magic << version;
+		stream << padding << magic << version;
 		if (!stream.IsOk())
 			return false;
 	}

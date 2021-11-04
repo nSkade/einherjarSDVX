@@ -283,5 +283,6 @@ protected:
 	size_t m_nextJudgementIndex = 0;
 	MapTime m_lastEvalTime = 0;
 
+	bool m_requiresRewrite = false;
 };
 

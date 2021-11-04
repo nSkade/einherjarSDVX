@@ -23,6 +23,7 @@
 #include "PreviewPlayer.hpp"
 #include "ItemSelectionWheel.hpp"
 #include "Audio/OffsetComputer.hpp"
+#include "Search.hpp"
 
 /*
 	Song preview player with fade-in/out
@@ -1264,12 +1265,24 @@ public:
 			m_filterSelection->AdvanceSelection(0);
 		else
 		{
-			Map<int32, FolderIndex *> filter = m_mapDatabase->FindFolders(search);
+			String effector;
+			String author;
+			String bpm;
+			const String query = SearchParser::Parse(search, {
+				{ "effector", &effector },
+				{ "author", &author },
+				{ "bpm", &bpm },
+			});
+			Map<int32, FolderIndex*> filter = m_mapDatabase->FindFoldersWithFilter(query, {
+				{ "effector", effector },
+				{ "author", author },
+				{ "bpm", bpm }
+			});
 			m_selectionWheel->SetFilter(filter);
 		}
 	}
 
-	void m_OnButtonPressed(Input::Button buttonCode)
+	void m_OnButtonPressed(Input::Button buttonCode, int32 delta)
 	{
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
@@ -1380,7 +1393,7 @@ public:
 		}
 	}
 
-	void m_OnButtonReleased(Input::Button buttonCode)
+	void m_OnButtonReleased(Input::Button buttonCode, int32 delta)
 	{
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
@@ -1431,7 +1444,7 @@ public:
 			m_selectionWheel->AdvanceSelection(steps);
 		}
 	}
-	void OnKeyPressed(SDL_Scancode code) override
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
@@ -1589,7 +1602,7 @@ public:
 			}
 		}
 	}
-	void OnKeyReleased(SDL_Scancode code) override
+	void OnKeyReleased(SDL_Scancode code, int32 delta) override
 	{
 		if (code == SDL_SCANCODE_LSHIFT)
 		{

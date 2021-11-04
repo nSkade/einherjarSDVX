@@ -55,6 +55,7 @@ DefineEnum(GameConfigKeys,
 		   FPSTarget,
 		   GaugeDrainNormal,
 		   GaugeDrainHalf,
+		   ResponsiveInputs,
 
 		   EnableHiddenSudden,
 		   HiddenCutoff,

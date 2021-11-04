@@ -1247,7 +1247,7 @@ public:
 		}
 	}
 
-	void m_OnButtonPressed(Input::Button buttonCode)
+	void m_OnButtonPressed(Input::Button buttonCode, int32 delta)
 	{
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
@@ -1358,7 +1358,7 @@ public:
 		}
 	}
 
-	void m_OnButtonReleased(Input::Button buttonCode)
+	void m_OnButtonReleased(Input::Button buttonCode, int32 delta)
 	{
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
@@ -1409,7 +1409,7 @@ public:
 			m_selectionWheel->AdvanceSelection(steps);
 		}
 	}
-	void OnKeyPressed(SDL_Scancode code) override
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
@@ -1567,7 +1567,7 @@ public:
 			}
 		}
 	}
-	void OnKeyReleased(SDL_Scancode code) override
+	void OnKeyReleased(SDL_Scancode code, int32 delta) override
 	{
 		if (code == SDL_SCANCODE_LSHIFT)
 		{

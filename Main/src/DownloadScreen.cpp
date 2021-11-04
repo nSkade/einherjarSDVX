@@ -201,7 +201,7 @@ void DownloadScreen::Render(float deltaTime)
 	}
 }
 
-void DownloadScreen::OnKeyPressed(SDL_Scancode code)
+void DownloadScreen::OnKeyPressed(SDL_Scancode code, int32 delta)
 {
 	if (!m_searchInput->active)
 	{
@@ -250,7 +250,7 @@ void DownloadScreen::OnKeyPressed(SDL_Scancode code)
 	}
 }
 
-void DownloadScreen::OnKeyReleased(SDL_Scancode code)
+void DownloadScreen::OnKeyReleased(SDL_Scancode code, int32 delta)
 {
 	lua_getglobal(m_lua, "key_released");
 	if (lua_isfunction(m_lua, -1))
@@ -336,7 +336,7 @@ void DownloadScreen::m_ArchiveLoop()
 	}
 }
 
-void DownloadScreen::m_OnButtonPressed(Input::Button buttonCode)
+void DownloadScreen::m_OnButtonPressed(Input::Button buttonCode, int32 delta)
 {
 	if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
 		return;
@@ -354,7 +354,7 @@ void DownloadScreen::m_OnButtonPressed(Input::Button buttonCode)
 	lua_settop(m_lua, 0);
 }
 
-void DownloadScreen::m_OnButtonReleased(Input::Button buttonCode)
+void DownloadScreen::m_OnButtonReleased(Input::Button buttonCode, int32 delta)
 {
 	lua_getglobal(m_lua, "button_released");
 	if (lua_isfunction(m_lua, -1))

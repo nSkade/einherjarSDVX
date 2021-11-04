@@ -72,8 +72,17 @@ void Input::Init(Graphics::Window& wnd)
 			auto id = SDL_JoystickGetDeviceGUID(i);
 			if (memcmp(deviceId.data(), id.data, 16) == 0)
 			{
-				deviceIndex = i;
-				break;
+				deviceIndex = i; //always set device index since it is a match, but check input count in case of multiple matches
+				auto joystick = SDL_JoystickOpen(i);
+
+				int numInputs = 0;
+				numInputs += SDL_JoystickNumAxes(joystick);
+				numInputs += SDL_JoystickNumButtons(joystick);
+				numInputs += SDL_JoystickNumHats(joystick);
+
+				SDL_JoystickClose(joystick);
+				if (numInputs > 0)
+					break;
 			}
 		}
 
@@ -222,7 +231,7 @@ void Input::Update(float deltaTime)
 		m_comboHoldTimer += deltaTime;
 		if (m_comboHoldTimer >= 0.5 && !m_backSent)
 		{
-			OnButtonPressed.Call(Button::Back);
+			OnButtonPressed.Call(Button::Back, 0);
 			m_backSent = true;
 		}
 	}
@@ -375,7 +384,7 @@ void Input::m_InitControllerMapping()
 	}
 }
 
-void Input::m_OnButtonInput(Button b, bool pressed)
+void Input::m_OnButtonInput(Button b, bool pressed, int32 delta)
 {
 	bool& state = m_buttonStates[(size_t)b];
 	if(state != pressed)
@@ -385,17 +394,17 @@ void Input::m_OnButtonInput(Button b, bool pressed)
 		{
 			if (b == Button::BT_S && m_backComboInstant && Are3BTsHeld())
 			{
-				OnButtonPressed.Call(Button::Back);
+				OnButtonPressed.Call(Button::Back, delta);
 			}
 			else if (b == Button::BT_S && m_backComboHold && Are3BTsHeld());
 			else
 			{
-				OnButtonPressed.Call(b);
+				OnButtonPressed.Call(b, delta);
 			}
 		}
 		else
 		{
-			OnButtonReleased.Call(b);
+			OnButtonReleased.Call(b, delta);
 		}
 	}
 
@@ -418,34 +427,34 @@ void Input::m_OnButtonInput(Button b, bool pressed)
 	}
 }
 
-void Input::m_OnGamepadButtonPressed(uint8 button)
+void Input::m_OnGamepadButtonPressed(uint8 button, int32 delta)
 {
 	// Handle button mappings
 	auto it = m_controllerMap.equal_range(button);
 	for(auto it1 = it.first; it1 != it.second; it1++)
-		m_OnButtonInput(it1->second, true);
+		m_OnButtonInput(it1->second, true, delta);
 }
-void Input::m_OnGamepadButtonReleased(uint8 button)
+void Input::m_OnGamepadButtonReleased(uint8 button, int32 delta)
 {
 	// Handle button mappings
 	auto it = m_controllerMap.equal_range(button);
 	for(auto it1 = it.first; it1 != it.second; it1++)
-		m_OnButtonInput(it1->second, false);
+		m_OnButtonInput(it1->second, false, delta);
 }
 
-void Input::OnKeyPressed(SDL_Scancode code)
+void Input::OnKeyPressed(SDL_Scancode code, int32 delta)
 {
 	// Handle button mappings
 	auto it = m_buttonMap.equal_range(static_cast<int32>(code));
 	for(auto it1 = it.first; it1 != it.second; it1++)
-		m_OnButtonInput(it1->second, true);
+		m_OnButtonInput(it1->second, true, delta);
 }
-void Input::OnKeyReleased(SDL_Scancode code)
+void Input::OnKeyReleased(SDL_Scancode code, int32 delta)
 {
 	// Handle button mappings
 	auto it = m_buttonMap.equal_range(static_cast<int32>(code));
 	for(auto it1 = it.first; it1 != it.second; it1++)
-		m_OnButtonInput(it1->second, false);
+		m_OnButtonInput(it1->second, false, delta);
 }
 
 void Input::OnMouseMotion(int32 x, int32 y)

@@ -277,11 +277,11 @@ namespace Graphics
 			int eventCount;
 
 			SDL_PumpEvents();
-			uint32 tick = SDL_GetTicks();
+			Uint32 tick = SDL_GetTicks();
 			do
 			{
 				eventCount = SDL_PeepEvents(&events[0], SIZE_EVENTS, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
-				// Don't use range loop since it could loop through previously processed events on the last loop
+				// Don't use range loop since it could loop through previously processed events from the previous loop
 				for (int i = 0; i < eventCount; ++i)
 				{
 					auto evt = events[i];

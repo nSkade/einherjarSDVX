@@ -733,7 +733,7 @@ protected:
 		ToggleSetting(GameConfigKeys::PrerenderEffects, "Pre-render song effects (experimental)");
 
 		SectionHeader("Render");
-
+		SetApply(ToggleSetting(GameConfigKeys::ResponsiveInputs, "Responsive Inputs (CPU intensive)"));
 		SetApply(ToggleSetting(GameConfigKeys::Fullscreen, "Fullscreen"));
 		SetApply(ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen"));
 
@@ -1256,7 +1256,7 @@ public:
 		g_application->FastText(prompt, static_cast<float>(g_resolution.x / 2), static_cast<float>(g_resolution.y / 2), 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 	}
 
-	void OnButtonPressed(uint8 key)
+	void OnButtonPressed(uint8 key, int32 delta)
 	{
 		if (!m_knobs)
 		{
@@ -1403,7 +1403,7 @@ public:
 		}
 	}
 
-	void OnButtonPressed(Input::Button button)
+	void OnButtonPressed(Input::Button button, int32 delta)
 	{
 		if (button == Input::Button::BT_S)
 		{

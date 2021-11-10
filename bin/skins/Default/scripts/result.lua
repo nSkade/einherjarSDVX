@@ -394,7 +394,7 @@ draw_ir = function(full)
         gfx.FontSize(15)
         gfx.FillColor(255, 255, 255)
         gfx.Text("Score accepted, IR says:", 510, 60)
-        gfx.Text(result.irDescription)
+        gfx.Text(result.irDescription, 510, 80)
         return
     elseif result.irState ~= IRData.States.Success then
         gfx.FontSize(15)

@@ -17,6 +17,7 @@ namespace IR
         const static int Unused = 0;
         const static int Pending = 10;
         const static int Success = 20;
+        const static int Accepted = 22;
         const static int BadRequest = 40;
         const static int Unauthorized = 41;
         const static int ChartRefused = 42;
@@ -29,6 +30,7 @@ namespace IR
             {"Unused", IR::ResponseState::Unused},
             {"Pending", IR::ResponseState::Pending},
             {"Success", IR::ResponseState::Success},
+            {"Accepted", IR::ResponseState::Accepted},
             {"BadRequest", IR::ResponseState::BadRequest},
             {"Unauthorized", IR::ResponseState::Unauthorized},
             {"ChartRefused", IR::ResponseState::ChartRefused},

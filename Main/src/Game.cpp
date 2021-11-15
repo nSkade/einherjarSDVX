@@ -2408,7 +2408,7 @@ public:
 			if (code != SDL_SCANCODE_F8) return;
 		}
 
-		if (m_isPracticeSetup && m_isPracticeSetupNavEnabled)
+		if (m_isPracticeSetup && m_isPracticeSetupNavEnabled || m_playingReplay)
 		{
 			assert(!IsMultiplayerGame());
 
@@ -2421,6 +2421,13 @@ public:
 			case SDL_SCANCODE_UP:
 			case SDL_SCANCODE_DOWN:
 			{
+				if (m_playingReplay && code == SDL_SCANCODE_UP)
+				{
+					// Use this to be kinder to the replay
+					m_audioPlayback.Advance(2000);
+					return;
+				}
+
 				const MapTime increment = 2000 * (code == SDL_SCANCODE_UP ? 1 : -1);
 
 				JumpTo(Math::Clamp(m_lastMapTime + increment, 0, m_endTime));

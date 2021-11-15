@@ -2,6 +2,8 @@
 #include <Shared/Enum.hpp>
 #include <Tests/Tests.hpp>
 #include <Shared/Files.hpp>
+#include <Shared/FileStream.hpp>
+#include <Shared/CompressedFileStream.hpp>
 
 void CreateDummyFile(const String& filename)
 {
@@ -161,8 +163,94 @@ Test("File.ReadWrite")
 		file.Read(confirmData, dataLength);
 		TestEnsure(memcmp(confirmData, data, dataLength) == 0);
 		delete[] confirmData;
-
-		// Check if reading more results in error
-		TestEnsure(file.Read(data, 1) == 0);
 	}
 }
+Test("FileSteam.ReadWrite")
+{
+	char data[] = "\r\n-- Test Data --\r\n@@\r\n";
+	constexpr size_t dataLength = sizeof(data);
+
+	{
+		File file;
+		TestEnsure(file.OpenWrite(TestFilename, false));
+		FileWriter fw(file);
+		TestEnsure(fw.SerializeObject(data));
+		file.Close();
+	}
+
+	{
+		File file;
+		TestEnsure(file.OpenRead(TestFilename));
+		FileReader fr(file);
+
+		char* confirmData = new char[dataLength];
+		TestEnsure(fr.Serialize(confirmData, dataLength) == dataLength);
+		TestEnsure(memcmp(data, confirmData, dataLength) == 0);
+
+		delete[] confirmData;
+		file.Close();
+	}
+}
+Test("CompressedFileSteam.NonCompressedReadWrite")
+{
+	char data[] = "\r\n-- Test Data --\r\n@@\r\n";
+	constexpr size_t dataLength = sizeof(data);
+
+	{
+		File file;
+		TestEnsure(file.OpenWrite(TestFilename, false));
+		// Debug gets mad about un-init padding in the class
+		CompressedFileWriter* fw = new CompressedFileWriter(file);
+		TestEnsure(fw->SerializeObject(data));
+		file.Close();
+		delete fw;
+	}
+
+	{
+		File file;
+		TestEnsure(file.OpenRead(TestFilename));
+		CompressedFileReader* fr = new CompressedFileReader(file);
+
+		char* confirmData = new char[dataLength];
+		TestEnsure(fr->Serialize(confirmData, dataLength) == dataLength);
+		TestEnsure(memcmp(data, confirmData, dataLength) == 0);
+
+		delete[] confirmData;
+		file.Close();
+		delete fr;
+	}
+}
+#ifdef ZLIB_FOUND
+Test("CompressedFileSteam.CompressedReadWrite")
+{
+	char data[] = "\r\n-- Test Data --\r\n@@\r\n";
+	constexpr size_t dataLength = sizeof(data);
+
+	{
+		File file;
+		TestEnsure(file.OpenWrite(TestFilename, false));
+		// Debug gets mad about un-init padding in the class
+		CompressedFileWriter* fw = new CompressedFileWriter(file);
+		fw->StartCompression();
+		TestEnsure(fw->SerializeObject(data));
+		fw->FinishCompression();
+		file.Close();
+		delete fw;
+	}
+
+	{
+		File file;
+		TestEnsure(file.OpenRead(TestFilename));
+		CompressedFileReader* fr = new CompressedFileReader(file);
+		fr->StartCompression();
+
+		char* confirmData = new char[dataLength];
+		TestEnsure(fr->Serialize(confirmData, dataLength) == dataLength);
+		TestEnsure(memcmp(data, confirmData, dataLength) == 0);
+
+		delete[] confirmData;
+		file.Close();
+		delete fr;
+	}
+}
+#endif

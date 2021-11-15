@@ -145,6 +145,7 @@ struct ReplayInput
 
 #define REPLAY_VERSION 1
 #define REPLAY_MAGIC 0x52435355u
+#define COMPRESSED_REPLAY_MAGIC 0x504d4f43u
 class Replay
 {
 public:

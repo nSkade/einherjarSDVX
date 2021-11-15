@@ -57,7 +57,7 @@ bool CompressedFileStreamBase::InitCompression()
 
 		int ret;
 		if (m_isReading)
-			ret = inflateInit(m_z, m_level);
+			ret = inflateInit(m_z);
 		else
 			ret = deflateInit(m_z, m_level);
 

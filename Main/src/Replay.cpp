@@ -1,16 +1,22 @@
 #include "stdafx.h"
 #include "Replay.hpp"
 #include "Scoring.hpp"
+#include "Application.hpp"
+#include "GameConfig.hpp"
 #include "Shared/FileStream.hpp"
 #include "Beatmap/MapDatabase.hpp"
+#include <stdio.h>
+#include "zlib.h"
+#include "Shared/CompressedFileStream.hpp"
 
 bool Replay::Save(String path)
 {
 	File replayFile;
 	if (!replayFile.OpenWrite(path))
 		return false;
-	FileWriter fw(replayFile);
+	CompressedFileWriter fw(replayFile);
 	bool res = fw.SerializeObject(*this);
+	fw.FinishCompression();
 	replayFile.Close();
 	return res;
 }
@@ -22,7 +28,7 @@ Replay* Replay::Load(String path, ReplayType type)
 	if (!replayFile.OpenRead(path))
 		return nullptr;
 
-	FileReader fr(replayFile);
+	CompressedFileReader fr(replayFile);
 	if (!fr.SerializeObject(replay))
 	{
 		delete replay;
@@ -100,7 +106,7 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 		if (hasNullPadding && !stream.SerializeObject(magic))
 			return false;
 
-		if (magic != REPLAY_MAGIC)
+		if (magic != REPLAY_MAGIC && magic != COMPRESSED_REPLAY_MAGIC)
 		{
 			stream.Seek(0);
 			return Replay::SerializeLegacy(stream, obj);
@@ -118,14 +124,33 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 			// May not be backwards compatable so ignore it
 			return false;
 		}
+
+		if (magic == COMPRESSED_REPLAY_MAGIC)
+		{
+			CompressedFileReader* cfr = dynamic_cast<CompressedFileReader*>(&stream);
+			if (!cfr)
+				return false;
+			if (!cfr->StartCompression())
+				return false;
+		}
+
 	}
 	else if (obj->m_initialized)
 	{
 		uint32 padding = 0;
 		uint32 magic = REPLAY_MAGIC;
+
+		CompressedFileWriter* cfw = dynamic_cast<CompressedFileWriter*>(&stream);
+		bool useCompression = g_gameConfig.GetBool(GameConfigKeys::UseCompressedReplay);
+		if (cfw && useCompression && cfw->InitCompression())
+			magic = COMPRESSED_REPLAY_MAGIC;
+
 		stream << padding << magic << version;
 		if (!stream.IsOk())
 			return false;
+
+		if (magic == COMPRESSED_REPLAY_MAGIC && cfw)
+			cfw->StartCompression();
 	}
 	else
 	{

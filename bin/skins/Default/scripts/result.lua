@@ -389,8 +389,14 @@ draw_ir = function(full)
         gfx.Text("Loading... please wait.", 510, 60)
         return
     end
-
-    if result.irState ~= IRData.States.Success then
+    
+    if result.irState == IRData.States.Accepted then
+        gfx.FontSize(15)
+        gfx.FillColor(255, 255, 255)
+        gfx.Text("Score accepted, IR says:", 510, 60)
+        gfx.Text(result.irDescription, 510, 80)
+        return
+    elseif result.irState ~= IRData.States.Success then
         gfx.FontSize(15)
         gfx.FillColor(255, 0, 0)
         gfx.Text("Error:", 510, 60)
@@ -919,6 +925,9 @@ draw_ir_icon = function(x, y, s)
     elseif result.irState == IRData.States.Success then
         gfx.FillColor(0, 255, 0)
         gfx.Text("OK", x + s/2, y + s*0.7)
+    elseif result.irState == IRData.States.Accepted then
+        gfx.FillColor(0, 255, 0)
+        gfx.Text("Q'D", x + s/2, y + s*0.7)
     else
         gfx.FillColor(255, 0, 0)
         gfx.Text("FAIL", x + s/2, y + s*0.7)

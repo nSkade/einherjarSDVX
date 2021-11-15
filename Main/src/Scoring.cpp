@@ -265,21 +265,36 @@ void Scoring::Tick(float deltaTime)
         if (!m_ticks[i].empty())
         {
             auto tick = m_ticks[i].front();
-            if (tick->HasFlag(TickFlags::Hold))
-            {
-                bool autoplayHold = (autoplayInfo.IsAutoplayButtons())
-					&& tick->object->time <= m_playback->GetLastTime();
-				if (m_replay && tick->object->time <= m_playback->GetLastTime())
+			if (tick->HasFlag(TickFlags::Hold))
+			{
+				if (m_replay || autoplayInfo.IsAutoplayButtons())
 				{
-					const ReplayJudgement* judge = m_replay->FindNextJudgement(i, 1000);
-					autoplayHold |= judge && (judge->rating > 0);
+					MapTime curTime = m_playback->GetLastTime();
+					MapTime tickStart = tick->object->time;
+
+					MultiObjectState* hold = *tick->object;
+					MapTime tickEnd = tickStart + hold->hold.duration;
+
+					bool isCurrent = tickStart <= curTime && tickEnd >= curTime;
+
+					bool autoplayHold = (autoplayInfo.IsAutoplayButtons()) && isCurrent;
+					if (m_replay && isCurrent)
+					{
+						const ReplayJudgement* judge = m_replay->FindNextJudgement(i, 1000);
+						autoplayHold |= judge && (judge->rating > 0);
+					}
+					if (autoplayHold)
+						m_SetHoldObject(tick->object, i);
+					// This check is only relevant if delay fade hit effects are on
+					if (autoplayHold || (HoldObjectAvailable(i, true) && m_input->GetButton((Input::Button)i)))
+						OnHoldEnter.Call(static_cast<Input::Button>(i));
+
 				}
-                if (autoplayHold)
-                    m_SetHoldObject(tick->object, i);
-                // This check is only relevant if delay fade hit effects are on
-                if (autoplayHold || (HoldObjectAvailable(i, true) && m_input->GetButton((Input::Button)i)))
-                    OnHoldEnter.Call(static_cast<Input::Button>(i));
-            }
+				else if (HoldObjectAvailable(i, true) && m_input->GetButton((Input::Button)i))
+				{
+						OnHoldEnter.Call(static_cast<Input::Button>(i));
+				}
+			}
         }
         autoplayInfo.buttonAnimationTimer[i] -= deltaTime;
     }
@@ -818,7 +833,8 @@ void Scoring::m_UpdateTicks()
 			m_replay->PopNextJudgement(buttonCode);
 			m_replayDebugInfo.missingTickCount++;
 			m_replayDebugInfo.judgementsProcessed++;
-			m_AddScore(j->rating);
+			if (j->rating > 0 && j->rating <= 2)
+				m_AddScore(j->rating);
 			currentMaxScore += 2;
 		}
 		for (uint32 i = 0; i < ticks.size(); i++)
@@ -901,7 +917,10 @@ void Scoring::m_UpdateTicks()
 				}
 
 				if (tick->HasFlag(TickFlags::End))
+				{
 					OnHoldLeave.Call(button);
+					m_ReleaseHoldObject(tick->object);
+				}
 
 				processed = true;
 				replayHandled = true;

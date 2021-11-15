@@ -231,8 +231,11 @@ Test("CompressedFileSteam.CompressedReadWrite")
 		TestEnsure(file.OpenWrite(TestFilename, false));
 		// Debug gets mad about un-init padding in the class
 		CompressedFileWriter* fw = new CompressedFileWriter(file);
-		fw->StartCompression();
+		TestEnsure(fw->StartCompression());
+		TestEnsure(fw->IsUsingCompression());
+
 		TestEnsure(fw->SerializeObject(data));
+
 		fw->FinishCompression();
 		file.Close();
 		delete fw;
@@ -242,9 +245,96 @@ Test("CompressedFileSteam.CompressedReadWrite")
 		File file;
 		TestEnsure(file.OpenRead(TestFilename));
 		CompressedFileReader* fr = new CompressedFileReader(file);
-		fr->StartCompression();
+		TestEnsure(fr->StartCompression());
+		TestEnsure(fr->IsUsingCompression());
 
 		char* confirmData = new char[dataLength];
+		TestEnsure(fr->Serialize(confirmData, dataLength) == dataLength);
+		TestEnsure(memcmp(data, confirmData, dataLength) == 0);
+
+		delete[] confirmData;
+		file.Close();
+		delete fr;
+	}
+}
+Test("CompressedFileSteam.CompressedMultipleReadWrite")
+{
+	char data[] = "\r\n-- Test Data --\r\n@@\r\n";
+	constexpr size_t dataLength = sizeof(data);
+	const int count = 1000;
+
+	{
+		File file;
+		TestEnsure(file.OpenWrite(TestFilename, false));
+		// Debug gets mad about un-init padding in the class
+		CompressedFileWriter* fw = new CompressedFileWriter(file);
+		TestEnsure(fw->StartCompression());
+		TestEnsure(fw->IsUsingCompression());
+
+		for (int i = 0; i < count; i++)
+		{
+			TestEnsure(fw->SerializeObject(data));
+		}
+
+		fw->FinishCompression();
+		file.Close();
+		delete fw;
+	}
+
+	{
+		File file;
+		TestEnsure(file.OpenRead(TestFilename));
+		CompressedFileReader* fr = new CompressedFileReader(file);
+		TestEnsure(fr->StartCompression());
+		TestEnsure(fr->IsUsingCompression());
+
+		char* confirmData = new char[dataLength];
+
+		for (int i = 0; i < count; i++)
+		{
+			TestEnsure(fr->Serialize(confirmData, dataLength) == dataLength);
+			TestEnsure(memcmp(data, confirmData, dataLength) == 0);
+		}
+
+		delete[] confirmData;
+		file.Close();
+		delete fr;
+	}
+}
+Test("CompressedFileSteam.MixedReadWrite")
+{
+	char data[] = "\r\n-- Test Data --\r\n@@\r\n";
+	constexpr size_t dataLength = sizeof(data);
+
+	{
+		File file;
+		TestEnsure(file.OpenWrite(TestFilename, false));
+		// Debug gets mad about un-init padding in the class
+		CompressedFileWriter* fw = new CompressedFileWriter(file);
+		TestEnsure(fw->SerializeObject(data));
+
+		TestEnsure(fw->StartCompression());
+		TestEnsure(fw->IsUsingCompression());
+
+		TestEnsure(fw->SerializeObject(data));
+
+		fw->FinishCompression();
+		file.Close();
+		delete fw;
+	}
+
+	{
+		File file;
+		TestEnsure(file.OpenRead(TestFilename));
+		CompressedFileReader* fr = new CompressedFileReader(file);
+
+		char* confirmData = new char[dataLength];
+		TestEnsure(fr->Serialize(confirmData, dataLength) == dataLength);
+		TestEnsure(memcmp(data, confirmData, dataLength) == 0);
+
+		TestEnsure(fr->StartCompression());
+		TestEnsure(fr->IsUsingCompression());
+
 		TestEnsure(fr->Serialize(confirmData, dataLength) == dataLength);
 		TestEnsure(memcmp(data, confirmData, dataLength) == 0);
 

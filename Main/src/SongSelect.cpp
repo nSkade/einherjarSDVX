@@ -1546,6 +1546,12 @@ public:
 												Utility::Sprintf("\"%s\"", Path::Absolute(GetCurrentSelectedChart()->path)));
 				Path::Run(path, param.GetData());
 			}
+			else if (code == SDL_SCANCODE_F12 && m_shiftDown)
+			{
+				String& hash = m_selectionWheel->GetSelectedChart()->hash;
+				String replayPath = Path::Normalize(Path::Absolute("replays/" + hash + "/"));
+				Path::ShowInFileBrowser(replayPath);
+			}
 			else if (code == SDL_SCANCODE_F12)
 			{
 				Path::ShowInFileBrowser(m_selectionWheel->GetSelection()->path);

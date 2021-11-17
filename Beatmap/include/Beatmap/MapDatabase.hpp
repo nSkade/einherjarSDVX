@@ -200,6 +200,7 @@ public:
 	void PauseSearching();
 	void ResumeSearching();
 	void StopSearching();
+	void LoadDatabaseWithoutSearching();
 
 	// Finds maps using the search query provided
 	// search artist/title/tags for maps for any space separated terms
@@ -220,6 +221,11 @@ public:
 
 	// Get a random chart
 	ChartIndex* GetRandomChart();
+
+	const std::map<int32, FolderIndex *>& GetFolderMap();
+	const std::map<int32, ChartIndex *>& GetChartMap();
+	const std::map<int32, ChallengeIndex *>& GetChallengeMap();
+
 
 	//Attempts to add to collection, if that fails attempt to remove from collection
 	void AddOrRemoveToCollection(const String& name, int32 mapid);

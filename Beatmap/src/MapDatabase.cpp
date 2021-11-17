@@ -443,7 +443,13 @@ public:
 				delete c.mapData;
 		}
 	}
-
+	void LoadDatabaseWithoutSearching()
+	{
+		// Apply previous diff to prevent duplicated entry 
+		Update();
+		// Create initial data set to compare to when evaluating if a file is added/removed/updated
+		m_LoadInitialData();
+	}
 	void StartSearching()
 	{
 		if(m_searching)
@@ -1453,6 +1459,21 @@ public:
 		std::advance(it, selection);
 		return it->second;
 	}
+	const auto& GetFolderMap()
+	{
+		assert(!m_searching); // Unsafe when searching
+		return m_folders;
+	}
+	const auto& GetChartMap()
+	{
+		assert(!m_searching); // Unsafe when searching
+		return m_charts;
+	}
+	const auto& GetChallengeMap()
+	{
+		assert(!m_searching); // Unsafe when searching
+		return m_challenges;
+	}
 
 	// TODO: Research thread pausing more
 	// ugly but should work
@@ -2325,6 +2346,10 @@ void MapDatabase::RemoveSearchPath(const String& path)
 {
 	m_impl->RemoveSearchPath(path);
 }
+void MapDatabase::LoadDatabaseWithoutSearching()
+{
+	m_impl->LoadDatabaseWithoutSearching();
+}
 void MapDatabase::UpdateChartOffset(const ChartIndex* chart)
 {
 	m_impl->UpdateChartOffset(chart);
@@ -2344,6 +2369,18 @@ void MapDatabase::UpdateChallengeResult(ChallengeIndex* chal, uint32 clearMark, 
 ChartIndex* MapDatabase::GetRandomChart()
 {
 	return m_impl->GetRandomChart();
+}
+const std::map<int32, FolderIndex *>& MapDatabase::GetFolderMap()
+{
+	return m_impl->GetFolderMap();
+}
+const std::map<int32, ChartIndex *>& MapDatabase::GetChartMap()
+{
+	return m_impl->GetChartMap();
+}
+const std::map<int32, ChallengeIndex *>& MapDatabase::GetChallengeMap()
+{
+	return m_impl->GetChallengeMap();
 }
 void MapDatabase::SetChartUpdateBehavior(bool transferScores) {
 	m_transferScores = transferScores;

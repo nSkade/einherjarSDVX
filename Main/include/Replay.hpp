@@ -136,6 +136,7 @@ struct ReplayScoreInfo : ForwardCompatStruct<2>
 		stream << t->timestamp << t->userName << t->userId;
 		return stream.IsOk();
 	}
+	bool MatchesScore(const ScoreIndex* s);
 };
 
 struct ReplayInput
@@ -231,7 +232,7 @@ public:
 	uint32 GetMaxChain() const { return m_maxChain; }
 
 	// Put this replay into playback mode
-	void StartPlaying()
+	void InitializePlayback()
 	{
 		m_isPlaying = true;
 		Restart();
@@ -256,6 +257,8 @@ public:
 	const ReplayJudgement* PopNextJudgement(int lane, bool score=true);
 
 	const ReplayJudgement* FindNextJudgement(int lane, MapTime future = 0) const;
+
+	ChartIndex* FindChart(MapDatabase* database = nullptr) const;
 
 	String filePath = "";
 protected:

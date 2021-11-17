@@ -114,8 +114,8 @@ public:
 	virtual struct lua_State* GetLuaState() = 0;
 	// Set demo mode
 	virtual void SetDemoMode(bool value) = 0; 
-	// Init replay mode (call before AsyncLoad)
-	virtual void InitPlayReplay() = 0;
+	// Init replay mode (call before AsyncLoad) if replay is null, plays best score
+	virtual void InitPlayReplay(Replay* replay=nullptr) = 0;
 
 	// Set song db for random song selection and practice mode setups
 	virtual void SetSongDB(class MapDatabase* db) = 0;

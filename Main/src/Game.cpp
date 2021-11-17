@@ -79,6 +79,7 @@ private:
 	bool m_renderFastGui = false;
 
 
+
 	MultiplayerScreen* m_multiplayer = nullptr;
 	ChallengeManager* m_challengeManager = nullptr;
 
@@ -106,7 +107,8 @@ private:
 
 	bool m_delayedHitEffects;
 
-	bool m_playingReplay = false;
+	bool m_isPlayingReplay = false;
+	Replay* m_replayForPlayback = nullptr;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -398,11 +400,25 @@ public:
 			int index = 0;
 			for (ScoreIndex* score : m_chartIndex->scores)
 			{
-				Replay* replay = Replay::Load(
-					score->replayPath,
-					index == 0?
+				Replay* replay = nullptr;
+				if (m_replayForPlayback)
+				{
+					auto& si = m_replayForPlayback->GetScoreInfo();
+					if (m_replayForPlayback->filePath == score->replayPath
+						|| (si.IsInitialized() && si.MatchesScore(score))
+					)
+					{
+						replay = m_replayForPlayback;
+					}
+				}
+				if (!replay)
+				{
+					replay = Replay::Load(
+						score->replayPath,
+						(index == 0 && !m_replayForPlayback)?
 						Replay::ReplayType::Normal : Replay::ReplayType::NoInput
-				);
+					);
+				}
 
 				if (!replay)
 				{
@@ -412,26 +428,12 @@ public:
 
 				replay->AttachChartInfo(m_chartIndex);
 				replay->AttachScoreInfo(score);
-				/*
-				replay->SetHitWindow(HitWindow(
-					score->hitWindowPerfect,
-					score->hitWindowGood,
-					score->hitWindowHold,
-					score->hitWindowSlam
-				));
-				*/
 
 				m_scoreReplays.push_back(replay);
 
-				if (index == 0 && m_playingReplay)
+				if (index == 0 && m_isPlayingReplay && m_replayForPlayback == nullptr)
 				{
-					replay->StartPlaying();
-					m_scoring.SetReplayForPlayback(replay);
-
-					m_playOptions.playbackOptions.gaugeType = score->gaugeType;
-					m_playOptions.playbackOptions.gaugeOption = score->gaugeOption;
-					m_playOptions.playbackOptions.mirror = score->mirror;
-					m_hitWindow = replay->GetHitWindow();
+					m_replayForPlayback = replay;
 				}
 
 				index++;
@@ -441,11 +443,29 @@ public:
 					break;
 			}
 
-			if (m_playingReplay && m_scoreReplays.size() == 0)
+			if (m_isPlayingReplay && m_scoreReplays.size() == 0 && m_replayForPlayback == nullptr)
 			{
 				Log("Could not find replay to playback!", Logger::Severity::Error);
 				return false;
 			}
+		}
+
+		if (m_replayForPlayback)
+		{
+			auto& replay = m_replayForPlayback;
+			replay->InitializePlayback();
+			m_hitWindow = replay->GetHitWindow();
+			m_scoring.SetReplayForPlayback(replay);
+
+			auto& si = replay->GetScoreInfo();
+			if (si.IsInitialized())
+			{
+				m_playOptions.playbackOptions.gaugeType = si.gaugeType;
+				m_playOptions.playbackOptions.gaugeOption = si.gaugeOption;
+				m_playOptions.playbackOptions.mirror = si.mirror;
+			}
+			if (m_chartIndex && !replay->GetChartInfo().IsInitialized())
+				replay->AttachChartInfo(m_chartIndex);
 		}
 
         m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
@@ -1256,7 +1276,7 @@ public:
 			}
 			if (m_ended)
 			{
-				if (m_playingReplay)
+				if (m_isPlayingReplay)
 					m_scoring.SetScoreForReplay();
 				// Render Lua Outro
 				lua_getglobal(m_lua, "render_outro");
@@ -1700,7 +1720,7 @@ public:
 		}
 		else
 		{
-			if (m_playingReplay)
+			if (m_isPlayingReplay)
 				m_scoring.SetScoreForReplay();
 			FinishGame();
 		}
@@ -1716,7 +1736,7 @@ public:
 		}
 		else
 		{
-			if (m_playingReplay)
+			if (m_isPlayingReplay)
 				m_scoring.SetScoreForReplay();
 			FinishGame();
 		}
@@ -2003,9 +2023,9 @@ public:
 
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Score:  %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
-		if (m_playingReplay)
+		if (m_isPlayingReplay)
 		{
-			auto& replay = m_scoreReplays[0];
+			auto& replay = m_replayForPlayback;
 			auto rs = replay->CurrentScore();
 			auto rm = replay->CurrentMaxScore();
 
@@ -2408,7 +2428,7 @@ public:
 			if (code != SDL_SCANCODE_F8) return;
 		}
 
-		if ((m_isPracticeSetup && m_isPracticeSetupNavEnabled) || m_playingReplay)
+		if ((m_isPracticeSetup && m_isPracticeSetupNavEnabled) || m_isPlayingReplay)
 		{
 			assert(!IsMultiplayerGame());
 
@@ -2421,7 +2441,7 @@ public:
 			case SDL_SCANCODE_UP:
 			case SDL_SCANCODE_DOWN:
 			{
-				if (m_playingReplay && code == SDL_SCANCODE_UP)
+				if (m_isPlayingReplay && code == SDL_SCANCODE_UP)
 				{
 					// Use this to be kinder to the replay
 					m_audioPlayback.Advance(2000);
@@ -2712,10 +2732,14 @@ public:
 	}
 
 	// Needs to be called before AsyncLoad
-	void InitPlayReplay()
+	void InitPlayReplay(Replay* replay)
 	{
-		m_playingReplay = true;
+		m_isPlayingReplay = true;
 		m_scoring.autoplayInfo.replay = true;
+		if (replay)
+		{
+			m_replayForPlayback = replay;
+		}
 	}
 
 	void LoadPracticeSetupIndex()
@@ -3056,7 +3080,7 @@ public:
 	{
 		if (m_scoring.autoplayInfo.IsAutoplayButtons()) return false;
 		if (m_isPracticeSetup) return false;
-		if (m_playingReplay) return false;
+		if (m_isPlayingReplay) return false;
 
 		// GetPlaybackSpeed() returns 0 on end of a song
 		if (m_playOptions.playbackSpeed < 1.0f) return false;
@@ -3102,9 +3126,7 @@ public:
 	}
 	virtual Replay* GetCurrentReplay() const override
 	{
-		if (!m_playingReplay)
-			return nullptr;
-		return m_scoreReplays[0];
+		return m_replayForPlayback;
 	}
 	ChartIndex* GetChartIndex() override
 	{
@@ -3153,7 +3175,7 @@ public:
 		for (auto& replay: m_scoreReplays)
 		{
 			// If replaying, skip the index that we are replaying on
-			if (m_playingReplay && replay->IsPlaying()) {
+			if (m_isPlayingReplay && replay->IsPlaying()) {
 				replayIndex++;
 				continue;
 			}
@@ -3161,7 +3183,14 @@ public:
 			lua_newtable(L);
 
 			lua_pushstring(L, "maxScore");
-			lua_pushnumber(L, replay->GetScoreIndex()->score);
+			if (ScoreIndex* s = replay->GetScoreIndex())
+			{
+				lua_pushnumber(L, replay->GetScoreIndex()->score);
+			}
+			else
+			{
+				lua_pushnumber(L, 10000000);
+			}
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "currentScore");
@@ -3401,34 +3430,73 @@ public:
 		lua_settable(L, -3);
 
 		lua_pushstring(L, "replay");
-		if (m_playingReplay)
+		if (m_isPlayingReplay)
 		{
 			lua_newtable(L);
 
 			lua_pushstring(L, "score");
 			{
-				lua_newtable(L);
-				auto* score = m_scoreReplays[0]->GetScoreIndex();
-				pushFloatToTable("gauge", score->gauge);
-				
-				pushIntToTable("gauge_type", (uint32)score->gaugeType);
-				pushIntToTable("gauge_option", score->gaugeOption);
-				pushIntToTable("random", score->random);
-				pushIntToTable("mirror", score->mirror);
-				pushIntToTable("auto_flags", (uint32)score->autoFlags);
+				if (auto* score = m_replayForPlayback->GetScoreIndex())
+				{
+					lua_newtable(L);
+					pushFloatToTable("gauge", score->gauge);
 
-				pushStringToTable("name", score->userName);
-				pushStringToTable("uid", score->userId);
+					pushIntToTable("gauge_type", (uint32)score->gaugeType);
+					pushIntToTable("gauge_option", score->gaugeOption);
+					pushIntToTable("random", score->random);
+					pushIntToTable("mirror", score->mirror);
+					pushIntToTable("auto_flags", (uint32)score->autoFlags);
 
-				pushIntToTable("score", score->score);
-				pushIntToTable("perfects", score->crit);
-				pushIntToTable("goods", score->almost);
-				pushIntToTable("misses", score->miss);
-				pushIntToTable("timestamp", score->timestamp);
-				pushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
-				lua_pushstring(L, "hitWindow");
-				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(L);
-				lua_settable(L, -3);
+					pushStringToTable("name", score->userName);
+					pushStringToTable("uid", score->userId);
+
+					pushIntToTable("score", score->score);
+					pushIntToTable("perfects", score->crit);
+					pushIntToTable("goods", score->almost);
+					pushIntToTable("misses", score->miss);
+					pushIntToTable("timestamp", score->timestamp);
+					pushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
+					lua_pushstring(L, "hitWindow");
+					HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(L);
+					lua_settable(L, -3);
+				}
+				else if (m_replayForPlayback->GetScoreInfo().IsInitialized())
+				{
+					auto& score = m_replayForPlayback->GetScoreInfo();
+					lua_newtable(L);
+					pushFloatToTable("gauge", score.gauge);
+
+					pushIntToTable("gauge_type", (uint32)score.gaugeType);
+					pushIntToTable("gauge_option", score.gaugeOption);
+					pushIntToTable("random", score.random);
+					pushIntToTable("mirror", score.mirror);
+
+					lua_pushstring(L, "auto_flags");
+					lua_pushnil(L);
+					lua_settable(L, -3);
+
+					pushStringToTable("name", score.userName);
+					pushStringToTable("uid", score.userId);
+
+					pushIntToTable("score", score.score);
+					pushIntToTable("perfects", score.crit);
+					pushIntToTable("goods", score.almost);
+					pushIntToTable("misses", score.miss);
+					pushIntToTable("timestamp", score.timestamp);
+					// TODO fill this in
+					//pushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
+					lua_pushstring(L, "badge");
+					lua_pushnil(L);
+					lua_settable(L, -3);
+					lua_pushstring(L, "hitWindow");
+					m_replayForPlayback->GetHitWindow().ToLuaTable(L);
+					lua_settable(L, -3);
+
+				}
+				else
+				{
+					lua_pushnil(L);
+				}
 			}
 			lua_settable(L, -3);
 		}

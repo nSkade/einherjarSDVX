@@ -279,3 +279,41 @@ const ReplayJudgement* Replay::PopNextJudgement(int lane, bool score)
 	return ret;
 }
 
+bool ReplayScoreInfo::MatchesScore(const ScoreIndex* s)
+{
+	if (s->score != this->score
+		|| s->crit != this->crit
+		|| s->almost != this->almost
+		|| s->miss != this->miss
+		|| s->gauge != this->gauge)
+	{
+		return false;
+	}
+	return true;
+}
+
+ChartIndex* Replay::FindChart(MapDatabase* database) const
+{
+	if (!database)
+	{
+		database = new MapDatabase(true);
+		database->SetChartUpdateBehavior(g_gameConfig.GetBool(GameConfigKeys::TransferScoresOnChartUpdate));
+		database->FinishInit();
+		database->LoadDatabaseWithoutSearching();
+	}
+
+	String hash;
+	if (m_chartInfo.IsInitialized())
+		hash = m_chartInfo.hash;
+	else if (m_scoreIndex)
+		hash = m_scoreIndex->chartHash;
+	else
+	{
+		String path = Path::RemoveLast(this->filePath);
+		Path::RemoveLast(path, &hash);
+	}
+
+	ChartIndex* chart = database->FindFirstChartByHash(hash);
+
+	return chart;
+}

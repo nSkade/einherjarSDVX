@@ -216,7 +216,7 @@ void Scoring::SetScoreForReplay()
 
 	auto& scoreInfo = m_replay->GetScoreInfo();
 
-	if (m_replay->GetType() == Replay::ReplayType::Legacy || scoreInfo.maxHitScore == 0)
+	if (m_replay->GetType() == Replay::ReplayType::Legacy || !scoreInfo.IsInitialized() || scoreInfo.maxHitScore == 0)
 	{
 		// Can't really use the score index bc we need hitscore
 		currentHitScore = m_replay->CurrentScore();
@@ -228,10 +228,20 @@ void Scoring::SetScoreForReplay()
 		currentMaxScore = scoreInfo.maxHitScore;
 	}
 
-	categorizedHits[2] = score->crit;
-	categorizedHits[1] = score->almost;
-	categorizedHits[1] = score->miss;
-	GetTopGauge()->SetValue(score->gauge);
+	if (score)
+	{
+		categorizedHits[2] = score->crit;
+		categorizedHits[1] = score->almost;
+		categorizedHits[1] = score->miss;
+		GetTopGauge()->SetValue(score->gauge);
+	}
+	else if (scoreInfo.IsInitialized())
+	{
+		categorizedHits[2] = scoreInfo.crit;
+		categorizedHits[1] = scoreInfo.almost;
+		categorizedHits[1] = scoreInfo.miss;
+		GetTopGauge()->SetValue(scoreInfo.gauge);
+	}
 
 	// Legacy won't have this info
 	if (m_replay->GetType() != Replay::ReplayType::Legacy)

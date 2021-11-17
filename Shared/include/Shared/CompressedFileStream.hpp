@@ -60,5 +60,5 @@ public:
 		: CompressedFileStreamBase(file, false, level) {};
 	virtual size_t Serialize(void* data, size_t len);
 	// This must be called at the end of compressing
-	void FinishCompression();
+	bool FinishCompression();
 };

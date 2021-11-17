@@ -236,7 +236,7 @@ Test("CompressedFileSteam.CompressedReadWrite")
 
 		TestEnsure(fw->SerializeObject(data));
 
-		fw->FinishCompression();
+		TestEnsure(fw->FinishCompression());
 		file.Close();
 		delete fw;
 	}
@@ -276,7 +276,7 @@ Test("CompressedFileSteam.CompressedMultipleReadWrite")
 			TestEnsure(fw->SerializeObject(data));
 		}
 
-		fw->FinishCompression();
+		TestEnsure(fw->FinishCompression());
 		file.Close();
 		delete fw;
 	}
@@ -318,7 +318,7 @@ Test("CompressedFileSteam.MixedReadWrite")
 
 		TestEnsure(fw->SerializeObject(data));
 
-		fw->FinishCompression();
+		TestEnsure(fw->FinishCompression());
 		file.Close();
 		delete fw;
 	}

@@ -199,7 +199,11 @@ void GameConfig::InitDefaults()
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 	SetEnum<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay, AutoSaveReplaySettings::Highscore);
 	Set(GameConfigKeys::UseLegacyReplay, true);
+#ifdef ZLIB_FOUND
 	Set(GameConfigKeys::UseCompressedReplay, true);
+#else
+	Set(GameConfigKeys::UseCompressedReplay, false);
+#endif
 
 	Set(GameConfigKeys::EditorPath, "PathToEditor");
 	Set(GameConfigKeys::EditorParamsFormat, "%s");

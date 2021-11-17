@@ -15,8 +15,11 @@ bool Replay::Save(String path)
 	if (!replayFile.OpenWrite(path))
 		return false;
 	CompressedFileWriter fw(replayFile);
-	bool res = fw.SerializeObject(*this);
-	fw.FinishCompression();
+	bool res = fw.SerializeObject(*this) && fw.FinishCompression();
+	if (!res)
+		Logf("[replay] Failed to save replay for '%s'", Logger::Severity::Error, *this->m_chartInfo.title);
+	else
+		Logf("[replay] Replay for '%s' saved to '%s'", Logger::Severity::Info, *this->m_chartInfo.title, *path);
 	replayFile.Close();
 	return res;
 }
@@ -31,6 +34,7 @@ Replay* Replay::Load(String path, ReplayType type)
 	CompressedFileReader fr(replayFile);
 	if (!fr.SerializeObject(replay))
 	{
+		Logf("[replay] Failed to load replay '%s'", Logger::Severity::Error, *path);
 		delete replay;
 		replayFile.Close();
 		return nullptr;
@@ -122,16 +126,19 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 		if (!stream.SerializeObject(version) || version > REPLAY_VERSION)
 		{
 			// May not be backwards compatable so ignore it
+			Logf("[replay] Unable to open replay %s. This replay is too new for this version of USC", Logger::Severity::Error, *obj->filePath);
 			return false;
 		}
 
 		if (magic == COMPRESSED_REPLAY_MAGIC)
 		{
 			CompressedFileReader* cfr = dynamic_cast<CompressedFileReader*>(&stream);
-			if (!cfr)
+			if (!cfr || !cfr->StartCompression())
+			{
+
+				Logf("[replay] Unable to open replay '%s'. Compressed replays are not supported", Logger::Severity::Error, *obj->filePath);
 				return false;
-			if (!cfr->StartCompression())
-				return false;
+			}
 		}
 
 	}
@@ -141,9 +148,11 @@ bool Replay::StaticSerialize(BinaryStream& stream, Replay*& obj)
 		uint32 magic = REPLAY_MAGIC;
 
 		CompressedFileWriter* cfw = dynamic_cast<CompressedFileWriter*>(&stream);
+#ifdef ZLIB_FOUND
 		bool useCompression = g_gameConfig.GetBool(GameConfigKeys::UseCompressedReplay);
 		if (cfw && useCompression && cfw->InitCompression())
 			magic = COMPRESSED_REPLAY_MAGIC;
+#endif
 
 		stream << padding << magic << version;
 		if (!stream.IsOk())

@@ -491,7 +491,9 @@ protected:
 		EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
 		EnumSetting<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay, "Automatically save replay:");
 		ToggleSetting(GameConfigKeys::UseLegacyReplay, "Use legacy replay format");
+#ifdef ZLIB_FOUND
 		ToggleSetting(GameConfigKeys::UseCompressedReplay, "Use compressed replay format");
+#endif
 
 		ToggleSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the practice setup after the score screen is shown");
 

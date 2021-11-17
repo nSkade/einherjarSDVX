@@ -84,6 +84,7 @@ bool CompressedFileStreamBase::StartCompression()
 }
 CompressedFileStreamBase::~CompressedFileStreamBase()
 {
+#ifdef ZLIB_FOUND
 	if (m_z)
 	{
 		if (m_isReading)
@@ -98,6 +99,7 @@ CompressedFileStreamBase::~CompressedFileStreamBase()
 		delete[] m_buffer;
 		m_buffer = nullptr;
 	}
+#endif
 }
 
 // Since we only support going from uncompressed -> compressed we don't
@@ -157,11 +159,13 @@ size_t CompressedFileWriter::Serialize(void* data, size_t len)
 		return m_file->Write(data, len);
 
 #ifdef ZLIB_FOUND
+	bool ok = true;
+
 	assert(m_z);
 	m_z->next_in = (uint8*)data;
 	m_z->avail_in = len;
 
-	while(1)
+	while(ok)
 	{
 		// Write to start of buffer every time
 		m_z->next_out = m_buffer;
@@ -170,17 +174,24 @@ size_t CompressedFileWriter::Serialize(void* data, size_t len)
 		int ret = deflate(m_z, Z_NO_FLUSH);
 
 		size_t clen = m_bufferLen- m_z->avail_out;
-		if (clen != 0)
-			m_file->Write(m_buffer, clen);
+		for (size_t amt, pos = 0; ok && pos < clen; pos += amt)
+		{
+			amt = m_file->Write(m_buffer + pos, clen - pos);
+			if (amt == 0)
+				ok = false;
+		}
 
 		if (ret == Z_STREAM_END || ret == Z_BUF_ERROR)
 			break;
 
 		if (ret != Z_OK)
 		{
-			break;
+			ok = false;
 		}
 	}
+
+	if (!ok)
+		return 0;
 
 	return len - m_z->avail_in;
 #else
@@ -188,32 +199,38 @@ size_t CompressedFileWriter::Serialize(void* data, size_t len)
 #endif
 }
 
-void CompressedFileWriter::FinishCompression()
+bool CompressedFileWriter::FinishCompression()
 {
 	if (!m_useCompression)
-		return;
+		return true;
+
+	bool ok = true;
 
 #ifdef ZLIB_FOUND
 	assert(m_z);
 	assert(m_file);
 	m_z->next_in = nullptr;
 	m_z->avail_in = 0;
-	while (1)
+	while (ok)
 	{
 		m_z->next_out = m_buffer;
 		m_z->avail_out = m_bufferLen;
 		int ret = deflate(m_z, Z_FINISH);
 
 		size_t clen = m_bufferLen - m_z->avail_out;
-		if (clen != 0)
-			m_file->Write(m_buffer, clen);
+		for (size_t amt, pos = 0; ok && pos < clen; pos += amt)
+		{
+			amt = m_file->Write(m_buffer + pos, clen - pos);
+			if (amt == 0)
+				ok = false;
+		}
 
 		if (ret == Z_STREAM_END || ret == Z_BUF_ERROR)
 			break;
 
 		if (ret != Z_OK)
 		{
-			break;
+			ok = false;
 		}
 	}
 
@@ -226,6 +243,7 @@ void CompressedFileWriter::FinishCompression()
 	delete m_z;
 	m_z = nullptr;
 #endif
+	return ok;
 }
 
 CompressedFileWriter::~CompressedFileWriter()

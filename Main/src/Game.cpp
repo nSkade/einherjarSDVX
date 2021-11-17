@@ -2408,7 +2408,7 @@ public:
 			if (code != SDL_SCANCODE_F8) return;
 		}
 
-		if (m_isPracticeSetup && m_isPracticeSetupNavEnabled || m_playingReplay)
+		if ((m_isPracticeSetup && m_isPracticeSetupNavEnabled) || m_playingReplay)
 		{
 			assert(!IsMultiplayerGame());
 

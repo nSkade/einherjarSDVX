@@ -808,7 +808,7 @@ private:
 		if (!valid || strlen(data) == 0)
 			return;
 
-		long num = strtol(data, NULL, NULL);
+		long num = strtol(data, NULL, 10);
 		if (num <= 0)
 			return g_gameWindow->ShowMessageBox("Prune Extra Replays","Invalid number entered", 0);
 		m_removeMissingScores = g_gameWindow->ShowYesNoMessage("Prune Extra Replays",
@@ -844,7 +844,7 @@ private:
 		const auto& end = m_mapDatabase->GetChartMap().end();
 		for (; m_replayPruneIter != end && count < 100; m_replayPruneIter++)
 		{
-			int numSaved = 0;
+			uint32 numSaved = 0;
 			m_chartsProcessed++;
 			const auto* chart = m_replayPruneIter->second;
 			Vector<String> saved(m_numReplaysToKeep, "");

@@ -115,7 +115,7 @@ public:
 		: BasicWindow(title), m_text(body) {};
 	bool Init() override;
 	void DrawWindow() override;
-	void SetText(String& s) { m_nextText = s; }
+	void SetText(String s) { m_nextText = s; }
 
 protected:
 	String m_text;

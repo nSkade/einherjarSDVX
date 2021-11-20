@@ -457,6 +457,13 @@ public:
 			m_hitWindow = replay->GetHitWindow();
 			m_scoring.SetReplayForPlayback(replay);
 
+			auto& offs = replay->GetOffsets();
+			if (offs.IsInitialized())
+			{
+				m_globalOffset = offs.global;
+				m_songOffset = offs.song;
+			}
+
 			auto& si = replay->GetScoreInfo();
 			if (si.IsInitialized())
 			{

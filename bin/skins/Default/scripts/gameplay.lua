@@ -435,7 +435,7 @@ function render(deltaTime)
         then play_mode = "Practice Setup"
     elseif gameplay.autoplay
         then play_mode = "Autoplay"
-    elseif gameplay.replay ~= nil and gameplay.score ~= nil then
+    elseif gameplay.replay ~= nil and gameplay.replay.score ~= nil then
         local name = gameplay.replay.score.name
         local timestamp = gameplay.replay.score.timestamp
         if name ~= "" then

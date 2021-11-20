@@ -201,6 +201,7 @@ public:
 		m_offsets = offs;
 		m_offsets.SetDone();
 	}
+	ReplayOffsets& GetOffsets() { return m_offsets; }
 
 	void DoneInit()
 	{
@@ -228,8 +229,6 @@ public:
 	uint32 CurrentMaxScore() const { return m_currentMaxScore; }
 
 	uint32 CurrentScore() const { return m_currentScore; }
-
-	uint32 GetMaxChain() const { return m_maxChain; }
 
 	// Put this replay into playback mode
 	void InitializePlayback()
@@ -264,22 +263,20 @@ public:
 protected:
 	ReplayType m_type = ReplayType::Normal;
 
+	/* Values saved to file */
 	ReplayChartInfo m_chartInfo;
 	ReplayScoreInfo m_scoreInfo;
-
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 	ReplayOffsets m_offsets;
-
-	uint32 m_maxChain = 0;
-
 	Vector<ReplayJudgement> m_judgementEvents;
 	Vector<ReplayInput> m_inputEvents;
+	/* End file values */
+
 	bool m_initialized = false;
 
 	ScoreIndex* m_scoreIndex = nullptr;
 
 	// Playback related vars
-
 	bool m_isPlaying = false;
 	int32 m_currentScore = 0;
 	int32 m_currentMaxScore = 0; // May be wrong for some legacy replays

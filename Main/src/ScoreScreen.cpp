@@ -247,6 +247,7 @@ private:
 		auto& scoreInfo = replay->GetScoreInfo();
 		scoreInfo.maxHitScore = m_maxHitScore;
 		scoreInfo.maxHitScore = m_hitScore;
+		scoreInfo.chain = m_maxCombo;
 		replay->DoneInit();
 
 		bool good = replay->Save(m_replayPath);

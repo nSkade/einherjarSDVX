@@ -22,6 +22,13 @@ Scoring::~Scoring()
 void Scoring::SetReplayForPlayback(Replay* replay)
 {
 	m_replay = replay;
+	if (!replay)
+		return;
+	auto& offs = m_replay->GetOffsets();
+	if (!offs.IsInitialized())
+		return;
+	m_inputOffset = offs.input;
+	m_laserOffset = offs.laser;
 }
 
 ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
@@ -147,6 +154,10 @@ void Scoring::Reset(const MapTimeRange& range)
 	// Get input offset
 	m_inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
 	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset) + m_offsetLaserConstant;
+
+	if (m_replay)
+		SetReplayForPlayback(m_replay);
+
 	// Get bounce guard duration
 	m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
 
@@ -241,12 +252,13 @@ void Scoring::SetScoreForReplay()
 		categorizedHits[1] = scoreInfo.almost;
 		categorizedHits[1] = scoreInfo.miss;
 		GetTopGauge()->SetValue(scoreInfo.gauge);
-	}
-
-	// Legacy won't have this info
-	if (m_replay->GetType() != Replay::ReplayType::Legacy)
-	{
-		maxComboCounter = m_replay->GetMaxChain();
+		// Legacy won't have this info
+		if (m_replay->GetType() != Replay::ReplayType::Legacy)
+		{
+			auto combo = scoreInfo.chain;
+			if (combo != 0) // Replay may be broken
+				maxComboCounter = combo;
+		}
 	}
 }
 
@@ -285,7 +297,7 @@ void Scoring::Tick(float deltaTime)
 					MultiObjectState* hold = *tick->object;
 					MapTime tickEnd = tickStart + hold->hold.duration;
 
-					bool isCurrent = tickStart <= curTime && tickEnd >= curTime;
+					bool isCurrent = tickStart <= curTime && tickEnd + this->hitWindow.miss >= curTime;
 
 					bool autoplayHold = (autoplayInfo.IsAutoplayButtons()) && isCurrent;
 					if (m_replay && isCurrent)
@@ -929,7 +941,7 @@ void Scoring::m_UpdateTicks()
 				if (tick->HasFlag(TickFlags::End))
 				{
 					OnHoldLeave.Call(button);
-					m_ReleaseHoldObject(tick->object);
+					//m_ReleaseHoldObject(tick->object);
 				}
 
 				processed = true;

@@ -1271,6 +1271,7 @@ public:
 					// When we are in multiplayer, just report the song and exit instead
 					m_multiplayer->SetSelectedMap(folder, GetCurrentSelectedChart());
 
+					m_suspended = true;
 					g_application->RemoveTickable(this);
 					return;
 				}

@@ -817,6 +817,8 @@ void Application::m_InitLightPlugins()
 	Vector<FileInfo> plugins = Files::ScanFiles("LightPlugins", "so");
 #endif
 
+	Logf("Found %d light plugins.", Logger::Severity::Info, plugins.size());
+
 	auto verifyPlugin = [this](const LightPlugin& lp)
 	{
 		return lp.Close != nullptr &&
@@ -829,6 +831,7 @@ void Application::m_InitLightPlugins()
 
 	for (auto& p : plugins)
 	{
+		SDL_ClearError();
 		void* handle = SDL_LoadObject(*p.fullPath);
 		if (handle)
 		{
@@ -842,7 +845,13 @@ void Application::m_InitLightPlugins()
 			if (verifyPlugin(lp))
 				m_lightPlugins.Add(lp.GetName(), lp);
 			else
+			{
+				Logf("Failed to verify light plugin \"%s\": %s", Logger::Severity::Warning, p.fullPath, SDL_GetError());
 				SDL_UnloadObject(handle);
+			}
+		}
+		else {
+			Logf("Failed to load light plugin \"%s\": %s", Logger::Severity::Warning, p.fullPath, SDL_GetError());
 		}
 	}
 

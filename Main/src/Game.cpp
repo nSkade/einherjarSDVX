@@ -2427,7 +2427,7 @@ public:
 
 	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
-		if (!m_isPracticeSetup && g_gameConfig.GetBool(GameConfigKeys::DisableNonButtonInputsDuringPlay))
+		if (!m_isPracticeSetup && !m_isPlayingReplay && g_gameConfig.GetBool(GameConfigKeys::DisableNonButtonInputsDuringPlay))
 			return;
 
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())

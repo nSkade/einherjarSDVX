@@ -1033,6 +1033,7 @@ public:
 		g_input.OnButtonPressed.Add(this, &SongSelect_Impl::m_OnButtonPressed);
 		g_input.OnButtonReleased.Add(this, &SongSelect_Impl::m_OnButtonReleased);
 		g_gameWindow->OnMouseScroll.Add(this, &SongSelect_Impl::m_OnMouseScroll);
+		g_gameWindow->OnFileDropped.Add(this, &SongSelect_Impl::m_OnFileDropped);
 
 		if (!m_selectionWheel->Init())
 			return false;
@@ -1192,6 +1193,7 @@ public:
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_input.OnButtonReleased.RemoveAll(this);
 		g_gameWindow->OnMouseScroll.RemoveAll(this);
+		g_gameWindow->OnFileDropped.RemoveAll(this);
 
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
@@ -1422,6 +1424,16 @@ public:
 			default:
 			break;
 		}
+	}
+	void m_OnFileDropped(const char* file)
+	{
+		if (IsSuspended())
+			return;
+		String path = file;
+		String ext = Path::GetExtension(path);
+		if (ext != "urf")
+			return;
+		g_application->LaunchReplay(path, &m_mapDatabase);
 	}
 	void m_OnMouseScroll(int32 steps)
 	{

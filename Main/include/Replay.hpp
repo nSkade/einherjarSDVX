@@ -257,7 +257,7 @@ public:
 
 	const ReplayJudgement* FindNextJudgement(int lane, MapTime future = 0) const;
 
-	ChartIndex* FindChart(MapDatabase* database = nullptr) const;
+	ChartIndex* FindChart(MapDatabase** databaseHandle = nullptr) const;
 
 	String filePath = "";
 protected:

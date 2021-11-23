@@ -1405,7 +1405,7 @@ class Game *Application::LaunchMap(const String &mapPath)
 	g_transition->TransitionTo(game);
 	return game;
 }
-class Game* Application::LaunchReplay(const String& replayPath)
+class Game* Application::LaunchReplay(const String& replayPath, MapDatabase** database /*= nullptr*/)
 {
 	Replay* replay = Replay::Load(replayPath);
 	if (!replay)
@@ -1413,7 +1413,7 @@ class Game* Application::LaunchReplay(const String& replayPath)
 		g_gameWindow->ShowMessageBox("Failed to load replay", "Failed to load replay file, it may be corrupted or for a newer version of USC", 0);
 		return nullptr;
 	}
-	ChartIndex* chart = replay->FindChart();
+	ChartIndex* chart = replay->FindChart(database);
 	if (!chart)
 	{
 		g_gameWindow->ShowMessageBox("Failed to load replay", "Could not find a matching chart for this replay", 0);

@@ -292,8 +292,12 @@ bool ReplayScoreInfo::MatchesScore(const ScoreIndex* s)
 	return true;
 }
 
-ChartIndex* Replay::FindChart(MapDatabase* database) const
+ChartIndex* Replay::FindChart(MapDatabase** databaseHandle) const
 {
+	MapDatabase* database = nullptr;
+	if (databaseHandle)
+		database = *databaseHandle;
+
 	if (!database)
 	{
 		database = new MapDatabase(true);
@@ -314,6 +318,9 @@ ChartIndex* Replay::FindChart(MapDatabase* database) const
 	}
 
 	ChartIndex* chart = database->FindFirstChartByHash(hash);
+
+	if (databaseHandle)
+		*databaseHandle = database;
 
 	return chart;
 }

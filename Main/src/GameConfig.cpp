@@ -218,7 +218,7 @@ void GameConfig::InitDefaults()
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 	SetEnum<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay, AutoSaveReplaySettings::Highscore);
-	Set(GameConfigKeys::UseLegacyReplay, true);
+	Set(GameConfigKeys::UseLegacyReplay, false);
 #ifdef ZLIB_FOUND
 	Set(GameConfigKeys::UseCompressedReplay, true);
 #else

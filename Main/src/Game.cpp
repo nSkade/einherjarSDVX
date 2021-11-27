@@ -760,7 +760,7 @@ public:
 		m_hiddenObjects.clear();
 	}
 
-	virtual void Tick(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (m_ended && IsSuspended()) return;
 
@@ -894,7 +894,7 @@ public:
 		}
 	}
 
-	virtual void Render(float deltaTime) override
+	void Render(float deltaTime) override
 	{
 		if (m_ended && IsSuspended()) return;
 
@@ -1256,11 +1256,11 @@ public:
 		m_permanentlyHiddenObjects.insert(obj);
 	}
 
-	virtual void OnSuspend() override
+	void OnSuspend() override
 	{
 	}
 
-	virtual void OnRestore() override
+	void OnRestore() override
 	{
 		if (m_ended && m_isPracticeMode)
 		{

@@ -614,6 +614,10 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	float laserRanges[2] = {1.0f, 1.0f};
 	MapTime lastLaserPointTime[2] = {0, 0};
 
+	// Stops will be applied after the scroll speed graph is constructed.
+	// Tuple of (stopBegin, stopEnd, isOverlappingStop)
+	Vector<std::tuple<MapTime, MapTime, bool>> stops;
+
 	MapTime lastMapTime = 0;
 	uint32 currentTick = 0;
 
@@ -925,14 +929,17 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			}
 			else if (p.first == "stop")
 			{
-				MapTime stopDuration = Math::RoundToInt((atol(*p.second) / 192.0f) * (currTimingPoint->beatDuration) * 4);
+				// Stops will be applied after the scroll speed graph is constructed.
+				const MapTime stopDuration = Math::RoundToInt((atol(*p.second) / 192.0f) * (currTimingPoint->beatDuration) * 4);
+				bool isOverlappingStop = false;
 
-				LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
+				if (!stops.empty() && mapTime < std::get<1>(*stops.rbegin()))
+				{
+					isOverlappingStop = true;
+					std::get<2>(*stops.rbegin()) = true;
+				}
 
-				const double endValue = scrollSpeedGraph.ValueAt(mapTime + stopDuration);
-				scrollSpeedGraph.Extend(mapTime);
-				scrollSpeedGraph.Insert(mapTime, 0.0);
-				scrollSpeedGraph.Insert(mapTime + stopDuration, LineGraph::Point{0.0, endValue});
+				stops.Add(std::make_tuple(mapTime, mapTime + stopDuration, isOverlappingStop));
 			}
 			else if (p.first == "scroll_speed")
 			{
@@ -1340,7 +1347,30 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		currentTick += static_cast<uint32>((tickResolution * 4 * currTimingPoint->numerator / currTimingPoint->denominator) / block.ticks.size());
 	}
 
-	//Add chart end event
+	// Apply stops
+	for (const auto& stop : stops)
+	{
+		const MapTime stopBegin = std::get<0>(stop);
+		const MapTime stopEnd = std::get<1>(stop);
+		const bool isOverlapping = std::get<2>(stop);
+
+		LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
+
+		// In older versions of USC there was a bug where overlapping stop regions made notes scrolling backwards.
+		// This bug was utilized as gimmicks for several charts, so for backwards compatibility this bug is reimplemented.
+		// (i.e. the chart would simply not move)
+
+		if (isOverlapping)
+		{
+			scrollSpeedGraph.RangeAdd(stopBegin, stopEnd, -1.0);
+		}
+		else
+		{
+			scrollSpeedGraph.RangeSet(stopBegin, stopEnd, 0.0);
+		}
+	}
+
+	// Add chart end event
 	EventObjectState *evt = new EventObjectState();
 	evt->time = lastMapTime + 2000;
 	evt->key = EventKey::ChartEnd;

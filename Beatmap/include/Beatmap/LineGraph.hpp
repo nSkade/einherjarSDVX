@@ -34,6 +34,9 @@ public:
     void Insert(MapTime time, const Point& point);
     void Insert(MapTime time, const std::string& point);
 
+    void RangeSet(MapTime begin, MapTime end, double value);
+    void RangeAdd(MapTime begin, MapTime end, double delta);
+
     /// Returns the value being extended.
     double Extend(MapTime time);
 

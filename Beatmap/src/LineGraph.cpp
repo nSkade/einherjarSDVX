@@ -47,6 +47,49 @@ void LineGraph::Insert(MapTime mapTime, const std::string& point)
     }
 }
 
+void LineGraph::RangeSet(MapTime begin, MapTime end, double value)
+{
+    if (begin >= end) return;
+
+    const double beginValue = ValueAt(begin);
+    const double endValue = ValueAt(end);
+
+    const auto beginIt = m_points.lower_bound(begin);
+    const auto endIt = m_points.upper_bound(end);
+
+    for (auto it = beginIt; it != endIt; it = m_points.erase(it));
+
+    Insert(begin, LineGraph::Point{beginValue, value});
+    Insert(end, LineGraph::Point{value, endValue});
+}
+
+void LineGraph::RangeAdd(MapTime begin, MapTime end, double delta)
+{
+    if (begin >= end) return;
+
+    const double beginValue = ValueAt(begin);
+    const double endValue = ValueAt(end);
+
+    const auto beginIt = m_points.upper_bound(begin);
+    const auto endIt = m_points.lower_bound(end);
+
+    for (auto it = beginIt; it != endIt; ++it)
+    {
+        it->second.value.first += delta;
+        it->second.value.second += delta;
+    }
+
+    Insert(begin, LineGraph::Point{beginValue, beginValue + delta});
+
+    if (endIt != m_points.end() && endIt->first == end)
+    {
+        endIt->second.value.first += delta;
+    } else
+    {
+        Insert(end, LineGraph::Point{endValue + delta, endValue});
+    }
+}
+
 double LineGraph::Extend(MapTime time)
 {
     if (m_points.empty())

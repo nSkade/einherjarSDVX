@@ -1842,6 +1842,7 @@ public:
 
 		textPos.y += RenderText(Utility::Sprintf("Track Zoom Top: %f", m_camera.pLanePitch), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Track Zoom Bottom: %f", m_camera.pLaneZoom), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Scroll Speed: %f", m_playback.GetScrollSpeed()), textPos).y;
 
 		Vector2 buttonStateTextPos = Vector2(g_resolution.x - 200.0f, 100.0f);
 		RenderText(g_input.GetControllerStateString(), buttonStateTextPos);

@@ -1357,8 +1357,9 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
 
 		// In older versions of USC there was a bug where overlapping stop regions made notes scrolling backwards.
-		// This bug was utilized as gimmicks for several charts, so for backwards compatibility this bug is reimplemented.
-		// (i.e. the chart would simply not move)
+		// In other words, stops weren't actually setting the scroll speed to 0, but instead decreased the speed by 1.
+		// This bug was utilized as gimmicks for several charts, so for backwards compatibility this behavior is reimplemented when stops are overlapping.
+		// For individual stops, scroll speed will actually set to 0 to make those behave nicely with manual scroll speed modifiers.
 
 		if (isOverlapping)
 		{

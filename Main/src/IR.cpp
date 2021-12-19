@@ -2,6 +2,7 @@
 #include "IR.hpp"
 #include "GameConfig.hpp"
 
+
 static void PopulateScoreJSON(nlohmann::json& json, const ScoreIndex& score, const BeatmapSettings& map)
 {
     json["score"] = {
@@ -40,6 +41,43 @@ static void PopulateScoreJSON(nlohmann::json& json, const ScoreIndex& score, con
         {"level", map.level},
         {"bpm", map.bpm}
     };
+}
+
+static void PostReplayOnThread(String identifier, String replayPath)
+{
+    String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/replays";
+
+    cpr::Response r = cpr::Post(cpr::Url{ host },
+                        cpr::Header{ {"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)} }, //can't give the json header here so whatever
+                        cpr::Multipart{ {"identifier", identifier},
+                                        {"replay", cpr::File{replayPath}} });
+
+    if (r.status_code != 200)
+    {
+        Logf("Posting replay %s (from %s) failed with code %d", Logger::Severity::Warning, identifier, replayPath, r.status_code);
+    }
+    else
+    {
+        try {
+            nlohmann::json res = nlohmann::json::parse(r.text);
+
+            if (!IR::ValidateReturn(res))
+            {
+                Logf("IR returned malformed body when posting replay %s (from %s).", Logger::Severity::Warning, identifier, replayPath);
+                return;
+            }
+
+            if (res["statusCode"] != IR::ResponseState::Success)
+            {
+                Logf("Posting replay %s (from %s) failed with code %d: %s.", Logger::Severity::Warning, identifier, replayPath, res["statusCode"].get<int>(), res["description"].get<String>());
+            }
+        }
+        catch (nlohmann::json::parse_error& e) {
+            Logf("Parsing JSON returned when posting replay %s (from %s) failed.", Logger::Severity::Warning, identifier, replayPath);
+        }
+    }
+    
+    return;
 }
 
 static cpr::Header CommonHeader()
@@ -98,14 +136,10 @@ namespace IR {
                                              {"n", std::to_string(n)}});
     }
 
-    cpr::AsyncResponse PostReplay(String identifier, String replayPath)
+    void PostReplay(String identifier, String replayPath)
     {
-        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/replays";
-
-        return cpr::PostAsync(cpr::Url{host},
-                              cpr::Header{{"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)}}, //can't give the json header here so whatever
-                              cpr::Multipart{{"identifier", identifier},
-                                             {"replay", cpr::File{replayPath}}});
+        Thread m_requestThread = Thread(&PostReplayOnThread, identifier, replayPath);
+        m_requestThread.detach();
     }
 
     bool ValidateReturn(const nlohmann::json& json)
@@ -115,7 +149,7 @@ namespace IR {
 
         if(json.find("description") == json.end()) return false;
 
-        if(json["statusCode"] == 20)
+        if(json["statusCode"] >= 20 && json["statusCode"] <= 29)
         {
             if(json.find("body") == json.end()) return false;
         }
@@ -132,8 +166,6 @@ namespace IR {
 
         if(json["statusCode"] == 20)
         {
-            if(json.find("body") == json.end()) return false;
-
             if(json["body"].find("adjacentAbove") == json["body"].end()) return false;
             if(!json["body"]["adjacentAbove"].is_array()) return false;
 

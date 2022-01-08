@@ -882,6 +882,7 @@ bool Application::m_Init()
 		{
 			if (cl == "-convertmaps")
 			{
+				// Note: this feature should be re-implemented. See `Beatmap.cpp`.
 				m_allowMapConversion = true;
 			}
 			else if (cl == "-mute")

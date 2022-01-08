@@ -900,7 +900,7 @@ public:
 	}
 
 
-	virtual void OnKeyPressed(SDL_Scancode code, int32 delta) override
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
@@ -933,10 +933,10 @@ public:
 			lua_settop(m_lua, 0);
 		}
 	}
-	virtual void OnKeyReleased(SDL_Scancode code, int32 delta) override
+	void OnKeyReleased(SDL_Scancode code, int32 delta) override
 	{
 	}
-	virtual void Render(float deltaTime) override
+	void Render(float deltaTime) override
 	{
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
@@ -956,7 +956,7 @@ public:
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Render(deltaTime);
 	}
-	virtual void Tick(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (!m_hasScreenshot && m_hasRendered && !IsSuspended())
 		{

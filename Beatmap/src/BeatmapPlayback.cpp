@@ -22,10 +22,12 @@ bool BeatmapPlayback::Reset(MapTime initTime, MapTime start)
 	m_playRange = { start, start };
 
 	m_currObject = m_beatmap->GetFirstObjectState();
-	m_currLaserObject = m_beatmap->GetFirstObjectState();
-	m_currAlertObject = m_beatmap->GetFirstObjectState();
+	m_currObject = m_SelectHitObject(std::max(initTime, start), true);
 
-	m_currentTiming = m_beatmap->GetFirstTimingPoint();
+	m_currLaserObject = m_currObject;
+	m_currAlertObject = m_currObject;
+
+	m_currentTiming = m_beatmap->GetTimingPoint(initTime);
 	m_currentLaneTogglePoint = m_beatmap->GetFirstLaneTogglePoint();
 
 	m_currentTrackRollBehaviour = TrackRollBehaviour::Normal;
@@ -349,9 +351,19 @@ void BeatmapPlayback::GetObjectsInViewRange(float numBeats, Vector<ObjectState*>
 	MapTime currRefTime = m_playbackTime;
 	float currBeats = 0.0f;
 
-	for (Beatmap::ObjectsIterator obj = m_currObject; !IsEndObject(obj) && m_playRange.Includes((*obj)->time); ++obj)
+	for (Beatmap::ObjectsIterator obj = m_currObject; !IsEndObject(obj); ++obj)
 	{
 		const MapTime objTime = (*obj)->time;
+
+		if (!m_playRange.Includes(objTime))
+		{
+			if (m_playRange.HasEnd() && objTime >= m_playRange.end)
+			{
+				break;
+			}
+
+			continue;
+		}
 
 		if (!IsEndTiming(tp_next) && tp_next->time <= objTime)
 		{

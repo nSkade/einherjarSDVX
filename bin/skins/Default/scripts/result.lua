@@ -46,8 +46,11 @@ local hitHistogram = {}
 local hitMinDelta = 0
 local hitMaxDelta = 0
 
-local hitWindowPerfect = 46
-local hitWindowGood = 92
+local NORMAL_HIT_WINDOW_PERFECT = 46
+local NORMAL_HIT_WINDOW_GOOD = 150
+
+local hitWindowPerfect = NORMAL_HIT_WINDOW_PERFECT
+local hitWindowGood = NORMAL_HIT_WINDOW_GOOD
 
 local clearTextBase = "" -- Used to determind the type of clear
 local clearText = ""
@@ -128,7 +131,6 @@ function getScoreBadgeDesc(s)
     elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
         return string.format("%d-%d", s.goods, s.misses)
     end
-    return ""
 end
 
 result_set = function()
@@ -279,8 +281,8 @@ result_set = function()
 
     hasHitStat = result.noteHitStats ~= nil and #result.noteHitStats > 0
 
-    hitWindowPerfect = 46
-    hitWindowGood = 92
+    hitWindowPerfect = NORMAL_HIT_WINDOW_PERFECT
+    hitWindowGood = NORMAL_HIT_WINDOW_GOOD
     critText = "CRIT"
     nearText = "NEAR"
 
@@ -288,7 +290,7 @@ result_set = function()
         hitWindowPerfect = result.hitWindow.perfect
         hitWindowGood = result.hitWindow.good
 
-        if hitWindowPerfect ~= 46 or hitWindowGood ~= 92 then
+        if hitWindowPerfect ~= NORMAL_HIT_WINDOW_PERFECT or hitWindowGood ~= NORMAL_HIT_WINDOW_GOOD then
             critText = string.format("%02dms CRIT", hitWindowPerfect)
             nearText = string.format("%02dms NEAR", hitWindowGood)
         end
@@ -439,7 +441,7 @@ draw_ir = function(full)
                 gfx.BeginPath()
                 gfx.FontSize(15)
                 gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_BOTTOM)
-                gfx.Text("todo", 55, 52)
+                gfx.Text(s.badgeDesc, 55, 52)
             end
         end
 

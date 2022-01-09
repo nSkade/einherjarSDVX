@@ -131,6 +131,7 @@ function getScoreBadgeDesc(s)
     elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
         return string.format("%d-%d", s.goods, s.misses)
     end
+    return ""
 end
 
 result_set = function()

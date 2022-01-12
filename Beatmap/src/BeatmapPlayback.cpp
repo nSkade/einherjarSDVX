@@ -22,12 +22,11 @@ bool BeatmapPlayback::Reset(MapTime initTime, MapTime start)
 	m_playRange = { start, start };
 
 	m_currObject = m_beatmap->GetFirstObjectState();
-	m_currObject = m_SelectHitObject(std::max(initTime, start), true);
 
 	m_currLaserObject = m_currObject;
 	m_currAlertObject = m_currObject;
 
-	m_currentTiming = m_beatmap->GetTimingPoint(initTime);
+	m_currentTiming = m_beatmap->GetFirstTimingPoint();
 	m_currentLaneTogglePoint = m_beatmap->GetFirstLaneTogglePoint();
 
 	m_currentTrackRollBehaviour = TrackRollBehaviour::Normal;

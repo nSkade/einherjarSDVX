@@ -1,5 +1,5 @@
 name: Build
-on: [push]
+on: [push, workflow_dispatch]
 jobs:
     windows_build:
         name: Windows build

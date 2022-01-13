@@ -75,7 +75,7 @@ jobs:
                 chmod +x bin/usc-game.AppImage
                 rm bin/usc-game bin/Tests.*
             - name: Pack everything into .tar.gz archive
-              run: cd bin && tar -czvf ../Game_linux_AppImage.tar.gz bin
+              run: cd bin && tar -czvf ../Game_linux_AppImage.tar.gz *
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:

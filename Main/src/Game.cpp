@@ -1804,64 +1804,117 @@ public:
 			return Vector2(0, 12);
 		};
 
-		//Vector2 canvasRes = GUISlotBase::ApplyFill(FillMode::Fit, Vector2(640, 480), Rect(0, 0, g_resolution.x, g_resolution.y)).size;
-		//Vector2 topLeft = Vector2(g_resolution / 2 - canvasRes / 2);
-		//Vector2 bottomRight = topLeft + canvasRes;
-		//topLeft.y = Math::Min(topLeft.y, g_resolution.y * 0.2f);
-
-		const BeatmapSettings& bms = m_beatmap->GetMapSettings();
 		const TimingPoint& tp = m_playback.GetCurrentTimingPoint();
-		//Vector2 textPos = topLeft + Vector2i(5, 0);
+
 		Vector2 textPos = Vector2i(5, 0);
-		textPos.y += RenderText(bms.title, textPos).y;
-		textPos.y += RenderText(bms.artist, textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("%.2f FPS", g_application->GetRenderFPS()), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Offset (ms): Global %d, Song %d, Audio %d (%d)",
-			m_globalOffset, m_songOffset, GetAudioOffset(), g_audio->audioLatency), textPos).y;
 
-		float currentBPM = (float)(60000.0 / tp.beatDuration);
-		textPos.y += RenderText(Utility::Sprintf("BPM: %.1f | Time Sig: %d/%d", currentBPM, tp.numerator, tp.denominator), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Hit Window: p=%d g=%d h=%d s=%d m=%d",
-			m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.slam, m_scoring.hitWindow.miss), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos).y;
-		if (IsPartialPlay())
-			textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
-
-		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
-		Gauge* gauge = m_scoring.GetTopGauge();
-
-		if (gauge)
+		// Chart info
 		{
-			textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+			if (m_chartIndex)
+			{
+				textPos.y += RenderText(Utility::Sprintf("ChartHash: %s", m_chartIndex->hash), textPos, Color::White).y;
+				textPos.y += RenderText(Utility::Sprintf(
+					"ChartIndex: title=\"%s\" diff=\"%s\" lv=%d a=\"%s\" e=\"%s\"",
+					m_chartIndex->title, m_chartIndex->diff_name, m_chartIndex->level, m_chartIndex->artist, m_chartIndex->effector
+				), textPos, Color::White).y;
+			}
+
+			const BeatmapSettings& bms = m_beatmap->GetMapSettings();
+			textPos.y += RenderText(Utility::Sprintf(
+				"Beatmap: title=\"%s\" diff=%hhd lv=%d a=\"%s\" e=\"%s\"",
+				bms.title, bms.difficulty, bms.level, bms.artist, bms.effector
+			), textPos, Color::White).y;
 		}
 
-		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
-			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
+		// Playback info
+		{
+			textPos.y += RenderText(Utility::Sprintf(
+				"Offset (ms): global=%d song=%d temp=%d | audio=%d (latency=%d)",
+				m_globalOffset, m_songOffset, m_tempOffset, GetAudioOffset(), g_audio->audioLatency
+			), textPos, Color::Yellow).y;
 
-		textPos.y += RenderText(Utility::Sprintf("Track Zoom Top: %f", m_camera.pLanePitch), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Track Zoom Bottom: %f", m_camera.pLaneZoom), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Scroll Speed: %f", m_playback.GetScrollSpeed()), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos, Color::Yellow).y;
+
+			for (const String& line : m_playback.GetStateString())
+			{
+				textPos.y += RenderText(line, textPos, Color::Cyan).y;
+			}
+
+			const float viewRange = m_track ? m_track->GetViewRange() : -1.0f;
+			textPos.y += RenderText(Utility::Sprintf("SpeedMod: hi=%.3f mod=%.3f | ViewRange: %.4f", m_hispeed, m_modSpeed, viewRange), textPos, Color::Yellow).y;
+
+			if (IsPartialPlay())
+			{
+				textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos, Color::Magenta).y;
+			}
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Playback speeed: %.3f (option set to %.3f)", GetPlaybackSpeed(), m_playOptions.playbackSpeed
+			), textPos, m_playOptions.playbackSpeed < 1.0f ? Color::Magenta : Color::Yellow).y;
+		}
+
+		// Input and scoring info
+		{
+			if (!IsStorableScore())
+			{
+				String notStorableReason = "Other";
+
+				if (m_isPracticeSetup)
+				{
+					notStorableReason = "PracticeSetup";
+				}
+				else if (m_scoring.autoplayInfo.IsAutoplayButtons())
+				{
+					notStorableReason = "Autoplay(";
+
+					if (m_scoring.autoplayInfo.autoplay)
+					{
+						notStorableReason += "autoplay,";
+					}
+
+					if (m_scoring.autoplayInfo.autoplayButtons)
+					{
+						notStorableReason += "buttons,";
+					}
+
+					notStorableReason += ")";
+				}
+
+				textPos.y += RenderText(Utility::Sprintf("Score not storable: %s", notStorableReason), textPos, Color::Magenta).y;
+			}
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Hit Window: p=%d g=%d h=%d s=%d m=%d",
+				m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.slam, m_scoring.hitWindow.miss
+			), textPos, m_scoring.hitWindow <= HitWindow::NORMAL ? Color{1.0f, 1.0f, 0.5f, 1.0f} : Color::Magenta).y;
+
+			textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Score: %d/%d (Max: %d) = %d",
+				m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore, m_scoring.CalculateCurrentScore()
+			), textPos).y;
+
+
+			if (const Gauge* gauge = m_scoring.GetTopGauge())
+			{
+				textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+			}
+		}
+
+		// Camera and rendering info
+		{
+			textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
+				m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
+
+			textPos.y += RenderText(Utility::Sprintf("Track Zoom: top=%.6f bottom=%.6f side=%.6f", m_camera.pLanePitch, m_camera.pLaneZoom, m_camera.pLaneOffset), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf("Scroll Speed: %f", m_playback.GetScrollSpeed()), textPos).y;
+
+			textPos.y += RenderText(Utility::Sprintf("%.2f FPS", g_application->GetRenderFPS()), textPos).y;
+		}
 
 		Vector2 buttonStateTextPos = Vector2(g_resolution.x - 200.0f, 100.0f);
 		RenderText(g_input.GetControllerStateString(), buttonStateTextPos);
-
-		if (!IsStorableScore())
-		{
-			if (m_isPracticeSetup)
-			{
-				textPos.y += RenderText("Practice setup", textPos, Color::Magenta).y;
-			}
-			else if(m_scoring.autoplayInfo.autoplay)
-			{
-				textPos.y += RenderText("Autoplay enabled", textPos, Color::Magenta).y;
-			}
-			else
-			{
-				textPos.y += RenderText("Score not storable", textPos, Color::Magenta).y;
-			}
-		}
 
 		uint32 hitsShown = 0;
 		// Show all hit debug info on screen (up to a maximum)

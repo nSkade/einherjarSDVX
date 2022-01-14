@@ -623,3 +623,87 @@ bool BeatmapPlayback::IsEndLaneToggle(const Beatmap::LaneTogglePointsIterator& o
 {
 	return obj == m_beatmap->GetEndLaneTogglePoint();
 }
+
+Vector<String> BeatmapPlayback::GetStateString() const
+{
+	auto ObjectStateToStr = [](const ObjectState* state)
+	{
+		if (state == nullptr)
+		{
+			return String{"null"};
+		}
+
+		const auto* obj = (const MultiObjectState*) state;
+
+		switch (obj->type)
+		{
+		case ObjectType::Single:
+		{
+			const auto* state = (const ButtonObjectState*)obj;
+			return Utility::Sprintf("%d(type=single index=%u)", obj->time, static_cast<unsigned int>(state->index));
+		}
+		break;
+		case ObjectType::Hold:
+		{
+			const auto* state = (const HoldObjectState*)obj;
+			return Utility::Sprintf("%d(type=hold index=%u len=%d)", obj->time, static_cast<unsigned int>(state->index), state->duration);
+		}
+		break;
+		case ObjectType::Laser:
+		{
+			const auto* state = (const LaserObjectState*)obj;
+			return Utility::Sprintf("%d(type=laser %s len=%d start=%.3f end=%.3f flags=%x)",
+				obj->time, state->index == 0 ? "left" : state->index == 1 ? "right" : "invalid", state->duration, state->points[0], state->points[1], static_cast<unsigned int>(state->flags));
+		}
+		break;
+		case ObjectType::Event:
+		{
+			const auto* state = (const EventObjectState*)obj;
+			return Utility::Sprintf("%d(type=event key=%d)",
+				obj->time, static_cast<int>(state->key));
+		}
+		break;
+		default:
+			return Utility::Sprintf("%d(type=%u)", obj->time, static_cast<unsigned int>(obj->type));
+		}
+	};
+
+	auto BeatmapObjectToStr = [&](const Beatmap::ObjectsIterator& it)
+	{
+		if (IsEndObject(it))
+		{
+			return String{"end"};
+		}
+
+		return ObjectStateToStr(it->get());
+	};
+
+	Vector<String> lines;
+
+	const auto& tp = GetCurrentTimingPoint();
+	const float currentBPM = (float)(60000.0 / tp.beatDuration);
+	lines.Add(Utility::Sprintf("TimingPoint: time=%d bpm=%.3f sig=%d/%d", tp.time, currentBPM, tp.numerator, tp.denominator));
+
+	lines.Add(Utility::Sprintf(
+		"PlayRange: %d to %d | Playback: time=%d",
+		m_playRange.begin, m_playRange.end, m_playbackTime
+	));
+
+	lines.Add(Utility::Sprintf("CurrObject: %s", BeatmapObjectToStr(m_currObject)));
+	lines.Add(Utility::Sprintf("CurrLaser: %s", BeatmapObjectToStr(m_currLaserObject)));
+	lines.Add(Utility::Sprintf("CurrAlert: %s", BeatmapObjectToStr(m_currAlertObject)));
+
+	if (m_objectsByTime.empty())
+	{
+		lines.Add("Objects: none");
+	}
+	else
+	{
+		const auto* firstObj = m_objectsByTime.begin()->second;
+		const auto* lastObj = m_objectsByTime.rbegin()->second;
+
+		lines.Add(Utility::Sprintf("Objects: %u objects, %s to %s", m_objectsByTime.size(), ObjectStateToStr(firstObj), ObjectStateToStr(lastObj)));
+	}
+
+	return lines;
+}

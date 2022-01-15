@@ -125,6 +125,9 @@ public:
 
 	Delegate<EventKey, EventData> OnEventChanged;
 
+	/// Used for debugging
+	Vector<String> GetStateString() const;
+
 private:
 	// Selects an object or timing point based on a given input state
 	// if allowReset is true the search starts from the start of the object list if current point lies beyond given input time

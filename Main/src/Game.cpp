@@ -1812,45 +1812,43 @@ public:
 		{
 			if (m_chartIndex)
 			{
-				textPos.y += RenderText(Utility::Sprintf("ChartHash: %s", m_chartIndex->hash), textPos, Color::White).y;
+				textPos.y += RenderText(Utility::Sprintf("ChartHash: %s", m_chartIndex->hash), textPos, Color::Cyan).y;
 				textPos.y += RenderText(Utility::Sprintf(
 					"ChartIndex: title=\"%s\" diff=\"%s\" lv=%d a=\"%s\" e=\"%s\"",
 					m_chartIndex->title, m_chartIndex->diff_name, m_chartIndex->level, m_chartIndex->artist, m_chartIndex->effector
-				), textPos, Color::White).y;
+				), textPos, Color::Cyan).y;
 			}
 
 			const BeatmapSettings& bms = m_beatmap->GetMapSettings();
 			textPos.y += RenderText(Utility::Sprintf(
 				"Beatmap: title=\"%s\" diff=%hhd lv=%d a=\"%s\" e=\"%s\"",
 				bms.title, bms.difficulty, bms.level, bms.artist, bms.effector
-			), textPos, Color::White).y;
+			), textPos, Color::Cyan).y;
 		}
 
 		// Playback info
 		{
-			textPos.y += RenderText(Utility::Sprintf(
-				"Offset (ms): global=%d song=%d temp=%d | audio=%d (latency=%d)",
-				m_globalOffset, m_songOffset, m_tempOffset, GetAudioOffset(), g_audio->audioLatency
-			), textPos, Color::Yellow).y;
-
-			textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos, Color::Yellow).y;
-
-			for (const String& line : m_playback.GetStateString())
-			{
-				textPos.y += RenderText(line, textPos, Color::Cyan).y;
-			}
-
-			const float viewRange = m_track ? m_track->GetViewRange() : -1.0f;
-			textPos.y += RenderText(Utility::Sprintf("SpeedMod: hi=%.3f mod=%.3f | ViewRange: %.4f", m_hispeed, m_modSpeed, viewRange), textPos, Color::Yellow).y;
-
 			if (IsPartialPlay())
 			{
-				textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos, Color::Magenta).y;
+				textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos, Color::Red).y;
 			}
 
 			textPos.y += RenderText(Utility::Sprintf(
 				"Playback speeed: %.3f (option set to %.3f)", GetPlaybackSpeed(), m_playOptions.playbackSpeed
-			), textPos, m_playOptions.playbackSpeed < 1.0f ? Color::Magenta : Color::Yellow).y;
+			), textPos, m_playOptions.playbackSpeed < 1.0f ? Color::Red : Color::Yellow).y;
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Offset (ms): global=%d song=%d temp=%d | audio=%d (latency=%d)",
+				m_globalOffset, m_songOffset, m_tempOffset, GetAudioOffset(), g_audio->audioLatency
+			), textPos, Color::Green).y;
+
+			textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos, Color::Green).y;
+		}
+
+		// Playback details
+		for (const String& line : m_playback.GetStateString())
+		{
+			textPos.y += RenderText(line, textPos, Color::White).y;
 		}
 
 		// Input and scoring info
@@ -1879,14 +1877,18 @@ public:
 
 					notStorableReason += ")";
 				}
+				else if (IsPartialPlay())
+				{
+					notStorableReason += "PartialPlay";
+				}
 
-				textPos.y += RenderText(Utility::Sprintf("Score not storable: %s", notStorableReason), textPos, Color::Magenta).y;
+				textPos.y += RenderText(Utility::Sprintf("Score not storable: %s", notStorableReason), textPos, Color::Red).y;
 			}
 
 			textPos.y += RenderText(Utility::Sprintf(
-				"Hit Window: p=%d g=%d h=%d s=%d m=%d",
+				"Hit Window (ms): p=%d g=%d h=%d s=%d m=%d",
 				m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.slam, m_scoring.hitWindow.miss
-			), textPos, m_scoring.hitWindow <= HitWindow::NORMAL ? Color{1.0f, 1.0f, 0.5f, 1.0f} : Color::Magenta).y;
+			), textPos, m_scoring.hitWindow <= HitWindow::NORMAL ? Color{1.0f, 1.0f, 0.5f, 1.0f} : Color::Red).y;
 
 			textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
 
@@ -1904,6 +1906,18 @@ public:
 
 		// Camera and rendering info
 		{
+			const float viewRange = m_track ? m_track->GetViewRange() : -1.0f;
+			textPos.y += RenderText(Utility::Sprintf("SpeedMod: hi=%.3f mod=%.3f | ViewRange: %.4f", m_hispeed, m_modSpeed, viewRange), textPos).y;
+
+			if (m_track)
+			{
+				textPos.y += RenderText(Utility::Sprintf(
+					"HidSud: hid=%.4f hidFade=%.4f sud=%.4f sudFade=%.4f",
+					m_track->hiddenCutoff, m_track->hiddenFadewindow,
+					m_track->suddenCutoff, m_track->suddenFadewindow
+				), textPos).y;
+			}
+
 			textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
 				m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
 

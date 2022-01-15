@@ -232,11 +232,13 @@ void Scoring::SetScoreForReplay()
 		// Can't really use the score index bc we need hitscore
 		currentHitScore = m_replay->CurrentScore();
 		currentMaxScore = m_replay->CurrentMaxScore();
+		mapTotals.maxScore = currentMaxScore;
 	}
 	else
 	{
 		currentHitScore = scoreInfo.hitScore;
 		currentMaxScore = scoreInfo.maxHitScore;
+		mapTotals.maxScore = currentMaxScore;
 	}
 
 	if (score)

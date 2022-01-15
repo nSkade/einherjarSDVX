@@ -108,6 +108,7 @@ private:
 	bool m_delayedHitEffects;
 
 	bool m_isPlayingReplay = false;
+	bool m_setFinalReplayScore = false;
 	Replay* m_replayForPlayback = nullptr;
 
 	// Texture of the map jacket image, if available
@@ -749,6 +750,7 @@ public:
 	// Restart map
 	void Restart()
 	{
+		m_setFinalReplayScore = false;
 		m_paused = false;
 		m_triggerPause = false;
 		m_playOnDialogClose = true;
@@ -1283,8 +1285,11 @@ public:
 			}
 			if (m_ended)
 			{
-				if (m_isPlayingReplay)
+				if (m_isPlayingReplay && !m_setFinalReplayScore)
+				{
+					m_setFinalReplayScore = true;
 					m_scoring.SetScoreForReplay();
+				}
 				// Render Lua Outro
 				lua_getglobal(m_lua, "render_outro");
 				if (lua_isfunction(m_lua, -1))
@@ -2770,6 +2775,7 @@ public:
 	void InitPlayReplay(Replay* replay)
 	{
 		m_isPlayingReplay = true;
+		m_setFinalReplayScore = false;
 		m_scoring.autoplayInfo.replay = true;
 		if (replay)
 		{

@@ -184,8 +184,8 @@ private:
 	// TODO(itszn) this probably should be heap allocated so we can reference them safely
 	Vector<Replay*> m_scoreReplays;
 	MapDatabase* m_db;
-	std::unordered_set<ObjectState*> m_hiddenObjects;
-	std::unordered_set<ObjectState*> m_permanentlyHiddenObjects;
+	std::unordered_set<const ObjectState*> m_hiddenObjects;
+	std::unordered_set<const ObjectState*> m_permanentlyHiddenObjects;
 
 	// Hold detection for restart and exit
 	MapTime m_restartTriggerTime = 0;
@@ -338,61 +338,22 @@ public:
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 
-		// Move this somewhere else?
 		// Set hi-speed for m-Mod
-		// Uses the "mode" of BPMs in the chart, should use median?
 		if(m_speedMod == SpeedMods::MMod)
 		{
-			Map<double, MapTime> bpmDurations;
-			const Vector<TimingPoint*>& timingPoints = m_beatmap->GetLinearTimingPoints();
-			MapTime lastMT = mapSettings.offset;
-			MapTime largestMT = -1;
-			double useBPM = -1;
-			double lastBPM = -1;
-
-			if (mapSettings.speedBpm > 0.0f)
-			{
-				useBPM = mapSettings.speedBpm;
-			}
-			else 
-			{
-				for (TimingPoint* tp : timingPoints)
-				{
-					double thisBPM = tp->GetBPM();
-					if (!bpmDurations.count(lastBPM))
-					{
-						bpmDurations[lastBPM] = 0;
-					}
-					MapTime timeSinceLastTP = tp->time - lastMT;
-					bpmDurations[lastBPM] += timeSinceLastTP;
-					if (bpmDurations[lastBPM] > largestMT)
-					{
-						useBPM = lastBPM;
-						largestMT = bpmDurations[lastBPM];
-					}
-					lastMT = tp->time;
-					lastBPM = thisBPM;
-				}
-				bpmDurations[lastBPM] += m_endTime - lastMT;
-
-				if (bpmDurations[lastBPM] > largestMT)
-				{
-					useBPM = lastBPM;
-				}
-			}
-
-			m_hispeed = m_modSpeed / useBPM; 
-			CheckChallengeHispeed(useBPM);
+			const double modeBPM = m_beatmap->GetModeBPM();
+			m_hispeed = m_modSpeed / modeBPM;
+			CheckChallengeHispeed(modeBPM);
 		}
 		else if (m_speedMod == SpeedMods::CMod)
 		{
-			double bpm = m_beatmap->GetLinearTimingPoints().front()->GetBPM();
+			const double bpm = m_beatmap->GetFirstTimingPoint()->GetBPM();
 			m_hispeed = m_modSpeed / bpm;
 			CheckChallengeHispeed(bpm);
 		}
 		else if (m_speedMod == SpeedMods::XMod)
 		{
-			CheckChallengeHispeed(m_beatmap->GetLinearTimingPoints().front()->GetBPM());
+			CheckChallengeHispeed(m_beatmap->GetFirstTimingPoint()->GetBPM());
 		}
 
 		// Load replays
@@ -643,76 +604,9 @@ public:
 		m_track->hitEffectAutoplay |= m_scoring.autoplayInfo.IsAutoplayButtons();
 		m_track->hitEffectAutoplay |= m_scoring.autoplayInfo.IsReplayingButtons();
 
-		if (GetPlaybackOptions().random)
+		if (GetPlaybackOptions().random || GetPlaybackOptions().mirror)
 		{
-			//Randomize
-			std::array<int,4> swaps = { 0,1,2,3 };
-			
-			std::shuffle(swaps.begin(), swaps.end(), std::default_random_engine((int)(1000 * g_application->GetAppTime())));
-
-			bool unchanged = true;
-			for (int i = 0; i < 4; i++)
-			{
-				if (swaps[i] != i)
-				{
-					unchanged = false;
-					break;
-				}
-			}
-			bool flipFx = false;
-
-			if (unchanged)
-			{
-				flipFx = true;
-			}
-			else
-			{
-				std::srand((int)(1000 * g_application->GetAppTime()));
-				flipFx = (std::rand() % 2) == 1;
-			}
-
-			const Vector<ObjectState*> chartObjects = m_playback.GetBeatmap().GetLinearObjects();
-			for (ObjectState* currentobj : chartObjects)
-			{
-				if (currentobj->type == ObjectType::Single || currentobj->type == ObjectType::Hold)
-				{
-					ButtonObjectState* bos = (ButtonObjectState*)currentobj;
-					if (bos->index < 4)
-					{
-						bos->index = swaps[bos->index];
-					}
-					else if (flipFx)
-					{
-						bos->index = (bos->index - 3) % 2;
-						bos->index += 4;
-					}
-				}
-			}
-
-		}
-
-		if (GetPlaybackOptions().mirror)
-		{
-			int buttonSwaps[] = { 3,2,1,0,5,4 };
-
-			const Vector<ObjectState*> chartObjects = m_playback.GetBeatmap().GetLinearObjects();
-			for (ObjectState* currentobj : chartObjects)
-			{
-				if (currentobj->type == ObjectType::Single || currentobj->type == ObjectType::Hold)
-				{
-					ButtonObjectState* bos = (ButtonObjectState*)currentobj;
-					bos->index = buttonSwaps[bos->index];
-				}
-				else if (currentobj->type == ObjectType::Laser)
-				{
-					LaserObjectState* los = (LaserObjectState*)currentobj;
-					los->index = (los->index + 1) % 2;
-					for (size_t i = 0; i < 2; i++)
-					{
-						los->points[i] = fabsf(los->points[i] - 1.0f);
-					}
-				}
-			}
+			m_beatmap->Shuffle((int)(1000 * g_application->GetAppTime()), GetPlaybackOptions().random, GetPlaybackOptions().mirror);
 		}
 
 		if (m_practiceSetupDialog)
@@ -831,7 +725,7 @@ public:
 		m_hiddenObjects.clear();
 	}
 
-	virtual void Tick(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (m_ended && IsSuspended()) return;
 
@@ -965,7 +859,7 @@ public:
 		}
 	}
 
-	virtual void Render(float deltaTime) override
+	void Render(float deltaTime) override
 	{
 		if (m_ended && IsSuspended()) return;
 
@@ -1007,19 +901,18 @@ public:
 		RenderState rs = m_camera.CreateRenderState(true);
 
 		// Draw BG first
-		if(m_background)
-			m_background->Render(deltaTime);
+		if (m_background)
+		{
+			m_background->Render(deltaTime * m_playback.GetScrollSpeed());
+		}
 
 		// Main render queue
 		RenderQueue renderQueue(g_gl, rs);
 
 		// Get objects in range
-		MapTime msViewRange = m_playback.ViewDistanceToDuration(m_track->GetViewRange());
-		if (m_speedMod == SpeedMods::CMod)
-		{
-			msViewRange = 480000.0 / m_playback.cModSpeed;
-		}
-		m_currentObjectSet = m_playback.GetObjectsInRange(msViewRange);
+		m_currentObjectSet.clear();
+		m_playback.GetObjectsInViewRange(m_track->GetViewRange(), m_currentObjectSet);
+
 		// Sort objects to draw
 		// fx holds -> bt holds -> fx chips -> bt chips
 		m_currentObjectSet.Sort([](const TObjectState<void>* a, const TObjectState<void>* b)
@@ -1328,15 +1221,15 @@ public:
 	}
 	virtual void PermanentlyHideTickObject(MapTime t, int lane) override
 	{
-		ObjectState* obj = m_playback.GetFirstButtonOrHoldAfterTime(t, lane);
+		const ObjectState* obj = m_playback.GetFirstButtonOrHoldAfterTime(t, lane);
 		m_permanentlyHiddenObjects.insert(obj);
 	}
 
-	virtual void OnSuspend() override
+	void OnSuspend() override
 	{
 	}
 
-	virtual void OnRestore() override
+	void OnRestore() override
 	{
 		if (m_ended && m_isPracticeMode)
 		{
@@ -1356,17 +1249,9 @@ public:
 	{
 		// Select the correct first object to set the intial playback position
 		// if it starts before a certain time frame, the song starts at a negative time (lead-in)
-		ObjectState* const* firstObj = &m_beatmap->GetLinearObjects().front();
-		for (; firstObj != &m_beatmap->GetLinearObjects().back(); ++firstObj)
-		{
-			if ((*firstObj)->type == ObjectType::Event) continue;
-			if ((*firstObj)->time < m_playOptions.range.begin) continue;
-
-			break;
-		}
 
 		const MapTime beginTime = m_playOptions.range.begin;
-		const MapTime firstObjectTime = (*firstObj)->time;
+		const MapTime firstObjectTime = m_beatmap->GetFirstObjectTime(beginTime);
 
 		return std::min(beginTime, firstObjectTime - GetAudioLeadIn());
 	}
@@ -1631,8 +1516,6 @@ public:
 		m_currentTiming = &m_playback.GetCurrentTimingPoint();
 
 		// Update song info display
-		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
-
 		if (m_multiplayer != nullptr)
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
 
@@ -2009,86 +1892,153 @@ public:
 			return Vector2(0, 12);
 		};
 
-		//Vector2 canvasRes = GUISlotBase::ApplyFill(FillMode::Fit, Vector2(640, 480), Rect(0, 0, g_resolution.x, g_resolution.y)).size;
-		//Vector2 topLeft = Vector2(g_resolution / 2 - canvasRes / 2);
-		//Vector2 bottomRight = topLeft + canvasRes;
-		//topLeft.y = Math::Min(topLeft.y, g_resolution.y * 0.2f);
-
-		const BeatmapSettings& bms = m_beatmap->GetMapSettings();
 		const TimingPoint& tp = m_playback.GetCurrentTimingPoint();
-		//Vector2 textPos = topLeft + Vector2i(5, 0);
 		Vector2 textPos = Vector2i(5, 5);
-		textPos.y += RenderText(bms.title, textPos).y;
-		textPos.y += RenderText(bms.artist, textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("%.2f FPS %.2f Delta", g_application->GetRenderFPS(), deltaTime), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Offset (ms): Global %d, Song %d, Audio %d (%d)",
-			m_globalOffset, m_songOffset, GetAudioOffset(), g_audio->audioLatency), textPos).y;
 
-		float currentBPM = (float)(60000.0 / tp.beatDuration);
-		textPos.y += RenderText(Utility::Sprintf("BPM: %.1f | Time Sig: %d/%d", currentBPM, tp.numerator, tp.denominator), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Hit Window: p=%d g=%d h=%d s=%d m=%d",
-			m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.slam, m_scoring.hitWindow.miss), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos).y;
-		if (IsPartialPlay())
-			textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
-
-		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Score:  %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
-		if (m_isPlayingReplay)
+		// Chart info
 		{
-			auto& replay = m_replayForPlayback;
-			auto rs = replay->CurrentScore();
-			auto rm = replay->CurrentMaxScore();
+			if (m_chartIndex)
+			{
+				textPos.y += RenderText(Utility::Sprintf("ChartHash: %s", m_chartIndex->hash), textPos, Color::Cyan).y;
+				textPos.y += RenderText(Utility::Sprintf(
+					"ChartIndex: title=\"%s\" diff=\"%s\" lv=%d a=\"%s\" e=\"%s\"",
+					m_chartIndex->title, m_chartIndex->diff_name, m_chartIndex->level, m_chartIndex->artist, m_chartIndex->effector
+				), textPos, Color::Cyan).y;
+			}
 
-			auto s = m_scoring.currentHitScore;
-			auto m = m_scoring.currentMaxScore;
-
-			textPos.y += RenderText(Utility::Sprintf("Replay: %d/%d %s", 
-				rs, rm, 
-				(replay->GetType() == Replay::ReplayType::Legacy? "[legacy]":"")
-			), textPos).y;
-			textPos.y += RenderText(Utility::Sprintf("Replay score is off by: %d (%d)",
-				rs - s,
-				rm - m
-			), textPos).y;
-			textPos.y += RenderText(Utility::Sprintf("Replay: %s",
-				*replay->filePath
-			), textPos).y;
-		}
-		m_scoring.RenderDebugHUD(deltaTime, textPos);
-
-		Gauge* gauge = m_scoring.GetTopGauge();
-
-		if (gauge)
-		{
-			textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+			const BeatmapSettings& bms = m_beatmap->GetMapSettings();
+			textPos.y += RenderText(Utility::Sprintf(
+				"Beatmap: title=\"%s\" diff=%hhd lv=%d a=\"%s\" e=\"%s\"",
+				bms.title, bms.difficulty, bms.level, bms.artist, bms.effector
+			), textPos, Color::Cyan).y;
 		}
 
-		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
-			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
+		// Playback info
+		{
+			if (IsPartialPlay())
+			{
+				textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos, Color::Red).y;
+			}
 
-		textPos.y += RenderText(Utility::Sprintf("Track Zoom Top: %f", m_camera.pLanePitch), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Track Zoom Bottom: %f", m_camera.pLaneZoom), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf(
+				"Playback speed: %.3f (option set to %.3f)", GetPlaybackSpeed(), m_playOptions.playbackSpeed
+			), textPos, m_playOptions.playbackSpeed < 1.0f ? Color::Red : Color::Yellow).y;
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Offset (ms): global=%d song=%d temp=%d | audio=%d (latency=%d)",
+				m_globalOffset, m_songOffset, m_tempOffset, GetAudioOffset(), g_audio->audioLatency
+			), textPos, Color::Green).y;
+
+			textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos, Color::Green).y;
+		}
+
+		// Playback details
+		for (const String& line : m_playback.GetStateString())
+		{
+			textPos.y += RenderText(line, textPos, Color::White).y;
+		}
+
+		// Input and scoring info
+		{
+			if (!IsStorableScore())
+			{
+				String notStorableReason = "Other";
+
+				if (m_isPracticeSetup)
+				{
+					notStorableReason = "PracticeSetup";
+				}
+				else if (m_scoring.autoplayInfo.IsAutoplayButtons())
+				{
+					notStorableReason = "Autoplay(";
+
+					if (m_scoring.autoplayInfo.autoplay)
+					{
+						notStorableReason += "autoplay,";
+					}
+
+					if (m_scoring.autoplayInfo.autoplayButtons)
+					{
+						notStorableReason += "buttons,";
+					}
+
+					notStorableReason += ")";
+				}
+				else if (IsPartialPlay())
+				{
+					notStorableReason += "PartialPlay";
+				}
+
+				textPos.y += RenderText(Utility::Sprintf("Score not storable: %s", notStorableReason), textPos, Color::Red).y;
+			}
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Hit Window (ms): p=%d g=%d h=%d s=%d m=%d",
+				m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.slam, m_scoring.hitWindow.miss
+			), textPos, m_scoring.hitWindow <= HitWindow::NORMAL ? Color{1.0f, 1.0f, 0.5f, 1.0f} : Color::Red).y;
+
+			textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
+
+			textPos.y += RenderText(Utility::Sprintf(
+				"Score: %d/%d (Max: %d) = %d",
+				m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore, m_scoring.CalculateCurrentScore()
+			), textPos).y;
+
+			if (m_isPlayingReplay)
+			{
+				auto& replay = m_replayForPlayback;
+				auto rs = replay->CurrentScore();
+				auto rm = replay->CurrentMaxScore();
+
+				auto s = m_scoring.currentHitScore;
+				auto m = m_scoring.currentMaxScore;
+
+				textPos.y += RenderText(Utility::Sprintf("Replay: %d/%d %s", 
+					rs, rm, 
+					(replay->GetType() == Replay::ReplayType::Legacy? "[legacy]":"")
+				), textPos).y;
+				textPos.y += RenderText(Utility::Sprintf("Replay score is off by: %d (%d)",
+					rs - s,
+					rm - m
+				), textPos).y;
+				textPos.y += RenderText(Utility::Sprintf("Replay: %s",
+					*replay->filePath
+				), textPos).y;
+			}
+			m_scoring.RenderDebugHUD(deltaTime, textPos);
+
+
+			if (const Gauge* gauge = m_scoring.GetTopGauge())
+			{
+				textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+			}
+		}
+
+		// Camera and rendering info
+		{
+			const float viewRange = m_track ? m_track->GetViewRange() : -1.0f;
+			textPos.y += RenderText(Utility::Sprintf("SpeedMod: hi=%.3f mod=%.3f | ViewRange: %.4f", m_hispeed, m_modSpeed, viewRange), textPos).y;
+
+			if (m_track)
+			{
+				textPos.y += RenderText(Utility::Sprintf(
+					"HidSud: hid=%.4f hidFade=%.4f sud=%.4f sudFade=%.4f",
+					m_track->hiddenCutoff, m_track->hiddenFadewindow,
+					m_track->suddenCutoff, m_track->suddenFadewindow
+				), textPos).y;
+			}
+
+			textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
+				m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
+
+			textPos.y += RenderText(Utility::Sprintf("Track Zoom: top=%.6f bottom=%.6f side=%.6f", m_camera.pLanePitch, m_camera.pLaneZoom, m_camera.pLaneOffset), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf("Scroll Speed: %f", m_playback.GetScrollSpeed()), textPos).y;
+
+			textPos.y += RenderText(Utility::Sprintf("%.2f FPS", g_application->GetRenderFPS()), textPos).y;
+		}
 
 		Vector2 buttonStateTextPos = Vector2(g_resolution.x - 200.0f, 100.0f);
 		RenderText(g_input.GetControllerStateString(), buttonStateTextPos);
-
-		if (!IsStorableScore())
-		{
-			if (m_isPracticeSetup)
-			{
-				textPos.y += RenderText("Practice setup", textPos, Color::Magenta).y;
-			}
-			else if(m_scoring.autoplayInfo.autoplay)
-			{
-				textPos.y += RenderText("Autoplay enabled", textPos, Color::Magenta).y;
-			}
-			else
-			{
-				textPos.y += RenderText("Score not storable", textPos, Color::Magenta).y;
-			}
-		}
 
 		uint32 hitsShown = 0;
 		// Show all hit debug info on screen (up to a maximum)
@@ -2341,16 +2291,16 @@ public:
 		}
 	}
 
-	void OnTimingPointChanged(TimingPoint* tp)
+	void OnTimingPointChanged(Beatmap::TimingPointsIterator tp)
 	{
 	   m_hispeed = m_modSpeed / tp->GetBPM(); 
 	}
-	void OnTimingPointChangedChallenge(TimingPoint* tp)
+	void OnTimingPointChangedChallenge(Beatmap::TimingPointsIterator tp)
 	{
 		CheckChallengeHispeed(tp->GetBPM());
 	}
 
-	void OnLaneToggleChanged(LaneHideTogglePoint* tp)
+	void OnLaneToggleChanged(Beatmap::LaneTogglePointsIterator tp)
 	{
 		// Calculate how long the transition should be in seconds
 		double duration = m_currentTiming->beatDuration * 4.0f * (tp->duration / 192.0f) * 0.001f;
@@ -2539,8 +2489,7 @@ public:
 				return;
 			}
 
-			ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
-			MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
+			const MapTime timePastEnd = m_lastMapTime - m_beatmap->GetLastObjectTimeIncludingEvents();
 			if (timePastEnd < 0)
 				m_manualExit = true;
 
@@ -2673,12 +2622,8 @@ public:
 	// Skips ahead to the right before the first object in the map
 	bool SkipIntro()
 	{
-		ObjectState* const* firstObj = &m_beatmap->GetLinearObjects().front();
-		while ((*firstObj)->type == ObjectType::Event && firstObj != &m_beatmap->GetLinearObjects().back())
-		{
-			firstObj++;
-		}
-		MapTime skipTime = (*firstObj)->time - 1000;
+		const MapTime skipTime = m_beatmap->GetFirstObjectTime(0) - 1000;
+
 		if (skipTime > m_lastMapTime)
 		{
 			// In multiplayer mode we have to stay synced
@@ -2690,19 +2635,19 @@ public:
 		}
 		return false;
 	}
+
 	// Skips ahead at the end to the score screen
 	void SkipOutro()
 	{
 		// Just to be sure
-		if (m_beatmap->GetLinearObjects().empty())
+		if (!m_beatmap->HasObjectState())
 		{
 			FinishGame();
 			return;
 		}
 
 		// Check if last object has passed
-		ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
-		MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
+		const MapTime timePastEnd = m_lastMapTime - m_beatmap->GetLastObjectTimeIncludingEvents();
 		if (timePastEnd > 250)
 		{
 			FinishGame();
@@ -3049,7 +2994,7 @@ public:
 		Track& track = this->GetTrack();
 		float viewRange = track.GetViewRange();
 
-		float trackScale = (this->GetPlayback().DurationToViewDistanceAtTime(time, duration) / viewRange);
+		float trackScale = (this->GetPlayback().ToViewDistance(time, duration) / viewRange);
 		float scale = trackScale * track.trackLength;
 		lua_pushnumber(L, scale);
 		return 1;

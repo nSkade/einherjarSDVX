@@ -146,7 +146,7 @@ private:
 	}
 
 public:
-	bool Init()
+	bool Init() override
 	{
 		m_lua = g_application->LoadScript("titlescreen");
 		if (m_lua == nullptr)
@@ -199,7 +199,7 @@ public:
 		}
 	}
 
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime) override
 	{
 		if (IsSuspended())
 			return;
@@ -214,10 +214,10 @@ public:
 			}
 		}
 	}
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		g_gameWindow->SetCursorVisible(true);
 		g_application->DiscordPresenceMenu("Title Screen");

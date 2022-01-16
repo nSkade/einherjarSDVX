@@ -438,7 +438,18 @@ public:
 		Gauge* gauge = scoring.GetTopGauge();
 		// Calculate hitstats
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
-		m_score = scoring.CalculateCurrentScore();
+
+		Replay* replay = game->GetCurrentReplay();
+		ScoreIndex* score = replay ? replay->GetScoreIndex() : nullptr;
+
+		if (score)
+		{
+			m_score = score->score;
+	 	}
+		else
+		{
+			m_score = scoring.CalculateCurrentScore();
+		}
 		m_hitScore = scoring.currentHitScore;
 		m_maxHitScore = scoring.currentMaxScore;
 		m_maxCombo = scoring.maxComboCounter;

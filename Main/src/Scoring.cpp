@@ -229,9 +229,16 @@ void Scoring::SetScoreForReplay()
 
 	if (m_replay->GetType() == Replay::ReplayType::Legacy || !scoreInfo.IsInitialized() || scoreInfo.maxHitScore == 0)
 	{
-		// Can't really use the score index bc we need hitscore
 		currentHitScore = m_replay->CurrentScore();
-		currentMaxScore = m_replay->CurrentMaxScore();
+		if (score)
+		{
+			double f = double(score->score) / MAX_SCORE;
+			currentMaxScore = uint32(f / double(currentHitScore));
+		}
+		else
+		{
+			currentMaxScore = m_replay->CurrentMaxScore();
+		}
 		mapTotals.maxScore = currentMaxScore;
 	}
 	else

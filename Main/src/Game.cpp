@@ -1795,13 +1795,15 @@ public:
 	// Main GUI/HUD Rendering loop
 	virtual void RenderDebugHUD(float deltaTime)
 	{
+		int size = g_gameWindow->GetWindowSize().y / (65.0f);
+		size = std::max(size, 12);
 		// Render debug overlay elements
 		//RenderQueue& debugRq = g_guiRenderer->Begin();
 		auto RenderText = [&](const String& text, const Vector2& pos, const Color& color = {1.0f, 1.0f, 0.5f, 1.0f})
 		{
-			g_application->FastText(text, pos.x + 1, pos.y + 1, 12, 0, Color::Black);
-			g_application->FastText(text, pos.x, pos.y, 12, 0, color);
-			return Vector2(0, 12);
+			g_application->FastText(text, pos.x + 1, pos.y + 1, size, 0, Color::Black);
+			g_application->FastText(text, pos.x, pos.y, size, 0, color);
+			return Vector2(0, size);
 		};
 
 		const TimingPoint& tp = m_playback.GetCurrentTimingPoint();

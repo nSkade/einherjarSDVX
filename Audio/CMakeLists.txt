@@ -39,9 +39,10 @@ target_include_directories(Audio PRIVATE
 
 #set_werror(Audio)
 #Special case for audio
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND USC_GNU_WERROR)
-    target_compile_options(Audio PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-maybe-uninitialized)
-endif()
+#if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND USC_GNU_WERROR)
+#    target_compile_options(Audio PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-maybe-uninitialized)
+#endif()
+
 # Dependencies
 ## Local Dependencies
 target_link_libraries(Audio Shared)

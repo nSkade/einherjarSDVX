@@ -6,8 +6,9 @@
 struct SimpleHitStat
 {
 	// 0 = miss, 1 = near, 2 = crit, 3 = idle
-	int8 rating;
-	int8 lane;
+	uint8 rating:3;
+	uint8 type:5; // We use this to save info about a tick
+	uint8 lane;
 	int32 time;
 	int32 delta;
 	// Hold state
@@ -16,6 +17,8 @@ struct SimpleHitStat
 	// This is the amount of total ticks in this hold sequence
 	uint32 holdMax = 0;
 };
+// Need to ensure it is the same size as old replays use this
+static_assert(sizeof(SimpleHitStat) == 20);
 
 struct ScoreIndex
 {
@@ -197,6 +200,7 @@ public:
 	void PauseSearching();
 	void ResumeSearching();
 	void StopSearching();
+	void LoadDatabaseWithoutSearching();
 
 	// Finds maps using the search query provided
 	// search artist/title/tags for maps for any space separated terms
@@ -217,6 +221,11 @@ public:
 
 	// Get a random chart
 	ChartIndex* GetRandomChart();
+
+	const std::map<int32, FolderIndex *>& GetFolderMap();
+	const std::map<int32, ChartIndex *>& GetChartMap();
+	const std::map<int32, ChallengeIndex *>& GetChallengeMap();
+
 
 	//Attempts to add to collection, if that fails attempt to remove from collection
 	void AddOrRemoveToCollection(const String& name, int32 mapid);

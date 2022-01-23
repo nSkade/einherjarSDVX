@@ -111,4 +111,9 @@ if(WIN32)
     target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
 endif()
 
+find_package(ZLIB REQUIRED)
+if(ZLIB_FOUND)
+    target_compile_definitions(usc-game PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
+endif()
+
 target_link_libraries(usc-game cc-common)

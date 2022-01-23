@@ -1909,7 +1909,7 @@ public:
 		// Camera and rendering info
 		{
 			const float viewRange = m_track ? m_track->GetViewRange() : -1.0f;
-			textPos.y += RenderText(Utility::Sprintf("SpeedMod: hi=%.3f mod=%.3f | ViewRange: %.4f", m_hispeed, m_modSpeed, viewRange), textPos).y;
+			textPos.y += RenderText(Utility::Sprintf("SpeedMod: %s hi=%.3f mod=%.3f | ViewRange: %.4f", Enum_SpeedMods::ToString(m_speedMod), m_hispeed, m_modSpeed, viewRange), textPos).y;
 
 			if (m_track)
 			{

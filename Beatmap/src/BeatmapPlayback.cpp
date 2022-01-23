@@ -366,14 +366,14 @@ void BeatmapPlayback::GetObjectsInViewRange(float numBeats, Vector<ObjectState*>
 
 		if (!IsEndTiming(tp_next) && tp_next->time <= objTime)
 		{
-			currBeats += m_beatmap->GetBeatCountWithScrollSpeedApplied(currRefTime, tp_next->time, tp);
+			currBeats += GetViewDistance(currRefTime, tp_next->time);
 
 			tp = tp_next;
 			tp_next = std::next(tp_next);
 			currRefTime = tp->time;
 		}
 
-		const float objBeats = currBeats + m_beatmap->GetBeatCountWithScrollSpeedApplied(currRefTime, objTime, tp);
+		const float objBeats = currBeats + GetViewDistance(currRefTime, objTime);
 		if (objBeats >= numBeats)
 		{
 			break;

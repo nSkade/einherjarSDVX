@@ -77,7 +77,7 @@ public:
 		return GetViewDistanceIgnoringScrollSpeed(startTime, startTime + duration);
 	}
 
-	/// Get # of (4th) beats between `startTime` and `endTime`, taking scroll speed changes into account.
+	/// Get # of (4th) beats between `startTime` and `endTime`, taking scroll speed changes into account (if CMOD is not used).
 	float GetViewDistance(MapTime startTime, MapTime endTime) const;
 
 	/// Get # of (4th) beats between `startTime` and `endTime`, ignoring any scroll speed changes.

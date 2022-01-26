@@ -2155,7 +2155,7 @@ public:
 		{
 			if (m_fxSamples[st->sampleIndex])
 			{
-				m_fxSamples[st->sampleIndex]->SetVolume(st->sampleVolume*m_fxVolume);
+				m_fxSamples[st->sampleIndex]->SetVolume(st->sampleVolume * m_fxVolume * m_slamVolume);
 				m_fxSamples[st->sampleIndex]->Play();
 			}
 		}
@@ -2341,7 +2341,7 @@ public:
 		}
 		else if(key == EventKey::SlamVolume)
 		{
-			m_slamSample->SetVolume(data.floatVal*m_slamVolume*m_fxVolume);
+			m_slamSample->SetVolume(data.floatVal * m_slamVolume * m_fxVolume);
 		}
 		else if (key == EventKey::ChartEnd)
 		{

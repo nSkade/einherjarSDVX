@@ -450,7 +450,7 @@ public:
 		m_songOffset = 0;
 
 		// Compute chart offset
-		if (g_gameConfig.GetBool(GameConfigKeys::AutoComputeSongOffset) && m_scoreReplays.empty()) {
+		if (g_gameConfig.GetBool(GameConfigKeys::AutoComputeSongOffset) && m_scoreReplays.empty() && m_chartIndex->custom_offset == 0) {
 			if (OffsetComputer(m_audioPlayback).Compute(m_songOffset) && m_chartIndex)
 			{
 				Logf("Setting the chart offset of '%s' to %d (previously %d)", Logger::Severity::Info, m_chartIndex->title, m_songOffset, m_chartIndex->custom_offset);

@@ -125,12 +125,18 @@ function drawLine(x1,y1,x2,y2,w,r,g,b)
 end
 
 function getScoreBadgeDesc(s)
-    if s.badge == 1 then
-        if s.gauge_type ~= 0 then return "crash"
-        else return string.format("%.1f%%", s.gauge * 100)
+    if s.badge ~= nil then
+        if s.badge == 1 then
+            if s.gauge_type ~= 0 then return "crash"
+            else return string.format("%.1f%%", s.gauge * 100)
+            end
+        elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
+            return string.format("%d-%d", s.goods, s.misses)
         end
-    elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
-        return string.format("%d-%d", s.goods, s.misses)
+    elseif s.lamp ~= nil then
+        if 2 <= s.lamp and s.lamp <= 4 and s.error < 10 then
+            return string.format("%d-%d", s.near, s.error)
+        end
     end
     return ""
 end
@@ -447,7 +453,8 @@ draw_ir = function(full)
                 gfx.BeginPath()
                 gfx.FontSize(15)
                 gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_BOTTOM)
-                gfx.Text(s.badgeDesc, 55, 52)
+
+                gfx.Text(getScoreBadgeDesc(s), 55, 52)
             end
         end
 

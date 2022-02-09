@@ -318,6 +318,9 @@ private:
 		newScore->score = m_score;
 		newScore->crit = m_categorizedHits[2];
 		newScore->almost = m_categorizedHits[1];
+		newScore->early = m_timedHits[0];
+		newScore->late = m_timedHits[1];
+		newScore->combo = m_maxCombo;
 		newScore->miss = m_categorizedHits[0];
 		newScore->gauge = m_finalGaugeValue;
 
@@ -463,6 +466,9 @@ public:
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
 		m_scoredata.crit = m_categorizedHits[2];
 		m_scoredata.almost = m_categorizedHits[1];
+		m_scoredata.early = m_timedHits[0];
+		m_scoredata.late = m_timedHits[1];
+		m_scoredata.combo = m_maxCombo;
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
 		m_scoredata.gaugeType = m_gaugeType;
@@ -521,6 +527,9 @@ public:
 		m_scoredata.score = data["score"];
 		m_scoredata.crit = m_categorizedHits[2];
 		m_scoredata.almost = m_categorizedHits[1];
+		m_scoredata.early = m_timedHits[0];
+		m_scoredata.late = m_timedHits[1];
+		m_scoredata.combo = m_maxCombo;
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
 		m_scoredata.gaugeType = m_gaugeType;
@@ -875,6 +884,9 @@ public:
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);
+				m_PushIntToTable("earlies", score->early);
+				m_PushIntToTable("lates", score->late);
+				m_PushIntToTable("combo", score->combo);
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
 				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
@@ -1147,10 +1159,10 @@ public:
 								if(!g_gameConfig.GetBool(GameConfigKeys::IRLowBandwidth))
 								{
 									//and server wants us to send replay
-									if(m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
+									if(m_irResponseJson.find("body") != m_irResponseJson.end() && m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
 									{
 										//don't really care about the return of this, if it fails it's not the end of the world
-										IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath).get();
+										IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath);
 									}
 								}			
 							}
@@ -1158,6 +1170,7 @@ public:
 
 						} catch(nlohmann::json::parse_error& e) {
 							Log("Parsing JSON returned from IR failed.", Logger::Severity::Error);
+							m_irState = IR::ResponseState::RequestFailure;
 						}
 					}
 

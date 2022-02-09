@@ -242,11 +242,11 @@ public:
 						score.score = scoreScan.IntColumn(1);
 						score.crit = scoreScan.IntColumn(2);
 						score.almost = scoreScan.IntColumn(3);
-						score.miss = scoreScan.IntColumn(6);
-						score.gauge = (float) scoreScan.DoubleColumn(7);
-						score.gaugeOption = scoreScan.IntColumn(8);
-						Buffer hitstats = scoreScan.BlobColumn(9);
-						score.timestamp = scoreScan.Int64Column(10);
+						score.miss = scoreScan.IntColumn(4);
+						score.gauge = (float) scoreScan.DoubleColumn(5);
+						score.gaugeOption = scoreScan.IntColumn(6);
+						Buffer hitstats = scoreScan.BlobColumn(7);
+						score.timestamp = scoreScan.Int64Column(8);
 						auto timestamp = Shared::Time(score.timestamp);
 						score.chartHash = hash;
 						score.replayPath = Path::Normalize(Path::Absolute("replays/" + hash + "/" + timestamp.ToString() + ".urf"));

@@ -14,17 +14,14 @@ jobs:
               uses: actions/cache@v1
               with:
                 path: vcpkg
-                key: ${{ runner.os }}-vcpkg-${{ hashFiles('build.windows') }}
+                key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
             - name: vcpkg
               run: |
                 if(!(Test-Path .\vcpkg))
                 {
                 git clone https://github.com/microsoft/vcpkg.git
                 cd vcpkg
-                git checkout c0bc5e1b0ff27dd8710ee9ca18b708c0a9accce1 # pin freetype for now
                 .\bootstrap-vcpkg.bat
-                .\vcpkg.exe integrate install
-                .\vcpkg.exe install '@${{ github.workspace }}/build.windows'
                 }
             - name: cmake
               run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -G "Visual Studio 17 2022" -A x64 .

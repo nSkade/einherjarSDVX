@@ -11,9 +11,11 @@ jobs:
             - name: Checkout submodules
               run: git submodule update --init --recursive
             - name: Cache vcpkg
-              uses: actions/cache@v1
+              uses: actions/cache@v2
               with:
-                path: vcpkg
+                path: |
+                  vcpkg
+                  vcpkg_installed
                 key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
             - name: vcpkg
               run: |

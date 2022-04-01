@@ -27,6 +27,8 @@ void Downloader::Download(const std::string& url)
 	while(true)
 	{
 		response = session.Get();
+		if (response.text.empty()) break;
+
 		m_content += std::move(response.text);
 
 		if (!response.error) break;

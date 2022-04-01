@@ -4,6 +4,9 @@
 #include <iostream>
 #include <Windows.h>
 
+#include "Downloader.hpp"
+#include "Extractor.hpp"
+
 using namespace std;
 int extract(const char* data, int len);
 int copy_data(struct archive *ar, struct archive *aw);

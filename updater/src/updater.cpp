@@ -1,13 +1,15 @@
-#include "cpr/cpr.h"
+#include <iostream>
+#include <stdexcept>
+#include <string>
+
+#include <Windows.h>
+
 #include "archive.h"
 #include "archive_entry.h"
-#include <iostream>
-#include <Windows.h>
 
 #include "Downloader.hpp"
 #include "Extractor.hpp"
 
-using namespace std;
 int extract(const char* data, int len);
 int copy_data(struct archive *ar, struct archive *aw);
 
@@ -15,8 +17,8 @@ void start_usc()
 {
 	char currDir[MAX_PATH];
 	GetCurrentDirectoryA(sizeof(currDir), currDir);
-	string cd(currDir);
-	string usc_path = cd + "\\usc-game.exe";
+	std::string cd(currDir);
+	std::string usc_path = cd + "\\usc-game.exe";
 
 	STARTUPINFOA info = { sizeof(info) };
 	PROCESS_INFORMATION processInfo;
@@ -34,44 +36,54 @@ void start_usc()
 }
 
 
-int main(int argc, char** argv)
+int main(int argc, const char* argv[])
 {
+	std::ios_base::sync_with_stdio(false);
+	std::string archiveUrl = "https://www.drewol.me/Downloads/Game.zip";
+
 	if (argc > 1)
 	{
-		printf("Waiting for game to close...\n");
-		DWORD uscPid = stol(argv[1]);
+		std::cout << "Waiting for the game to close..." << std::endl;
+		DWORD uscPid = std::stol(argv[1]);
 		HANDLE uscHandle = OpenProcess(SYNCHRONIZE, false, uscPid);
-		WaitForSingleObject(uscHandle, INFINITE); //wait for usc to close
+		WaitForSingleObject(uscHandle, INFINITE);
 	}
-	string archiveUrl = "http://drewol.me/Downloads/Game.zip";
+
 	if (argc > 2)
 	{
 		archiveUrl = argv[2];
 	}
-	printf("Downloading from \"%s\"...\n", archiveUrl.c_str());
-	auto response = cpr::Get(cpr::Url{ archiveUrl });
-	printf("\"%s\" returned status %d\n", archiveUrl.c_str(), response.status_code);
-	if (response.status_code != 200)
+
+	try
 	{
-		printf("Terminating\n");
+		Downloader downloader;
+		downloader.Download(archiveUrl);
+
+		const std::string& content = downloader.GetContent();
+
+		int result = extract(content.c_str(), content.length());
+		if (result != 0)
+		{
+			printf("Failed to update.\n");
+		}
+		else
+		{
+			printf("Update complete!\n");
+		}
+	}
+	catch (std::runtime_error err)
+	{
+		std::cout << "An error has been occured: " << err.what() << std::endl;
+
+		std::cout << "Press ENTER to quit." << std::endl;
 		std::cin.get();
 		return 1;
 	}
-	int result = extract(response.text.c_str(), response.text.length());
-	if (result != 0)
-	{
-		printf("Failed to update.\n");
-	}
-	else
-	{
-		printf("Update complete!\n");
-		start_usc();
-		Sleep(500);
-		return 0;
-	}
-	std::cin.get();
 
-	return result;
+	// start_usc();
+	Sleep(500);
+
+	return 0;
 }
 
 //https://github.com/libarchive/libarchive/wiki/Examples#a-complete-extractor

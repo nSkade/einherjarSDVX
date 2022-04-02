@@ -2825,6 +2825,7 @@ public:
 			else m_audioPlayback.Pause();
 
 			m_paused = m_audioPlayback.IsPaused();
+			if (!m_paused) m_triggerPause = false;
 		});
 		m_practiceSetupDialog->onSettingChange.AddLambda([this]() {
 			int oldAudioOffset = GetAudioOffset();

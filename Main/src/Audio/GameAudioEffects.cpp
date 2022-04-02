@@ -4,14 +4,15 @@
 #include <Audio/DSP.hpp>
 #include <Audio/Audio.hpp>
 
-DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate)
+DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate, float playbackSpeed)
 {
 	DSP *ret = nullptr;
 
 	double noteDuration = tp.GetWholeNoteLength();
+	if (playbackSpeed > 0) noteDuration /= playbackSpeed;
 
-	uint32 actualLength = duration.Sample(filterInput).Absolute(noteDuration);
-	uint32 maxLength = Math::Max(duration.Sample(0.f).Absolute(noteDuration), duration.Sample(1.f).Absolute(noteDuration));
+	const uint32 actualLength = duration.Sample(filterInput).Absolute(noteDuration);
+	const uint32 maxLength = Math::Max(duration.Sample(0.f).Absolute(noteDuration), duration.Sample(1.f).Absolute(noteDuration));
 
 	switch (type)
 	{

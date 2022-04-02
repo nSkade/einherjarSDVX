@@ -929,7 +929,7 @@ protected:
 		ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice-mode info during gameplay");
 
 		SectionHeader("Defaults for Playback and Loop Control");
-		IntSetting(GameConfigKeys::DefaultPlaybackSpeed, "Playback speed (%)", 25, 100);
+		IntSetting(GameConfigKeys::DefaultPlaybackSpeed, "Playback speed (%)", 25, 400);
 
 		Separator();
 

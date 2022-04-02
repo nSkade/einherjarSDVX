@@ -1656,9 +1656,20 @@ public:
 		{
 			m_loopStreak = 0;
 
+			const bool mayIncreaseOver100 = m_playOptions.playbackSpeed > 1.0f;
+
 			int speedPercentage = Math::RoundToInt(100 * (m_playOptions.playbackSpeed + m_playOptions.incSpeedAmount));
 
-			m_playOptions.playbackSpeed = speedPercentage >= 100 ? 1.0f : speedPercentage / 100.0f;
+			if (!mayIncreaseOver100 && speedPercentage > 100) speedPercentage = 100;
+
+			if (speedPercentage == 100)
+			{
+				m_playOptions.playbackSpeed = 1.0f;
+			}
+			else
+			{
+				m_playOptions.playbackSpeed = speedPercentage / 100.0f;
+			}
 		}
 		
 		if (m_playOptions.decSpeedOnFail && !success)

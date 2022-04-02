@@ -16,7 +16,7 @@ void Downloader::Download(const std::string& url)
 	cpr::Session session;
 	session.SetUrl(url);
 	session.SetProgressCallback(cpr::ProgressCallback([&](cpr::cpr_off_t total, cpr::cpr_off_t current, cpr::cpr_off_t, cpr::cpr_off_t, intptr_t) {
-		m_progressBar.Update(total, m_content.size() + current);
+		m_progressBar.Update(m_content.size() + total, m_content.size() + current);
 		return true;
 	}));
 
@@ -66,7 +66,7 @@ void Downloader::Download(const std::string& url)
 
 	if (response.status_code != 200 && response.status_code != 206)
 	{
-		std::cout << "Warning: downloaded succeeded with HTTP status code " << response.status_code << ".";
+		std::cerr << "Warning: downloaded succeeded with HTTP status code " << response.status_code << ".";
 	}
 }
 

@@ -132,6 +132,9 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DefaultFailConditionMissNear, 0);
 	Set(GameConfigKeys::DefaultFailConditionGauge, 0);
 
+	Set(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed, true);
+	Set(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed, true);
+
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);

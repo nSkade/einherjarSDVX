@@ -863,15 +863,29 @@ public:
 	{
 		if (m_ended && IsSuspended()) return;
 
+		// Adjust factor for the hi-speed, based on the playback speed
+		float hiSpeedAdjustFactor = 1.0;
+
+		if (g_gameConfig.GetBool(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed)
+			&& 0 < m_playOptions.playbackSpeed && m_playOptions.playbackSpeed < 1.0)
+		{
+			hiSpeedAdjustFactor = m_playOptions.playbackSpeed;
+		}
+		else if (g_gameConfig.GetBool(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed)
+			&& 1.0 < m_playOptions.playbackSpeed)
+		{
+			hiSpeedAdjustFactor = m_playOptions.playbackSpeed;
+		}
+
 		// 8 beats (2 measures) in view at 1x hi-speed
 		if (m_speedMod == SpeedMods::CMod)
 		{
-			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
+			m_track->SetViewRange(hiSpeedAdjustFactor / m_playback.cModSpeed);
             m_track->scrollSpeed = m_playback.cModSpeed;
 		}
 		else
 		{
-			m_track->SetViewRange(8.0f / m_hispeed);
+			m_track->SetViewRange(8 * (hiSpeedAdjustFactor / m_hispeed));
             m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
 		}
 

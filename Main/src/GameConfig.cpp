@@ -357,6 +357,9 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(Mouse_Laser1Axis),
 	Key(Mouse_Sensitivity),
 
+	Key(LaserInputDevice),
+	Key(ButtonInputDevice),
+
 	Key(Key_BTS),
 	Key(Key_BTSAlt),
 	Key(Key_BT0),
@@ -408,6 +411,6 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(ExitPlayHoldDuration),
 	Key(DisableNonButtonInputsDuringPlay),
 
-	Key(MultiplayerUsername)
+	Key(MultiplayerUsername),
 };
 #undef Key

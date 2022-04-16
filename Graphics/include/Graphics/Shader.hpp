@@ -3,6 +3,7 @@
 
 namespace Graphics
 {
+	extern const uint32 shaderStageMap[];
 	/* Enum of supported shader types */
 	enum class ShaderType
 	{

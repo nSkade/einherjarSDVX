@@ -1148,7 +1148,12 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 							state->sampleVolume = fxSampleVolume[i - 4];
 						}
 						else
+						{
 							state->fineSnap = true;
+							state->effectType = currentButtonEffectTypes[i - 4];
+							memcpy(state->effectParams, currentButtonEffectParams + (i - 4) * maxEffectParamsPerButtons,
+								   sizeof(state->effectParams));						
+						}
 					}
 				}
 				else

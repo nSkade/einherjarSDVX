@@ -1261,15 +1261,20 @@ void Application::m_Tick()
 	}
 }
 
+// Checks and clears OpenGL errors
+static void CheckGLErrors(const std::string_view label)
+{
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		Logf("OpenGL error %s: %p", Logger::Severity::Debug, label.data(), glErr);
+	}
+}
+
 void Application::RenderTickables()
 {
 	//Clear out opengl errors
-	GLenum glErr = glGetError();
-	while (glErr != GL_NO_ERROR)
-	{
-		Logf("OpenGL Error: %p", Logger::Severity::Debug, glErr);
-		glErr = glGetError();
-	}
+	CheckGLErrors("on entering Application::RenderTickables");
 
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -1288,11 +1293,17 @@ void Application::RenderTickables()
 
 	g_guiState.scissor = Rect(0, 0, -1, -1);
 	g_guiState.imageTint = nvgRGB(255, 255, 255);
+
+	CheckGLErrors("before rendering tickables");
+
 	// Render all items
 	for (auto& tickable : g_tickables)
 	{
 		tickable->Render(m_deltaTime);
+
+		CheckGLErrors("during rendering a tickable");
 	}
+
 	m_renderStateBase.projectionTransform = GetGUIProjection();
 	if (m_showFps)
 	{
@@ -1314,6 +1325,7 @@ void Application::RenderTickables()
 	m_renderQueueBase.Process();
 	glCullFace(GL_FRONT);
 
+	CheckGLErrors("after processing render queues");
 
 	//This FPS limiter seems unstable over 500fps
 	uint32 frameTime = m_frameTimer.Microseconds();
@@ -1336,9 +1348,20 @@ void Application::RenderTickables()
 			std::this_thread::yield();
 		} while (m_frameTimer.Microseconds() < m_targetRenderTime);
 	}
+
+	CheckGLErrors("just before buffer swapping");
+
 	// Swap buffers
 	g_gl->SwapBuffers();
 
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		// Have no idea why `SDL_GL_SwapWindow` causes these errors...
+		if (glErr == GL_INVALID_ENUM || glErr == GL_INVALID_OPERATION) continue;
+		
+		Logf("OpenGL error after buffer swapping: %p", Logger::Severity::Debug, glErr);
+	}
 }
 
 void Application::m_Cleanup()

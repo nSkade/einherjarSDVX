@@ -2,6 +2,7 @@
 #include "Camera.hpp"
 #include "Application.hpp"
 #include "Track.hpp"
+#include "GameConfig.hpp"
 
 const float ZOOM_POW = 1.65f;
 
@@ -88,7 +89,13 @@ static Transform GetOriginTransform(float pitch, float offs, float roll)
 {
 	if (g_aspectRatio < 1.0f)
 	{
-		auto origin = Transform::Rotation({ 1, 0, roll }); // Reduce rotation radius
+		Transform origin;
+		// TODO optimise
+		if (g_gameConfig.GetBool(GameConfigKeys::OldSlamShake))
+			origin = Transform::Rotation({ 0, 0, roll }); // Reduce rotation radius
+		else
+			origin = Transform::Rotation({ 1, 0, roll }); // Reduce rotation radius
+		
 		auto anchor = Transform::Translation({ offs, -0.8f, 0 })
 			* Transform::Rotation({ 1.5f, 0, 0 });
 		auto contnr = Transform::Translation({ 0, 0, -0.9f })
@@ -176,7 +183,11 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	
 	for (int index = 0; index < 2; ++index)
 	{
-		m_rollIgnoreTimer[index] -= deltaTime;
+		// TODO necessary?
+		if (g_gameConfig.GetBool(GameConfigKeys::OldSlamShake))
+			m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
+		else
+			m_rollIgnoreTimer[index] -= deltaTime;
 
 		// Apply slam roll for 100ms
 		if (m_rollIgnoreTimer[index] <= m_rollIgnoreDuration)
@@ -218,20 +229,31 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalRoll = m_spinRoll + m_actualRoll;
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
-	// Update camera shake effects
-	if (m_shakeEffect.amplitudeToBeAdded != 0)
-	{
-		m_shakeEffect.amplitude += m_shakeEffect.amplitudeToBeAdded;
-		m_shakeEffect.amplitudeToBeAdded = 0;
-		m_shakeEffect.guard = m_shakeEffect.guardDuration;
+	if (g_gameConfig.GetBool(GameConfigKeys::OldSlamShake)) {
+		// Check if shake effect time is > 0 to prevent division by 0 from shake effect duration
+		if (m_OldshakeEffect.time > 0)
+		{
+			float shakeProgress = m_OldshakeEffect.time / m_OldshakeEffect.duration;
+			m_shakeOffset = m_OldshakeEffect.amplitude * shakeProgress;
+			m_OldshakeEffect.time = Math::Max(m_OldshakeEffect.time - deltaTime, 0.f);
+		}
 	}
-	else if (fabsf(m_shakeEffect.amplitude) > 0)
-	{
-		float shakeDecrement = 0.2f * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
-		m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
+	else {
+		// Update camera shake effects
+		if (m_shakeEffect.amplitudeToBeAdded != 0)
+		{
+			m_shakeEffect.amplitude += m_shakeEffect.amplitudeToBeAdded;
+			m_shakeEffect.amplitudeToBeAdded = 0;
+			m_shakeEffect.guard = m_shakeEffect.guardDuration;
+		}
+		else if (fabsf(m_shakeEffect.amplitude) > 0)
+		{
+			float shakeDecrement = 0.2f * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
+			m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
+		}
+		m_shakeOffset = m_shakeEffect.amplitude;
+		m_shakeEffect.guard -= deltaTime;
 	}
-	m_shakeOffset = m_shakeEffect.amplitude;
-	m_shakeEffect.guard -= deltaTime;
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
@@ -255,6 +277,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	critOrigin = GetZoomedTransform(GetOriginTransform(lanePitch, m_totalOffset, m_actualRoll * 360.0f + sin(m_spinRoll * Math::pi * 2) * 20));
 }
+
 void Camera::AddCameraShake(float cameraShake)
 {
 	// Ensures the red laser's slam shake is prioritised
@@ -262,6 +285,12 @@ void Camera::AddCameraShake(float cameraShake)
 	if (m_shakeEffect.guard <= 0)
 		m_shakeEffect.amplitudeToBeAdded = -cameraShake;
 }
+
+void Camera::OldAddCameraShake(OldCameraShake cameraShake)
+{
+	m_OldshakeEffect = cameraShake;
+}
+
 void Camera::AddRollImpulse(float dir, float strength)
 {
 	m_rollVelocity += dir * strength;
@@ -368,9 +397,10 @@ RenderState Camera::CreateRenderState(bool clipped)
 
 	float fov = fovs[portrait];
 	float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
-
+	
+	Transform cameraTransform;
 	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
-	auto cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
+	cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
 
 	// Calculate clipping distances
 	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
@@ -492,4 +522,13 @@ float Camera::m_ClampRoll(float in) const
 		// Keep sign and modulo
 		return sign * fmodf(ain, 1.0f);
 	}
+}
+
+OldCameraShake::OldCameraShake(float duration) : duration(duration)
+{
+	time = duration;
+}
+OldCameraShake::OldCameraShake(float duration, float amplitude) : duration(duration), amplitude(amplitude)
+{
+	time = duration;
 }

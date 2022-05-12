@@ -226,6 +226,9 @@ DefineEnum(GameConfigKeys,
 		   BlastiveLevel,
 		   MirrorChart,
 		   RandomizeChart,
+		   MissVocalFX,
+		   OldSlamShake,
+			  
 		   BackupGauge,
 		   UpdateChannel)
 

@@ -152,6 +152,9 @@ private:
 	// Lua state
 	lua_State* m_lua = nullptr;
 
+	// spektrum vektor
+	float m_spektrum[16];
+
 	// Currently active timing point
 	const TimingPoint* m_currentTiming;
 	// Currently visible gameplay objects
@@ -180,6 +183,7 @@ private:
 
 	bool m_manualExit = false;
 	bool m_showCover = true;
+	float m_OldShakeDuration = 5 / 60.f;
 
 	// TODO(itszn) this probably should be heap allocated so we can reference them safely
 	Vector<Replay*> m_scoreReplays;
@@ -884,19 +888,30 @@ public:
             m_track->scrollSpeed = m_playback.cModSpeed;
 		}
 		else
-		{
-			m_track->SetViewRange(8 * (hiSpeedAdjustFactor / m_hispeed));
-            m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
-		}
+			m_track->SetViewRange(8.0f / (m_hispeed)); 
+		
+		float rollL, rollR;
+		bool slowTilt;
+		if (g_gameConfig.GetBool(GameConfigKeys::OldSlamShake)) {
+			rollL = m_camera.GetRollIgnoreTimer(0) == 0 ? m_scoring.GetLaserRollOutput(0) : 0.f;
+			rollR = m_camera.GetRollIgnoreTimer(1) == 0 ? m_scoring.GetLaserRollOutput(1) : 0.f;
+			float slamL = m_camera.GetSlamAmount(0);
+			float slamR = m_camera.GetSlamAmount(1);
 
-		// Get render state from the camera
-		// Get roll when there's no laser slam roll and roll ignore being applied
-		// This could be simplified but is necessary to have SDVX II-like roll keep and laser slams
-		float rollL = m_camera.GetRollIgnoreTimer(0) <= 0 ? m_scoring.GetLaserRollOutput(0) : m_camera.GetSlamAmount(0);
-		float rollR = m_camera.GetRollIgnoreTimer(1) <= 0 ? m_scoring.GetLaserRollOutput(1) : m_camera.GetSlamAmount(1);
-		bool slowTilt = (rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0);
-		rollL = m_camera.GetRollIgnoreTimer(0) <= 0 ? m_scoring.GetLaserRollOutput(0) : 0;
-		rollR = m_camera.GetRollIgnoreTimer(1) <= 0 ? m_scoring.GetLaserRollOutput(1) : 0;
+			// This could be simplified but is necessary to have SDVX II-like roll keep and laser slams
+			// slowTilt = true when lasers are at 0/0 or -1/1
+			slowTilt = (((rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0 && !(slamL || slamR))) ||
+				((rollL == -1 && slamR == 1) || (rollR == 1 && slamL == -1)));
+		} else {
+			// Get render state from the camera
+			// Get roll when there's no laser slam roll and roll ignore being applied
+			// This could be simplified but is necessary to have SDVX II-like roll keep and laser slams
+			rollL = m_camera.GetRollIgnoreTimer(0) <= 0 ? m_scoring.GetLaserRollOutput(0) : m_camera.GetSlamAmount(0);
+			rollR = m_camera.GetRollIgnoreTimer(1) <= 0 ? m_scoring.GetLaserRollOutput(1) : m_camera.GetSlamAmount(1);
+			slowTilt = (rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0);
+			rollL = m_camera.GetRollIgnoreTimer(0) <= 0 ? m_scoring.GetLaserRollOutput(0) : 0;
+			rollR = m_camera.GetRollIgnoreTimer(1) <= 0 ? m_scoring.GetLaserRollOutput(1) : 0;
+		}
 		m_camera.SetTargetRoll(rollL + rollR);
 		m_camera.SetSlowTilt(slowTilt);
 
@@ -1388,13 +1403,13 @@ public:
 		// Enable laser slams and roll ignore behaviour
 		m_camera.SetFancyHighwayTilt(g_gameConfig.GetBool(GameConfigKeys::EnableFancyHighwayRoll));
 
-		SDL_DisplayMode current;
-		int displayIndex = g_gameWindow->GetDisplayIndex();
-		int error = SDL_GetCurrentDisplayMode(displayIndex, &current);
-		if (error)
-			Logf("Could not get display mode info for display %d: %s", Logger::Severity::Warning, displayIndex, SDL_GetError());
-		else
-			m_camera.SetSlamShakeGuardDuration(current.refresh_rate);
+		//SDL_DisplayMode current;
+		//int displayIndex = g_gameWindow->GetDisplayIndex();
+		//int error = SDL_GetCurrentDisplayMode(displayIndex, &current);
+		//if (error)
+		//	Logf("Could not get display mode info for display %d: %s", Logger::Severity::Warning, displayIndex, SDL_GetError());
+		//else
+		//	m_camera.SetSlamShakeGuardDuration(current.refresh_rate); // Skade-code Mute
 
 		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)
@@ -1422,6 +1437,7 @@ public:
 
 		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 		m_scoring.OnLaserExit.Add(this, &Game_Impl::OnLaserExit);
+		m_scoring.OnLaserDirChange.Add(this, &Game_Impl::OnLaserDirChange);
 
 		m_playback.hittableObjectEnter = m_scoring.hitWindow.miss + g_gameConfig.GetInt(GameConfigKeys::InputOffset);
 		m_playback.hittableObjectLeave = m_scoring.hitWindow.good;
@@ -1499,6 +1515,9 @@ public:
 		m_audioPlayback.Tick(deltaTime);
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
+
+		// assign spektrum buckets
+		g_audio->ProcessFFT(m_spektrum, 16);
 
 		// Stop playing if last gauge has reached its failstate
 		if (m_scoring.IsFailOut())
@@ -2167,7 +2186,11 @@ public:
 	{
 		float slamSize = object->points[1] - object->points[0];
 		float direction = Math::Sign(slamSize);
-		m_camera.AddCameraShake(slamSize);
+		if (g_gameConfig.GetBool(GameConfigKeys::OldSlamShake)) {
+			OldCameraShake shake(fabsf(slamSize) * m_OldShakeDuration, fabsf(slamSize) * -direction);
+			m_camera.OldAddCameraShake(shake);
+		} else
+			m_camera.AddCameraShake(slamSize);
 		m_slamSample->Play();
 
 		if (object->spin.type != 0)
@@ -2205,16 +2228,45 @@ public:
 		lua_settop(m_lua, 0);
 	}
 
+	// push true to indicate direction change of lasers
+	void OnLaserDirChange(int index)
+	{
+		lua_getglobal(m_lua, "laser_dir_change");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushinteger(m_lua, index);
+			if (lua_pcall(m_lua, 1, 0, 0) != 0)
+			{
+				Logf("Lua error on calling laser_slam_hit: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
+	}
+
 	void OnButtonHit(Input::Button button, ScoreHitRating rating, ObjectState* hitObject, MapTime delta)
 	{
-		ButtonObjectState* st = (ButtonObjectState*)hitObject;
+ButtonObjectState* st = (ButtonObjectState*)hitObject;
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
 		auto buttonIndex = (uint32) button;
 		bool skipEffect = m_scoring.HoldObjectAvailable(buttonIndex, false) && (!m_delayedHitEffects || buttonIndex > 3);
+		
+		// TODO skade
+		if (!skipEffect) {
+			// set SCrit color
+			if(delta < this->GetHitWindow().perfect/2 && rating == ScoreHitRating::Perfect)
+				c = m_track->hitColors[4];
 
-		if (!skipEffect)
-            m_track->AddHitEffect(buttonIdx, c, st && st->type == ObjectType::Hold);
+			// Show crit color on idle if a hold not is hit
+			if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
+				c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
+
+			//m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
+			// TODO skade make option for hold
+			m_track->AddHitEffect(buttonIdx, c, false /*st && st->type == ObjectType::Hold*/);
+			
+			//m_track->AddHitEffect(buttonIdx, c, st && st->type == ObjectType::Hold);
+		}
 
 		if (st != nullptr && st->hasSample)
 		{
@@ -2342,14 +2394,13 @@ public:
 	// These functions control if FX button DSP's are muted or not
 	void OnObjectHold(Input::Button buttonCode, ObjectState* object)
 	{
-	    auto buttonIdx = (int)buttonCode;
 		if(object->type == ObjectType::Hold)
 		{
 			HoldObjectState* hold = (HoldObjectState*)object;
 			if(hold->effectType != EffectType::None)
 			{
-                m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
-            }
+				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
+			}
 		}
 	}
 
@@ -3230,6 +3281,17 @@ public:
 
 		//set lua
 		lua_getglobal(L, "gameplay");
+
+		// audio vis spektrum, pushes 16 buckets
+		lua_pushstring(L, "spectrum");
+		lua_newtable(L);
+		for (size_t i = 0; i < 16; i++)
+		{
+			lua_pushnumber(L, i + 1);
+			lua_pushnumber(L, m_spektrum[i]);
+			lua_settable(L, -3);
+		}
+		lua_settable(L, -3);
 
 		m_setLuaHolds(L);
 

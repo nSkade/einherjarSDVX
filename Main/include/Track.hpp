@@ -85,7 +85,8 @@ public:
 	// 1 = Good
 	// 2 = Perfect
 	// 3 = Idle
-	Color hitColors[4] = {};
+	// 4 = SPerfect
+	Color hitColors[5] = {};
 
 	class AsyncAssetLoader* loader = nullptr;
 
@@ -230,7 +231,10 @@ private:
 	float m_viewRange;
 
 	MapTime m_lastMapTime = 0;
-	float m_cModSpeed = 0;
+	float m_cModSpeed = 0.0f;
+	float m_initBPM = 0.0f;
+
+	float m_laneLightTimer = 0.0f;
 
 	float m_alertTimer[2] = { 10.0f, 10.0f };
 

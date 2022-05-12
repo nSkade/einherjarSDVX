@@ -15,6 +15,16 @@ struct CameraShake
 	CameraShake() = default;
 };
 
+struct OldCameraShake
+{
+	float duration;
+	float amplitude;
+	float time = 0.0f;
+	OldCameraShake() = default;
+	OldCameraShake(float duration);
+	OldCameraShake(float duration, float amplitude);
+};
+
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // If this is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
@@ -33,7 +43,8 @@ public:
 	void Tick(float deltaTime, class BeatmapPlayback& playback);
 
 	// Will ignore consecutive shakes if less than 1 / 60 of a second apart
-	void AddCameraShake(float camerShake);
+	void AddCameraShake(float cameraShake);
+	void OldAddCameraShake(OldCameraShake cameraShake);
 	void AddRollImpulse(float dir, float strength);
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
@@ -69,6 +80,7 @@ public:
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
 	float GetShakeOffset();
+	Vector3 OldGetShakeOffset();
 	bool GetRollKeep();
 	void SetManualTilt(bool manualTilt);
 	void SetManualTiltInstant(bool instant);
@@ -180,6 +192,7 @@ private:
 	RenderState m_rsLast;
 
 	CameraShake m_shakeEffect;
+	OldCameraShake m_OldshakeEffect;
 	// Base position with shake effects applied after a frame
 	float m_shakeOffset = 0.f;
 };

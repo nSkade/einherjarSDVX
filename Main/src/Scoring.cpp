@@ -146,6 +146,9 @@ void Scoring::Reset(const MapTimeRange& range)
 	timeSinceLaserUsed[0] = 1000.0f;
 	timeSinceLaserUsed[1] = 1000.0f;
 
+	lastLaserDirection[0] = 0.0f;
+	lastLaserDirection[1] = 0.0f;
+
 	memset(categorizedHits, 0, sizeof(categorizedHits));
 	memset(timedHits, 0, sizeof(timedHits));
 	// Clear hit statistics
@@ -1571,6 +1574,22 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			float laserDir = currentSegment->GetDirection();
 			float input = m_laserInput[i];
 
+			if (laserDir != lastLaserDirection[i]) OnLaserDirChange.Call(i); // call lua function
+		
+		
+		//TODO is that correct?
+		//	// Always snap laser to start sections if they are completely vertical
+		//	if (laserDir == 0.0f && m_IsRoot(currentSegment))
+		//	{
+		//		laserPositions[i] = laserTargetPositions[i];
+		//		m_autoLaserTime[i] = m_assistTime;
+		//	}
+		//	// Lock lasers on straight parts
+		//	else if (laserDir == 0.0f && fabs(positionDelta) < laserDistanceLeniency)
+		//	{
+		//		laserPositions[i] = laserTargetPositions[i];
+		//		m_autoLaserTime[i] = m_assistTime;
+		//	}
 			if (inputDir != 0)
 			{
 				if (laserDir < 0 && positionDelta < 0)
@@ -1599,6 +1618,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			else
 				m_autoLaserTime[i] -= deltaTime;
 			timeSinceLaserUsed[i] = 0;
+			lastLaserDirection[i] = laserDir;
 		}
 		else
 		{

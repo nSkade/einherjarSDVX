@@ -40,6 +40,10 @@ public:
 	bool runAudioThread = false;
 	AudioOutput* output = nullptr;
 
+	//Skade
+	void* GetSampleBuffer();
+	uint32 GetSampleBufferLength();
+
 protected:
 	// Used to limit rendering to a fixed number of samples
 	constexpr static uint32 m_sampleBufferLength = 384;

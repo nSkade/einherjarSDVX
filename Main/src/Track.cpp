@@ -52,8 +52,8 @@ bool Track::AsyncLoad()
 	// Load hit effect colors
 	Image hitColorPalette;
 	CheckedLoad(hitColorPalette = ImageRes::Create(Path::Absolute("skins/" + skin + "/textures/hitcolors.png")));
-	assert(hitColorPalette->GetSize().x >= 4);
-	for(uint32 i = 0; i < 4; i++)
+	assert(hitColorPalette->GetSize().x >= 5);
+	for(uint32 i = 0; i < 5; i++)
 		hitColors[i] = hitColorPalette->GetBits()[i];
 
 	// mip-mapped and anisotropicaly filtered track textures
@@ -268,7 +268,10 @@ bool Track::AsyncFinalize()
 void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 {
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	if (&currentTimingPoint != m_lastTimingPoint)
+
+	if (m_initBPM == 0.0f) m_initBPM = currentTimingPoint.GetBPM();
+
+	if(&currentTimingPoint != m_lastTimingPoint)
 	{
 		m_lastTimingPoint = &currentTimingPoint;
 	}
@@ -291,7 +294,7 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 	timedHitEffect->Tick(deltaTime);
 
 	MapTime currentTime = playback.GetLastTime();
-	m_cModSpeed = playback.cModSpeed;
+	m_cModSpeed = playback.cModSpeed * currentTimingPoint.GetBPM()/m_initBPM;
 
 	// Set the view range of the track
 	trackViewRange = Vector2((float)currentTime, 0.0f);

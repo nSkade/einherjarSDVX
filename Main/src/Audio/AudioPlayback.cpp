@@ -74,12 +74,35 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 		}
 	}
 
+	// create miss vocal DSP
+	// TODO opt cleanup maybe in another function
+	m_missVocalEffect = m_beatmap->GetEffect(EffectType::VocalFilter);
+	Ref<AudioStream> audioTrack = m_GetDSPTrack();
+	//TODO fix
+	//m_missVocalDSP = m_missVocalEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
+	m_missVocalDSP = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);
+	if (!m_missVocalDSP) return false;
+	Logf("SetMissVocalEffect: %s", Logger::Severity::Debug, m_missVocalDSP->GetName());
+	m_missVocalDSP->mix = 0.0f;
+	// Add the DSP to the track
+	audioTrack->AddDSP(m_missVocalDSP);
+
 	if (m_fxtrack)
 	{
+		Ref<AudioStream> audioTrackfx = m_music;
+		//TODO fix
+		//m_missVocalDSPfx = m_missVocalEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
+		m_missVocalDSPfx = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);
+		if (!m_missVocalDSPfx) return false;
+		Logf("SetMissVocalEffect: %s", Logger::Severity::Debug, m_missVocalDSPfx->GetName());
+		m_missVocalDSPfx->mix = 0.0f;
+		// Add the DSP to the track
+		audioTrackfx->AddDSP(m_missVocalDSPfx);
+	}
+	if (m_fxtrack) {
 		// Prevent loading switchables if fx track is in use.
 		return true;
 	}
-
 	if (preRender)
 	{
 		m_fxtrack = AudioStream::Clone(g_audio, m_music);
@@ -154,10 +177,8 @@ void AudioPlayback::SetPosition(MapTime time)
 }
 void AudioPlayback::TogglePause()
 {
-	if (m_paused)
-		Play();
-	else
-		Pause();
+	if(m_paused) Play();
+	else Pause();
 }
 void AudioPlayback::Pause()
 {
@@ -177,7 +198,7 @@ bool AudioPlayback::HasEnded() const
 {
 	return m_music->HasEnded();
 }
-void AudioPlayback::SetEffect(uint32 index, HoldObjectState *object, class BeatmapPlayback &playback)
+void AudioPlayback::SetEffect(uint32 index, HoldObjectState* object, class BeatmapPlayback& playback)
 {
 	// Don't use effects when using an FX track
 	if (m_fxtrack)
@@ -188,11 +209,11 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState *object, class Beatm
 	m_currentHoldEffects[index] = object;
 
 	// For Time based effects
-	const TimingPoint *timingPoint = playback.GetTimingPointAt(object->time);
+	const TimingPoint* timingPoint = playback.GetTimingPointAt(object->time);
 	// Duration of a single bar
 	double barDelay = timingPoint->numerator * timingPoint->beatDuration;
 
-	DSP *&dsp = m_buttonDSPs[index];
+	DSP*& dsp = m_buttonDSPs[index];
 
 	m_buttonEffects[index] = m_beatmap->GetEffect(object->effectType);
 
@@ -238,7 +259,7 @@ void AudioPlayback::SetEffectEnabled(uint32 index, bool enabled)
 		m_buttonDSPs[index]->mix = m_effectMix[index];
 	}
 }
-void AudioPlayback::ClearEffect(uint32 index, HoldObjectState *object)
+void AudioPlayback::ClearEffect(uint32 index, HoldObjectState* object)
 {
 	assert(index <= 1);
 	if (m_currentHoldEffects[index] == object)
@@ -265,49 +286,15 @@ bool AudioPlayback::m_SkipEffectIfInputIsZero()
 void AudioPlayback::SetMissVocalEffect(bool active)
 {
 	// create effect if button is missed and there is no VocalDSP
-	if(active == true && !m_missVocalDSP)
+	if (active)
 	{
-		DSP*& dsp = m_missVocalDSP;
-	
-		m_missVocalEffect = m_beatmap->GetEffect(EffectType::VocalFilter);
-
-		Ref<AudioStream> audioTrack = m_GetDSPTrack();
-		
-		//TODO fix
-		//dsp = m_missVocalEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
-		dsp = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);
-		if (!dsp) return;
-
-		Logf("SetMissVocalEffect: %s", Logger::Severity::Debug, dsp->GetName());
-
-		dsp->mix = 1.0f;
-
-		// Add the DSP to the track
-		audioTrack->AddDSP(dsp);
-
-		if (m_fxtrack)
-		{
-			DSP*& dspfx = m_missVocalDSPfx;
-
-			Ref<AudioStream> audioTrackfx = m_music;
-
-			//TODO fix
-			//dspfx = m_missVocalEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
-			dspfx = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);
-			if (!dspfx) return;
-
-			Logf("SetMissVocalEffect: %s", Logger::Severity::Debug, dspfx->GetName());
-
-			dspfx->mix = 1.0f;
-
-			// Add the DSP to the track
-			audioTrackfx->AddDSP(dspfx);
-		}
+		m_missVocalDSP->mix = 1.0f;
+		if(m_fxtrack) m_missVocalDSPfx->mix = 1.0f;
 	}
-	else if (active == false && m_missVocalDSP)
+	else
 	{
-		m_CleanupDSP(m_missVocalDSP);
-		m_CleanupDSPfx(m_missVocalDSPfx);
+		m_missVocalDSP->mix = 0.0f;
+		if (m_fxtrack) m_missVocalDSPfx->mix = 0.0f;
 	}
 }
 void AudioPlayback::SetLaserFilterInput(float input, bool active)

@@ -1,6 +1,7 @@
 #pragma once
 #include "AudioStream.hpp"
 #include "Sample.hpp"
+#include <complex>
 
 extern class Audio* g_audio;
 
@@ -33,6 +34,12 @@ public:
 	// Calculated audio latency by the audio driver (currently unused)
 	int64 audioLatency;
 
+	//Skade wrapper for AudioImpl
+	uint32 GetSampleBufferLength(); // uint32 m_sampleBufferLength = 384
+	const float* GetSampleBuffer();
+
+	void ProcessFFT(float* out_buckets, uint32 in_bucketAmount);
 private:
+	std::vector<std::complex<double>> Audio::FFT(std::vector<std::complex<double>>& samples);
 	bool m_initialized = false;
 };

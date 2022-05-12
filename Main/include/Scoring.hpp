@@ -186,6 +186,10 @@ public:
 	Delegate<LaserObjectState*> OnLaserSlam;
 	// Called when a laser has passed the crit line
 	Delegate<LaserObjectState*> OnLaserExit;
+
+	// Skade Code
+	Delegate<int> OnLaserDirChange;
+
 	// Called when the combo counter changed
 	// (New Combo)
 	Delegate<uint32> OnComboChanged;
@@ -235,6 +239,10 @@ public:
 
 	// Actual positions of the laser
 	float laserPositions[2];
+
+	// Skade
+	float lastLaserDirection[2] = { 0.0f, 0.0f };
+
 	// Sampled target position of the lasers in the map
 	float laserTargetPositions[2] = { 0 };
 	// Current lasers are extended

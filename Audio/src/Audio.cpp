@@ -5,7 +5,10 @@
 #include "AudioOutput.hpp"
 #include "DSP.hpp"
 
-Audio *g_audio = nullptr;
+#include <complex>
+# define M_PI           3.14159265358979323846  /* pi */
+
+Audio* g_audio = nullptr;
 static Audio_Impl g_impl;
 
 Audio_Impl::Audio_Impl()
@@ -15,7 +18,7 @@ Audio_Impl::Audio_Impl()
 #endif
 }
 
-void Audio_Impl::Mix(void *data, uint32 &numSamples)
+void Audio_Impl::Mix(void* data, uint32& numSamples)
 {
 	double adv = GetSecondsPerSample();
 
@@ -40,7 +43,7 @@ void Audio_Impl::Mix(void *data, uint32 &numSamples)
 
 			// Render items
 			lock.lock();
-			for (auto &item : itemsToRender)
+			for(auto& item : itemsToRender)
 			{
 				// Clear per-channel data
 				m_itemBuffer.fill(0);
@@ -94,11 +97,11 @@ void Audio_Impl::Mix(void *data, uint32 &numSamples)
 				{
 					if (output->IsIntegerFormat())
 					{
-						((int16 *)data)[(currentNumberOfSamples + i) * outputChannels + c] = (int16)(0x7FFF * Math::Clamp(m_sampleBuffer[(sampleOffset + i) * 2 + c], -1.f, 1.f));
+						((int16*)data)[(currentNumberOfSamples + i) * outputChannels + c] = (int16)(0x7FFF * Math::Clamp(m_sampleBuffer[(sampleOffset + i) * 2 + c],-1.f,1.f));
 					}
 					else
 					{
-						((float *)data)[(currentNumberOfSamples + i) * outputChannels + c] = m_sampleBuffer[(sampleOffset + i) * 2 + c];
+						((float*)data)[(currentNumberOfSamples + i) * outputChannels + c] = m_sampleBuffer[(sampleOffset + i) * 2 + c];
 					}
 				}
 			}
@@ -124,7 +127,7 @@ void Audio_Impl::Stop()
 	delete limiter;
 	limiter = nullptr;
 }
-void Audio_Impl::Register(AudioBase *audio)
+void Audio_Impl::Register(AudioBase* audio)
 {
 	if (audio)
 	{
@@ -134,7 +137,7 @@ void Audio_Impl::Register(AudioBase *audio)
 		lock.unlock();
 	}
 }
-void Audio_Impl::Deregister(AudioBase *audio)
+void Audio_Impl::Deregister(AudioBase* audio)
 {
 	lock.lock();
 	itemsToRender.Remove(audio);
@@ -148,6 +151,16 @@ uint32 Audio_Impl::GetSampleRate() const
 double Audio_Impl::GetSecondsPerSample() const
 {
 	return 1.0 / (double)GetSampleRate();
+}
+
+void* Audio_Impl::GetSampleBuffer()
+{
+	return &m_sampleBuffer;
+}
+
+uint32 Audio_Impl::GetSampleBufferLength()
+{
+	return m_sampleBufferLength;
 }
 
 Audio::Audio()
@@ -192,16 +205,113 @@ uint32 Audio::GetSampleRate() const
 {
 	return g_impl.output->GetSampleRate();
 }
-class Audio_Impl *Audio::GetImpl()
+class Audio_Impl* Audio::GetImpl()
 {
 	return &g_impl;
 }
 
-Ref<AudioStream> Audio::CreateStream(const String &path, bool preload)
+const float* Audio::GetSampleBuffer()
+{
+	return (float*) g_impl.GetSampleBuffer();
+}
+
+uint32 Audio::GetSampleBufferLength()
+{
+	return g_impl.GetSampleBufferLength();
+}
+
+void Audio::ProcessFFT(float* out_buckets, uint32 in_bucketAmount)
+{
+	const float* sampleBuffer = GetSampleBuffer();
+
+	std::vector<std::complex<double>> samplesHann;
+
+	for (int i = 0; i < 384; i++)
+	{
+		// assign left samples from sample buffer
+		samplesHann.push_back(sampleBuffer[i*2]);
+
+		//apply hann window
+		samplesHann[i] = std::sin((M_PI*i)/384) * std::sin((M_PI*i)/384) * samplesHann[i];
+	}
+
+	std::vector<std::complex<double>> samplesFFT = FFT(samplesHann);
+
+	int samplingFrequency = samplesFFT.size();
+	int subset[] = { 0, 200, 400, 600, 800, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 20000 };
+
+	std::vector<double> bins(in_bucketAmount);
+	double max_magnitude = 0.0;
+
+	for (int j = 0; j < samplingFrequency / 2; j++) {
+
+		// Calculates magnitude from freq bin
+		double real = samplesFFT[j].real() * 2 / samplingFrequency;
+		double imag = samplesFFT[j].imag() * 2 / samplingFrequency;
+		double magnitude = sqrt(pow(real, 2) + pow(imag, 2));
+		double freq = j * GetSampleRate() / samplingFrequency;
+
+		for (int i = 0; i < in_bucketAmount; i++)
+		{
+			if (freq >= subset[i] && freq <= subset[i + 1] && magnitude > bins[i])
+			{
+				bins[i] = magnitude;
+				if (magnitude > max_magnitude) max_magnitude = magnitude;
+			}
+		}
+	}
+
+	// scale output
+	for (int i = 0; i < in_bucketAmount; i++)
+	{
+		double base = 0.5 * (bins[i] * 6.0); // bass
+		double mag = 0.2 * (bins[i] * 0.5 / max_magnitude); // mid
+		double lin = 0.7 * bins[i] * i; // high notes
+		double exp = 0.6 * std::log(bins[i] * 1000.0f) * 0.125f;
+
+		out_buckets[i] = (base + lin + mag + exp)*0.75;
+	}
+}
+
+std::vector<std::complex<double>> Audio::FFT(std::vector<std::complex<double>>& samples)
+{
+	int size = samples.size();
+	if (size <= 1) return samples;
+
+	// split samples in even/odd
+	int newSize = size / 2;
+	std::vector<std::complex<double>> even(newSize, 0);
+	std::vector<std::complex<double>> odd(newSize, 0);
+
+	for (int i = 0; i < newSize; i++)
+	{
+		even[i] = samples[i * 2];
+		odd[i] = samples[i * 2+1];
+	}
+
+	// apply FFT on 2 sub vectors
+	std::vector<std::complex<double>> evenF(newSize, 0);
+	evenF = FFT(even);
+	std::vector<std::complex<double>> oddF(newSize, 0);
+	oddF = FFT(odd);
+
+	std::vector<std::complex<double>> result(size, 0);
+
+	for (int i = 0; i < newSize; i++)
+	{
+		std::complex<double> w = (std::complex<double>) (std::polar(1.0, -2 * M_PI * i / size) * (std::complex<double>) oddF[i]);
+		result[i] = evenF[i] + w;
+		result[i + newSize] = evenF[i] - w;
+	}
+
+	return result;
+}
+
+Ref<AudioStream> Audio::CreateStream(const String& path, bool preload)
 {
 	return AudioStream::Create(this, path, preload);
 }
-Sample Audio::CreateSample(const String &path)
+Sample Audio::CreateSample(const String& path)
 {
 	return SampleRes::Create(this, path);
 }

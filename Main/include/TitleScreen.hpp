@@ -4,10 +4,10 @@
 class TitleScreen : public IApplicationTickable
 {
 protected:
-	TitleScreen() = default;
+    TitleScreen() = default;
 public:
-	virtual ~TitleScreen() = default;
-	static TitleScreen* Create();
+    virtual ~TitleScreen() = default;
+    static TitleScreen* Create();
 private:
-	void m_mousePressed(int32 button);
+    void m_mousePressed(int32 button);
 };

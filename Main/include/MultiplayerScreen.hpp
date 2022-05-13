@@ -13,253 +13,253 @@
 class PreviewPlayer;
 
 enum SyncState {
-	LOADING,
-	SYNCING,
-	SYNCED
+    LOADING,
+    SYNCING,
+    SYNCED
 };
 
 enum MultiplayerScreenState {
-	ROOM_LIST,
-	JOIN_PASSWORD,
-	IN_ROOM,
-	NEW_ROOM_NAME,
-	NEW_ROOM_PASSWORD,
-	SET_USERNAME,
+    ROOM_LIST,
+    JOIN_PASSWORD,
+    IN_ROOM,
+    NEW_ROOM_NAME,
+    NEW_ROOM_PASSWORD,
+    SET_USERNAME,
 };
 
 class TextInputMultiplayer;
 class ChatOverlay;
 
 struct MultiplayerBPMInfo {
-	double start;
-	double min;
-	double max;
-	double mode;
+    double start;
+    double min;
+    double max;
+    double mode;
 };
 
 class MultiplayerScreen : public IAsyncLoadableApplicationTickable
 {
 public:
-	MultiplayerScreen() : m_settDiag(this) {};
-	~MultiplayerScreen();
+    MultiplayerScreen() : m_settDiag(this) {};
+    ~MultiplayerScreen();
 
-	bool Init() override;
-	void Tick(float deltaTime) override;
-	void Render(float deltaTime) override;
-	void ForceRender(float deltaTime) override;
+    bool Init() override;
+    void Tick(float deltaTime) override;
+    void Render(float deltaTime) override;
+    void ForceRender(float deltaTime) override;
 
-	void OnKeyPressed(SDL_Scancode code, int32 delta) override;
-	void OnKeyReleased(SDL_Scancode code, int32 delta) override;
-	void MousePressed(MouseButton button);
+    void OnKeyPressed(SDL_Scancode code, int32 delta) override;
+    void OnKeyReleased(SDL_Scancode code, int32 delta) override;
+    void MousePressed(MouseButton button);
 
 
-	void OnSuspend() override;
-	void OnRestore() override;
-	bool AsyncLoad() override;
-	bool AsyncFinalize() override;
-	void JoinRoomWithToken(String token);
+    void OnSuspend() override;
+    void OnRestore() override;
+    bool AsyncLoad() override;
+    bool AsyncFinalize() override;
+    void JoinRoomWithToken(String token);
 
-	int lExit(struct lua_State* L);
-	int lSongSelect(struct lua_State* L);
-	int lSettings(struct lua_State* L);
-	int lNewRoomStep(struct lua_State* L);
-	int lJoinWithPassword(struct lua_State* L);
-	int lJoinWithoutPassword(struct lua_State* L);
-	int lSaveUsername(struct lua_State* L);
+    int lExit(struct lua_State* L);
+    int lSongSelect(struct lua_State* L);
+    int lSettings(struct lua_State* L);
+    int lNewRoomStep(struct lua_State* L);
+    int lJoinWithPassword(struct lua_State* L);
+    int lJoinWithoutPassword(struct lua_State* L);
+    int lSaveUsername(struct lua_State* L);
 
-	void SetSelectedMap(FolderIndex*, ChartIndex*);
+    void SetSelectedMap(FolderIndex*, ChartIndex*);
 
-	void PerformScoreTick(Scoring& scoring, MapTime time);
-	void SendFinalScore(class Game* game, ClearMark clearState);
-	void GetMapBPMForSpeed(const String path, struct MultiplayerBPMInfo& info);
+    void PerformScoreTick(Scoring& scoring, MapTime time);
+    void SendFinalScore(class Game* game, ClearMark clearState);
+    void GetMapBPMForSpeed(const String path, struct MultiplayerBPMInfo& info);
 
-	ChartIndex* GetCurrentSelectedChart() const;
+    ChartIndex* GetCurrentSelectedChart() const;
 
-	Vector<nlohmann::json> const* GetFinalStats() const
-	{
-		return &m_finalStats;
-	}
+    Vector<nlohmann::json> const* GetFinalStats() const
+    {
+        return &m_finalStats;
+    }
 
-	TCPSocket& GetTCP()
-	{
-		return m_tcp;
-	}
+    TCPSocket& GetTCP()
+    {
+        return m_tcp;
+    }
 
-	ChatOverlay* GetChatOverlay()
-	{
-		return m_chatOverlay;
-	}
+    ChatOverlay* GetChatOverlay()
+    {
+        return m_chatOverlay;
+    }
 
-	String GetUserId()
-	{
-		return m_userId;
-	}
+    String GetUserId()
+    {
+        return m_userId;
+    }
 
-	bool IsSynced() {
-		return m_syncState == SyncState::SYNCED;
-	}
+    bool IsSynced() {
+        return m_syncState == SyncState::SYNCED;
+    }
 
-	void StartSync();
+    void StartSync();
 
-	bool IsSyncing();
+    bool IsSyncing();
 
-	void Fail() {
-		m_failed = true;
-	}
-	
-	bool HasFailed()
-	{
-		return m_failed;
-	}
+    void Fail() {
+        m_failed = true;
+    }
 
-	bool InRoom()
-	{
-		return m_roomId != "";
-	}
+    bool HasFailed()
+    {
+        return m_failed;
+    }
 
-	const String& GetUserName()
-	{
-		return m_userName;
-	}
+    bool InRoom()
+    {
+        return m_roomId != "";
+    }
+
+    const String& GetUserName()
+    {
+        return m_userName;
+    }
 
 private:
-	void m_OnButtonPressed(Input::Button buttonCode, int32 delta);
-	void m_OnButtonReleased(Input::Button buttonCode, int32 delta);
-	void m_OnMouseScroll(int32 steps);
+    void m_OnButtonPressed(Input::Button buttonCode, int32 delta);
+    void m_OnButtonReleased(Input::Button buttonCode, int32 delta);
+    void m_OnMouseScroll(int32 steps);
 
-	bool m_handleStartPacket(nlohmann::json& packet);
-	bool m_handleSyncStartPacket(nlohmann::json& packet);
-	bool m_handleAuthResponse(nlohmann::json& packet);
-	bool m_handleRoomList(nlohmann::json& packet);
-	bool m_handleSongChange(nlohmann::json& packet);
-	bool m_handleRoomUpdate(nlohmann::json& packet);
-	bool m_handleJoinRoom(nlohmann::json& packet);
-	bool m_handleBadPassword(nlohmann::json& packet);
-	bool m_handleError(nlohmann::json& packet);
-	void m_handleSocketClose();
-	bool m_handleFinalStats(nlohmann::json& packet);
-	void m_SetCurrentChartOffset(int newValue);
+    bool m_handleStartPacket(nlohmann::json& packet);
+    bool m_handleSyncStartPacket(nlohmann::json& packet);
+    bool m_handleAuthResponse(nlohmann::json& packet);
+    bool m_handleRoomList(nlohmann::json& packet);
+    bool m_handleSongChange(nlohmann::json& packet);
+    bool m_handleRoomUpdate(nlohmann::json& packet);
+    bool m_handleJoinRoom(nlohmann::json& packet);
+    bool m_handleBadPassword(nlohmann::json& packet);
+    bool m_handleError(nlohmann::json& packet);
+    void m_handleSocketClose();
+    bool m_handleFinalStats(nlohmann::json& packet);
+    void m_SetCurrentChartOffset(int newValue);
 
-	void m_onDatabaseUpdateStart(int max);
-	void m_onDatabaseUpdateProgress(int, int);
-	void m_onDatabaseUpdateDone();
-
-
-	void m_addFinalStat(nlohmann::json& data);
-
-	void m_render(float deltaTime);
-
-	void m_joinRoomWithToken();
-	bool m_returnToMainList();
-
-	void OnSearchStatusUpdated(String status);
-
-	void m_authenticate();
-
-	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
-	void m_clearLuaMap();
-	ChartIndex* m_getChartByShortPath(const String& path, uint32*, int32, bool);
-	ChartIndex* m_getChartByHash(const String& hash, const String& path, uint32*, int32);
-
-	void m_changeDifficulty(int offset);
-	void m_changeSelectedRoom(int offset);
-
-	void m_updatePreview(ChartIndex* diff, bool mapChanged);
-	void m_stopPreview();
-
-	// Some lua util functions
-	void m_PushStringToTable(const char* name, const char* data)
-	{
-		lua_pushstring(m_lua, name);
-		lua_pushstring(m_lua, data);
-		lua_settable(m_lua, -3);
-	}
-	void m_PushFloatToTable(const char* name, float data)
-	{
-		lua_pushstring(m_lua, name);
-		lua_pushnumber(m_lua, data);
-		lua_settable(m_lua, -3);
-	}
-	void m_PushIntToTable(const char* name, int data)
-	{
-		lua_pushstring(m_lua, name);
-		lua_pushinteger(m_lua, data);
-		lua_settable(m_lua, -3);
-	}
-
-	struct lua_State* m_lua = nullptr;
-	LuaBindable* m_bindable = nullptr;
-	bool m_suspended = false;
+    void m_onDatabaseUpdateStart(int max);
+    void m_onDatabaseUpdateProgress(int, int);
+    void m_onDatabaseUpdateDone();
 
 
-	int32 m_lastScoreSent = 0;
-	// TODO(itszn) have the server adjust this
-	int32 m_scoreInterval = 200;
+    void m_addFinalStat(nlohmann::json& data);
 
-	// Unique id given to by the server on auth
-	String m_userId;
-	String m_roomId;
+    void m_render(float deltaTime);
 
-	bool m_failed = false;
+    void m_joinRoomWithToken();
+    bool m_returnToMainList();
 
-	Timer m_dbUpdateTimer;
-	String m_lastStatus = "aaaaaa";
-	std::mutex m_statusLock;
+    void OnSearchStatusUpdated(String status);
 
-	// Did this client pick the current song
-	bool m_selfPicked = false;
+    void m_authenticate();
 
-	bool m_inGame = false;
+    void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
+    void m_clearLuaMap();
+    ChartIndex* m_getChartByShortPath(const String& path, uint32*, int32, bool);
+    ChartIndex* m_getChartByHash(const String& hash, const String& path, uint32*, int32);
 
-	// Socket to talk to the server
-	TCPSocket m_tcp;
+    void m_changeDifficulty(int offset);
+    void m_changeSelectedRoom(int offset);
 
-	// Database ids of the selected map
-	int32 m_selectedMapId = 0;
-	String m_selectedMapShortPath;
-	String m_selectedMapHash;
+    void m_updatePreview(ChartIndex* diff, bool mapChanged);
+    void m_stopPreview();
 
-	Map<Input::Button, float> m_timeSinceButtonPressed;
-	Map<Input::Button, float> m_timeSinceButtonReleased;
-	Map<Input::Button, bool> m_buttonPressed;
+    // Some lua util functions
+    void m_PushStringToTable(const char* name, const char* data)
+    {
+        lua_pushstring(m_lua, name);
+        lua_pushstring(m_lua, data);
+        lua_settable(m_lua, -3);
+    }
+    void m_PushFloatToTable(const char* name, float data)
+    {
+        lua_pushstring(m_lua, name);
+        lua_pushnumber(m_lua, data);
+        lua_settable(m_lua, -3);
+    }
+    void m_PushIntToTable(const char* name, int data)
+    {
+        lua_pushstring(m_lua, name);
+        lua_pushinteger(m_lua, data);
+        lua_settable(m_lua, -3);
+    }
 
-	// Selected index into the map's difficulties
-	int32 m_selectedDiffIndex = 0;
-	bool m_hasSelectedMap = false;
+    struct lua_State* m_lua = nullptr;
+    LuaBindable* m_bindable = nullptr;
+    bool m_suspended = false;
 
-	// Instance of the database, used to look up songs
-	MapDatabase* m_mapDatabase;
 
-	float m_advanceDiff = 0.0f;
-	float m_advanceRoom = 0.0f;
-	MouseLockHandle m_lockMouse;
+    int32 m_lastScoreSent = 0;
+    // TODO(itszn) have the server adjust this
+    int32 m_scoreInterval = 200;
 
-	SyncState m_syncState;
+    // Unique id given to by the server on auth
+    String m_userId;
+    String m_roomId;
 
-	MultiplayerScreenState m_screenState;
+    bool m_failed = false;
 
-	Ref<TextInputMultiplayer> m_textInput;
-	String m_roomToJoin;
+    Timer m_dbUpdateTimer;
+    String m_lastStatus = "aaaaaa";
+    std::mutex m_statusLock;
 
-	String m_joinToken;
+    // Did this client pick the current song
+    bool m_selfPicked = false;
 
-	GameplaySettingsDialog m_settDiag;
+    bool m_inGame = false;
 
-	String m_userName;
-	String m_newRoomName;
+    // Socket to talk to the server
+    TCPSocket m_tcp;
 
-	float m_hispeed;
-	float m_modSpeed;
-	SpeedMods m_speedMod;
-	struct MultiplayerBPMInfo m_bpm;
-	float m_speedBPM;
+    // Database ids of the selected map
+    int32 m_selectedMapId = 0;
+    String m_selectedMapShortPath;
+    String m_selectedMapHash;
 
-	Vector<nlohmann::json> m_finalStats;
+    Map<Input::Button, float> m_timeSinceButtonPressed;
+    Map<Input::Button, float> m_timeSinceButtonReleased;
+    Map<Input::Button, bool> m_buttonPressed;
 
-	DBUpdateScreen* m_dbUpdateScreen = nullptr;
+    // Selected index into the map's difficulties
+    int32 m_selectedDiffIndex = 0;
+    bool m_hasSelectedMap = false;
 
-	ChatOverlay* m_chatOverlay = NULL;
+    // Instance of the database, used to look up songs
+    MapDatabase* m_mapDatabase;
 
-	PreviewPlayer m_previewPlayer;
-	PreviewParams m_previewParams;
+    float m_advanceDiff = 0.0f;
+    float m_advanceRoom = 0.0f;
+    MouseLockHandle m_lockMouse;
+
+    SyncState m_syncState;
+
+    MultiplayerScreenState m_screenState;
+
+    Ref<TextInputMultiplayer> m_textInput;
+    String m_roomToJoin;
+
+    String m_joinToken;
+
+    GameplaySettingsDialog m_settDiag;
+
+    String m_userName;
+    String m_newRoomName;
+
+    float m_hispeed;
+    float m_modSpeed;
+    SpeedMods m_speedMod;
+    struct MultiplayerBPMInfo m_bpm;
+    float m_speedBPM;
+
+    Vector<nlohmann::json> m_finalStats;
+
+    DBUpdateScreen* m_dbUpdateScreen = nullptr;
+
+    ChatOverlay* m_chatOverlay = NULL;
+
+    PreviewPlayer m_previewPlayer;
+    PreviewParams m_previewParams;
 };

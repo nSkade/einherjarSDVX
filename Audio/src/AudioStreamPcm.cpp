@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "AudioStreamPcm.hpp"
 
-bool AudioStreamPcm::Init(Audio *audio, const String &path, bool preload)
+bool AudioStreamPcm::Init(Audio* audio, const String& path, bool preload)
 {
     AudioStreamBase::Init(audio, path, preload);
     m_initSampling(m_sampleRate);
@@ -9,8 +9,8 @@ bool AudioStreamPcm::Init(Audio *audio, const String &path, bool preload)
 }
 void AudioStreamPcm::SetPosition_Internal(int32 pos)
 {
-    //negative pos is causing issues somewhere
-    //TODO: Investigate more
+    // negative pos is causing issues somewhere
+    // TODO: Investigate more
     m_playPos = Math::Max(0, pos);
 }
 int32 AudioStreamPcm::GetStreamPosition_Internal()
@@ -21,7 +21,7 @@ int32 AudioStreamPcm::GetStreamRate_Internal()
 {
     return m_sampleRate;
 }
-float *AudioStreamPcm::GetPCM_Internal()
+float* AudioStreamPcm::GetPCM_Internal()
 {
     return m_pcm;
 }
@@ -69,10 +69,10 @@ uint64 AudioStreamPcm::GetSampleCount_Internal() const
 {
     return m_samplesTotal;
 }
-void AudioStreamPcm::PreRenderDSPs_Internal(Vector<DSP *> &DSPs)
+void AudioStreamPcm::PreRenderDSPs_Internal(Vector<DSP*>& DSPs)
 {
     auto originalPlayPos = m_playPos;
-    for (auto &&dsp : DSPs)
+    for (auto&& dsp : DSPs)
     {
         m_playPos = ((uint64)dsp->startTime * (uint64)m_sampleRate) / 1000;
         m_samplePos = m_playPos;
@@ -85,7 +85,7 @@ void AudioStreamPcm::PreRenderDSPs_Internal(Vector<DSP *> &DSPs)
         }
 
         uint32 numSamples = endSamplePos - m_playPos;
-        float *buffer = new float[numSamples * 2];
+        float* buffer = new float[numSamples * 2];
         memcpy(buffer, m_pcm + m_playPos * 2, numSamples * 2 * sizeof(float));
         dsp->Process(buffer, numSamples);
         memcpy(m_pcm + m_playPos * 2, buffer, numSamples * 2 * sizeof(float));
@@ -105,11 +105,11 @@ AudioStreamPcm::~AudioStreamPcm()
     }
 }
 
-Ref<AudioStream> AudioStreamPcm::Create(class Audio *audio, const Ref<AudioStream> &other)
+Ref<AudioStream> AudioStreamPcm::Create(class Audio* audio, const Ref<AudioStream>& other)
 {
-    AudioStreamPcm *impl = new AudioStreamPcm();
+    AudioStreamPcm* impl = new AudioStreamPcm();
     impl->m_pcm = nullptr;
-    float *source = other->GetPCM();
+    float* source = other->GetPCM();
     uint64 sampleCount = other->GetPCMCount();
     if (source == nullptr || sampleCount == 0)
     {

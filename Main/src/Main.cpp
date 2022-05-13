@@ -5,23 +5,23 @@
 // Windows entry point
 int32 __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	new Application();
+    new Application();
 
-	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
-	g_application->SetCommandLine(*commandLine);
+    String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
+    g_application->SetCommandLine(*commandLine);
 
-	int32 ret = g_application->Run();
-	delete g_application;
-	return ret;
+    int32 ret = g_application->Run();
+    delete g_application;
+    return ret;
 }
 #else
 // Linux entry point
 int main(int argc, char** argv)
 {
-	new Application();
-	g_application->SetCommandLine(argc, argv);
-	int32 ret = g_application->Run();
-	delete g_application;
-	return ret;
+    new Application();
+    g_application->SetCommandLine(argc, argv);
+    int32 ret = g_application->Run();
+    delete g_application;
+    return ret;
 }
 #endif

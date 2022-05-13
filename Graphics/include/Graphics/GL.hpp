@@ -1,6 +1,6 @@
 /*
-	OpenGL include file
-	This file includes the appropriate opengl headers for the platform
+    OpenGL include file
+    This file includes the appropriate opengl headers for the platform
 */
 #pragma once
 

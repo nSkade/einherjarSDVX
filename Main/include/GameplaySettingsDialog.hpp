@@ -4,7 +4,7 @@
 class SongSelect;
 class MultiplayerScreen;
 
-class GameplaySettingsDialog: public BaseGameSettingsDialog
+class GameplaySettingsDialog : public BaseGameSettingsDialog
 {
 public:
     GameplaySettingsDialog(SongSelect* songSelectScreen) : m_songSelectScreen(songSelectScreen) {}

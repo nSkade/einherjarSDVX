@@ -3,19 +3,19 @@
 #include "AsyncLoadable.hpp"
 
 /*
-	Loading and transition screen
+    Loading and transition screen
 */
 class TransitionScreen : public IApplicationTickable
 {
 public:
-	virtual ~TransitionScreen() = default;
-	static TransitionScreen* Create();
-	virtual void TransitionTo(class Game* next, IApplicationTickable* before = nullptr) = 0;
-	virtual void TransitionTo(IAsyncLoadableApplicationTickable* next, bool noCancel = true, IApplicationTickable* before = nullptr) = 0;
-	virtual void RemoveOnComplete(DelegateHandle handle) = 0;
-	virtual void RemoveAllOnComplete(void* handle) = 0;
+    virtual ~TransitionScreen() = default;
+    static TransitionScreen* Create();
+    virtual void TransitionTo(class Game* next, IApplicationTickable* before = nullptr) = 0;
+    virtual void TransitionTo(IAsyncLoadableApplicationTickable* next, bool noCancel = true, IApplicationTickable* before = nullptr) = 0;
+    virtual void RemoveOnComplete(DelegateHandle handle) = 0;
+    virtual void RemoveAllOnComplete(void* handle) = 0;
 
-	// Called when target screen is loaded
-	//	can also give a null pointer if the screen didn't load successfully
-	Delegate<IAsyncLoadableApplicationTickable*> OnLoadingComplete;
+    // Called when target screen is loaded
+    //	can also give a null pointer if the screen didn't load successfully
+    Delegate<IAsyncLoadableApplicationTickable*> OnLoadingComplete;
 };

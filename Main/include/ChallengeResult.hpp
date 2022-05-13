@@ -6,6 +6,6 @@
 class ChallengeResultScreen : public IAsyncLoadableApplicationTickable
 {
 public:
-	virtual ~ChallengeResultScreen() = default;
-	static ChallengeResultScreen* Create(class ChallengeManager*);
+    virtual ~ChallengeResultScreen() = default;
+    static ChallengeResultScreen* Create(class ChallengeManager*);
 };

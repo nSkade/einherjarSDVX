@@ -23,10 +23,7 @@ endif()
 set(CMAKE_CONFIGURATION_TYPES Debug Release)
 set(CMAKE_DEBUG_POSTFIX _Debug)
 set(CMAKE_RELEASE_POSTFIX _Release)
-execute_process(COMMAND git log -1 --date=short --format="%cd_%h"
-                OUTPUT_VARIABLE GIT_DATE_HASH
-                ERROR_QUIET
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
+
 
 
 # Set output folders
@@ -55,7 +52,16 @@ find_package(Vorbis REQUIRED)
 find_package(OGG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(Iconv REQUIRED)
+find_package(Git)
 
+
+if(GIT_FOUND)
+message(${GIT_EXECUTABLE})
+    execute_process(COMMAND ${GIT_EXECUTABLE} log -1 --date=short --format="%cd_%h"
+                    OUTPUT_VARIABLE GIT_DATE_HASH
+                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
 # All projects use unicode define
 # this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)

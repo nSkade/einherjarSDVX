@@ -4,5 +4,5 @@
 
 int TestMain()
 {
-	return TestManager::Get().RunAll();
+    return TestManager::Get().RunAll();
 }

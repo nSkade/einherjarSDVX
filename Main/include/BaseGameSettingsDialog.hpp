@@ -133,7 +133,7 @@ private:
     int m_currentTab = 0;
     int m_currentSetting = 0;
 
-    float m_knobAdvance[2] = {0.0f, 0.0f};
+    float m_knobAdvance[2] = { 0.0f, 0.0f };
     float m_sensMult = 1.0f;
 
     struct lua_State* m_lua = nullptr;

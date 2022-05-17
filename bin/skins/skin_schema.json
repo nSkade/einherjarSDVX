@@ -1,0 +1,270 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/USCSkinDefinition",
+    "definitions": {
+        "USCSkinDefinition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "$schema": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    },
+                    "minLength": 1,
+                    "maxLength": 3
+                },
+                "game_version": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    },
+                    "minLength": 1,
+                    "maxLength": 3
+                },
+                "settings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SettingDefinition"
+                    }
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "http",
+                            "file",
+                            "sys"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
+                "website": {
+                    "type": "string",
+                    "format": "uri",
+                    "qt-uri-protocols": [
+                        "https"
+                    ]
+                }
+            },
+            "required": [
+                "author",
+                "settings",
+                "game_version",
+                "name",
+                "permissions",
+                "version",
+                "website"
+            ],
+            "title": "USC Skin Definition"
+        },
+        "SettingDefinition": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "description": "Separator",
+                    "properties": {},
+                    "additionalProperties": false
+                },
+                {
+                    "type": "string",
+                    "description": "Label"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "const": "integer"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": "integer"
+                        },
+                        "max": {
+                            "type": "integer"
+                        },
+                        "min": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "default",
+                        "label",
+                        "max",
+                        "min",
+                        "type"
+                    ],
+                    "description": "Int definition"
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "float definition",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string",
+                            "const": "float"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": "number"
+                        },
+                        "max": {
+                            "type": "number"
+                        },
+                        "min": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "default",
+                        "label",
+                        "max",
+                        "min",
+                        "type"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "boolean definition",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string",
+                            "const": "bool"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "default",
+                        "label",
+                        "type"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "text definition",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string",
+                            "const": "text"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": "string"
+                        },
+                        "secret": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "default",
+                        "label",
+                        "type"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "color definition",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string",
+                            "const": "color"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": "string",
+                            "pattern": "^[a-f,A-F,0-9]{8}$"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "default",
+                        "label",
+                        "type"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "color definition",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string",
+                            "const": "selection"
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "default": {
+                            "type": "string"
+                        },
+                        "values": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minLength": 1,
+                            "uniqueItems": true
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "default",
+                        "label",
+                        "type",
+                        "values"
+                    ]
+                }
+            ]
+        }
+    }
+}

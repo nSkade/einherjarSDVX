@@ -211,8 +211,10 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LevelFilterChal, 0);
 	Set(GameConfigKeys::FolderFilter, 0);
 
-	Set(GameConfigKeys::AutoResetSettings, false);
+	Set(GameConfigKeys::EventMode, false);
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
+	Set(GameConfigKeys::DemoIdleTime, 0);
+
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
 	Set(GameConfigKeys::DelayedHitEffects, true);
 

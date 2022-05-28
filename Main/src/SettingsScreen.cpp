@@ -812,6 +812,15 @@ protected:
 			g_application->AddTickable(m_replayPruneWindow);
 			m_replayPruneWindow->OnTick.Add(this, &SettingsPage_System::m_pruneReplaysImpl);
 		}
+
+		SectionHeader("Event Mode");
+		ToggleSetting(GameConfigKeys::EventMode, "Enable");
+		if (g_gameConfig.GetBool(GameConfigKeys::EventMode)) {
+
+			IntSetting(GameConfigKeys::DemoIdleTime, "Enter demo after %d seconds idle. (0 = Disable)", 0, 600);
+			FloatSetting(GameConfigKeys::AutoResetToSpeed, "Reset speed to after each play", 50, 1500, 0.5f);
+		}
+		
 	}
 private:
 	MapDatabase* m_mapDatabase = nullptr;

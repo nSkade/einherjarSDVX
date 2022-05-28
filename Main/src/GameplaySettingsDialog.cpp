@@ -45,7 +45,7 @@ void GameplaySettingsDialog::InitTabs()
     }
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
     gameTab->settings.push_back(CreateEnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "Score Display"));
-    if (m_songSelectScreen != nullptr)
+    if (m_songSelectScreen != nullptr || g_gameConfig.GetBool(GameConfigKeys::EventMode))
     {
         gameTab->settings.push_back(CreateButton("Replay Best Score", [this](const auto&) { onPressReplay.Call(); }));
         gameTab->settings.push_back(CreateButton("Autoplay", [this](const auto&) { onPressAutoplay.Call(); }));
@@ -159,6 +159,12 @@ void GameplaySettingsDialog::InitTabs()
 				Path::CreateDir(Path::Absolute("profiles"));
 			Path::ShowInFileBrowser(Path::Absolute("profiles"));
 		}));
+    }
+
+    if (g_gameConfig.GetBool(GameConfigKeys::EventMode)) {
+        AddTab(std::move(gameTab));
+        SetCurrentTab(0);
+        return;
     }
 
     AddTab(std::move(offsetTab));

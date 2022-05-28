@@ -1255,9 +1255,9 @@ public:
 		//TODO if the manager is going to trigger in the next tick we probably should not do this
 		//     we could add a delegate for finishing the charts and then use that to restart searching
 		m_mapDatabase->ResumeSearching();
-		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
+		if (g_gameConfig.GetBool(GameConfigKeys::EventMode))
 		{
-			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
+			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
 			m_filterSelection->SetFiltersByIndex(0, 0);
 		}

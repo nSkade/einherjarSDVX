@@ -417,6 +417,7 @@ namespace Graphics
 						}
 					}
 					outer.OnAnyEvent.Call(evt);
+					m_lastEventTick = tick;
 				}
 			}
 			while (eventCount == SIZE_EVENTS);
@@ -623,6 +624,7 @@ namespace Graphics
 		uint32 m_style;
 		Vector2i m_clntSize;
 		WString m_caption;
+		uint64 m_lastEventTick = 0;
 	};
 
 	Window::Window(Vector2i size, uint8 samplecount)
@@ -815,6 +817,10 @@ namespace Graphics
 	{
 		if (SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE) != 0)
 			Logf("SetRelativeMouseMode failed: %s", Logger::Severity::Warning, SDL_GetError());
+	}
+
+	uint64 Window::GetIdleTimsMs() {
+		return SDL_GetTicks64() - m_impl->m_lastEventTick;
 	}
 
 	bool Window::GetRelativeMouseMode()

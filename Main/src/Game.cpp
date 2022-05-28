@@ -2546,6 +2546,10 @@ public:
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			return;
 
+		if (m_demo) {
+			TriggerManualExit();
+		}
+
 		if (m_isPracticeSetup)
 		{
 			if (buttonCode != Input::Button::Back && !m_isPracticeSetupNavEnabled)

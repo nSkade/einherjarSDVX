@@ -1543,6 +1543,44 @@ public:
 				gauge->SetValue(0.0f);
 			FailCurrentRun();
 		}
+
+		//lights
+		{
+			if (m_scoring.autoplayInfo.IsAutoplayButtons())
+			{
+				int buttonBits = 0;
+				for (size_t i = 0; i < 6; i++)
+				{
+					buttonBits |= (m_scoring.autoplayInfo.buttonAnimationTimer[i] > 0 ? 1 : 0) << i;
+				}
+				g_application->SetButtonLights(buttonBits);
+			}
+			else
+			{
+				g_application->SetButtonLights(g_input.GetButtonBits() & 0b111111);
+			}
+
+			float brightness = 1.0 - (m_playback.GetBeatTime() * 0.8);
+			brightness = Math::Clamp(brightness, 0.0f, 1.0f);
+			
+			
+			Color rgbColor = Color::FromHSV(180, 1.0, brightness);
+			for (size_t i = 0; i < 2; i++)
+			{
+				for (size_t j = 0; j < 3; j++)
+				{
+					if (j == 0)
+					{
+						const Color c(m_track->laserColors[1 - i] * brightness);
+						g_application->SetRgbLights(i, j, c.ToRGBA8());
+					}
+					else
+					{
+						g_application->SetRgbLights(i, j, rgbColor.ToRGBA8());
+					}
+				}
+			}
+		}
 	}
 
 	void BeginAfterGameTransition()

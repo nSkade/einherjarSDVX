@@ -163,6 +163,8 @@ DefineEnum(GameConfigKeys,
 		   WASAPI_Exclusive,
 		   MuteUnfocused,
 		   PrerenderEffects,
+           UseLightPlugins,
+		   LightPlugin,
 
 		   CheckForUpdates,
 		   OnlyRelease,

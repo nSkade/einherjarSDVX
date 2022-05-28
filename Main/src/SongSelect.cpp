@@ -1685,7 +1685,7 @@ public:
 
 			m_settDiag.Tick(deltaTime);
 
-			const int idleTimeout = g_gameConfig.GetInt(GameConfigKeys::DemoIdleTime);
+			uint32 idleTimeout = g_gameConfig.GetInt(GameConfigKeys::DemoIdleTime);
 			if (g_gameConfig.GetBool(GameConfigKeys::EventMode) && idleTimeout > 0 && g_gameWindow->GetIdleTimsMs() > idleTimeout * 1000) {
 				StartDemoMode();
 			}

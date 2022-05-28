@@ -624,7 +624,7 @@ namespace Graphics
 		uint32 m_style;
 		Vector2i m_clntSize;
 		WString m_caption;
-		uint64 m_lastEventTick = 0;
+		uint32 m_lastEventTick = 0;
 	};
 
 	Window::Window(Vector2i size, uint8 samplecount)
@@ -819,8 +819,8 @@ namespace Graphics
 			Logf("SetRelativeMouseMode failed: %s", Logger::Severity::Warning, SDL_GetError());
 	}
 
-	uint64 Window::GetIdleTimsMs() {
-		return SDL_GetTicks64() - m_impl->m_lastEventTick;
+	uint32 Window::GetIdleTimsMs() {
+		return SDL_GetTicks() - m_impl->m_lastEventTick;
 	}
 
 	bool Window::GetRelativeMouseMode()

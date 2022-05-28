@@ -135,7 +135,7 @@ namespace Graphics
 		// Open a gamepad within the range of the number of gamepads
 		Ref<Gamepad> OpenGamepad(int32 deviceIndex);
 		// Get time since last window event in milliseconds
-		uint64 GetIdleTimsMs();
+		uint32 GetIdleTimsMs();
 
 
 		Delegate<SDL_Scancode, int32> OnKeyPressed;

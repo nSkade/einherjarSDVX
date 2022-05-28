@@ -715,6 +715,7 @@ protected:
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_channels;
 	Vector<String> m_lightPlugins;
+	bool m_showWarning = false;
 
 protected:
 	void RenderContents() override
@@ -735,7 +736,25 @@ protected:
 		ToggleSetting(GameConfigKeys::PrerenderEffects, "Pre-render song effects (experimental)");
 
 		SectionHeader("Lights");
-		StringSelectionSetting(GameConfigKeys::LightPlugin, m_lightPlugins, "Light plugin:");
+		const bool currentUseLight = g_gameConfig.GetBool(GameConfigKeys::UseLightPlugins);
+		const bool newUseLight = ToggleInput(currentUseLight, "Enable light plugins (may require restart):");
+
+		if (currentUseLight && !newUseLight) {
+			g_gameConfig.Set(GameConfigKeys::UseLightPlugins, false);
+		}
+
+		if (m_lightPlugins.size() > 1) {
+			StringSelectionSetting(GameConfigKeys::LightPlugin, m_lightPlugins, "Light plugin:");
+		}
+		m_showWarning = (!currentUseLight && newUseLight) || m_showWarning;
+		if (m_showWarning) {
+			nk_label(m_nctx, "Only install plugins from trusted sources as they", NK_TEXT_ALIGN_CENTERED);
+			nk_label(m_nctx, "can execute arbitrary code on your system.", NK_TEXT_ALIGN_CENTERED);
+			if (nk_button_label(m_nctx, "Ok")) {
+				g_gameConfig.Set(GameConfigKeys::UseLightPlugins, true);
+				m_showWarning = false;
+			}
+		}
 
 
 		SectionHeader("Render");

@@ -234,6 +234,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true); // deprecated
 	Set(GameConfigKeys::LimitSettingsFont, false);
+	Set(GameConfigKeys::UseLightPlugins, false);
 	Set(GameConfigKeys::LightPlugin, "");
 
 	// Multiplayer

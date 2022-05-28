@@ -1166,7 +1166,11 @@ bool Application::m_Init()
 
 
 	m_InitDiscord();
-	m_InitLightPlugins();
+	if (g_gameConfig.GetBool(GameConfigKeys::UseLightPlugins))
+	{
+		m_InitLightPlugins();
+	}
+
 
 	CheckedLoad(m_fontMaterial = LoadMaterial("font"));
 	m_fontMaterial->opaque = false;

@@ -115,9 +115,7 @@ void Application::ApplySettings()
 	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
-	m_responsiveInputs = g_gameConfig.GetBool(GameConfigKeys::ResponsiveInputs);
-
-
+	m_loadResponsiveInputSetting();
 	m_UpdateWindowPosAndShape();
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
 
@@ -157,7 +155,18 @@ int32 Application::Run()
 		// Play the map specified in the command line
 		if (m_commandLine.size() > 1 && m_commandLine[1].front() != '-')
 		{
-			Game *game = LaunchMap(m_commandLine[1]);
+			Game* game = nullptr;
+			String& p = m_commandLine[1];
+			bool isReplay = false;
+			if (p.length() > 4 && p.substr(p.length() - 3) == "urf")
+			{
+				isReplay = true;
+				game = LaunchReplay(p);
+			}
+			else
+			{
+				game = LaunchMap(p);
+			}
 			if (!game)
 			{
 				Logf("LaunchMap(%s) failed", Logger::Severity::Error, m_commandLine[1]);
@@ -165,7 +174,7 @@ int32 Application::Run()
 			else
 			{
 				auto &cmdLine = g_application->GetAppCommandLine();
-				if (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto"))
+				if (!isReplay && (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto")))
 				{
 					game->GetScoring().autoplayInfo.autoplay = true;
 				}
@@ -461,6 +470,41 @@ void Application::m_unpackSkins()
 		{
 			Path::Delete(fi.fullPath);
 		}
+	}
+}
+
+void Application::m_loadResponsiveInputSetting()
+{
+	QualityLevel responsiveInputSetting = g_gameConfig.GetEnum<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs);
+	switch (responsiveInputSetting)
+	{
+	case QualityLevel::Off:
+		m_responsiveInputs = false;
+		break;
+	case QualityLevel::Low:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 4;
+		break;
+	case QualityLevel::Medium:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 3;
+		break;
+	case QualityLevel::High:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 2;
+		break;
+	case QualityLevel::Ultra:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 1;
+		break;
+	case QualityLevel::Max:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 0;
+		break;
+	default:
+		m_responsiveInputs = false;
+		g_gameConfig.SetEnum<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs, QualityLevel::Off);
+		break;
 	}
 }
 
@@ -986,6 +1030,7 @@ bool Application::m_Init()
 		{
 			if (cl == "-convertmaps")
 			{
+				// Note: this feature should be re-implemented. See `Beatmap.cpp`.
 				m_allowMapConversion = true;
 			}
 			else if (cl == "-mute")
@@ -1147,8 +1192,7 @@ bool Application::m_Init()
 		BasicNuklearGui::StartFontInit();
 		m_fontBakeThread = Thread(BasicNuklearGui::BakeFontWithLock);
 	}
-
-	m_responsiveInputs = g_gameConfig.GetBool(GameConfigKeys::ResponsiveInputs);
+	m_loadResponsiveInputSetting();
 	renderSema = SDL_CreateSemaphore(0);
 	m_renderThread = Thread(threadedRenderer);
 
@@ -1299,7 +1343,12 @@ void Application::m_Tick()
 			SDL_SemPost(renderSema);
 			while (rendering.load()) {
 				SDL_PumpEvents();
-				std::this_thread::yield();
+				if (m_responsiveInputsSleep) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(m_responsiveInputsSleep));
+				}
+				else {
+					std::this_thread::yield();
+				}
 			}
 			g_gl->MakeCurrent();
 		}
@@ -1323,15 +1372,20 @@ void Application::m_Tick()
 
 }
 
+// Checks and clears OpenGL errors
+static void CheckGLErrors(const std::string_view label)
+{
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		Logf("OpenGL error %s: %p", Logger::Severity::Debug, label.data(), glErr);
+	}
+}
+
 void Application::RenderTickables()
 {
 	//Clear out opengl errors
-	GLenum glErr = glGetError();
-	while (glErr != GL_NO_ERROR)
-	{
-		Logf("OpenGL Error: %p", Logger::Severity::Debug, glErr);
-		glErr = glGetError();
-	}
+	CheckGLErrors("on entering Application::RenderTickables");
 
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -1350,11 +1404,17 @@ void Application::RenderTickables()
 
 	g_guiState.scissor = Rect(0, 0, -1, -1);
 	g_guiState.imageTint = nvgRGB(255, 255, 255);
+
+	CheckGLErrors("before rendering tickables");
+
 	// Render all items
 	for (auto& tickable : g_tickables)
 	{
 		tickable->Render(m_deltaTime);
+
+		CheckGLErrors("during rendering a tickable");
 	}
+
 	m_renderStateBase.projectionTransform = GetGUIProjection();
 	if (m_showFps)
 	{
@@ -1376,6 +1436,7 @@ void Application::RenderTickables()
 	m_renderQueueBase.Process();
 	glCullFace(GL_FRONT);
 
+	CheckGLErrors("after processing render queues");
 
 	//This FPS limiter seems unstable over 500fps
 	uint32 frameTime = m_frameTimer.Microseconds();
@@ -1398,9 +1459,20 @@ void Application::RenderTickables()
 			std::this_thread::yield();
 		} while (m_frameTimer.Microseconds() < m_targetRenderTime);
 	}
+
+	CheckGLErrors("just before buffer swapping");
+
 	// Swap buffers
 	g_gl->SwapBuffers();
 
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		// Have no idea why `SDL_GL_SwapWindow` causes these errors...
+		if (glErr == GL_INVALID_ENUM || glErr == GL_INVALID_OPERATION) continue;
+		
+		Logf("OpenGL error after buffer swapping: %p", Logger::Severity::Debug, glErr);
+	}
 }
 
 void Application::m_Cleanup()
@@ -1507,6 +1579,26 @@ class Game *Application::LaunchMap(const String &mapPath)
 {
 	PlaybackOptions opt;
 	Game *game = Game::Create(mapPath, opt);
+	g_transition->TransitionTo(game);
+	return game;
+}
+class Game* Application::LaunchReplay(const String& replayPath, MapDatabase** database /*= nullptr*/)
+{
+	Replay* replay = Replay::Load(replayPath);
+	if (!replay)
+	{
+		g_gameWindow->ShowMessageBox("Failed to load replay", "Failed to load replay file, it may be corrupted or for a newer version of USC", 0);
+		return nullptr;
+	}
+	ChartIndex* chart = replay->FindChart(database);
+	if (!chart)
+	{
+		g_gameWindow->ShowMessageBox("Failed to load replay", "Could not find a matching chart for this replay", 0);
+		return nullptr;
+	}
+	PlaybackOptions opt;
+	Game* game = Game::Create(chart, opt);
+	game->InitPlayReplay(replay);
 	g_transition->TransitionTo(game);
 	return game;
 }
@@ -2257,7 +2349,8 @@ static int lGetButton(lua_State *L /* int button */)
 {
     int button = luaL_checkinteger(L, 1);
     if (g_application->autoplayInfo
-        && (g_application->autoplayInfo->IsAutoplayButtons()) && button < 6)
+        && (g_application->autoplayInfo->IsAutoplayButtons() || g_application->autoplayInfo->IsReplayingButtons())
+		&& button < 6)
         lua_pushboolean(L, g_application->autoplayInfo->buttonAnimationTimer[button] > 0);
     else
         lua_pushboolean(L, g_input.GetButton((Input::Button)button));

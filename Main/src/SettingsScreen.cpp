@@ -962,8 +962,12 @@ protected:
 		ToggleSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the setup after the result is shown");
 		ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice-mode info during gameplay");
 
+		ToggleSetting(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed, "Adjust HiSpeed for playback speeds lower than x1.0");
+		ToggleSetting(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed, "Adjust HiSpeed for playback speeds higher than x1.0");
+
+
 		SectionHeader("Defaults for Playback and Loop Control");
-		IntSetting(GameConfigKeys::DefaultPlaybackSpeed, "Playback speed (%)", 25, 100);
+		IntSetting(GameConfigKeys::DefaultPlaybackSpeed, "Playback speed (%)", 25, 400);
 
 		Separator();
 

@@ -14,7 +14,7 @@ public:
 	GameAudioEffect(const AudioEffect &other);
 
 	// Creates a DSP matching this effect
-	DSP *CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate);
+	DSP *CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate, float playbackSpeed);
 	// Applies the given parameters overriding some settings for this effect (depending on the effect)
 	void SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectState *object);
 };

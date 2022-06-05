@@ -197,6 +197,9 @@ DefineEnum(GameConfigKeys,
 		   DefaultFailConditionMissNear,
 		   DefaultFailConditionGauge,
 
+		   AdjustHiSpeedForLowerPlaybackSpeed,
+		   AdjustHiSpeedForHigherPlaybackSpeed,
+
 		   // Multiplayer
 		   MultiplayerHost,
 		   MultiplayerPassword,

@@ -863,15 +863,29 @@ public:
 	{
 		if (m_ended && IsSuspended()) return;
 
+		// Adjust factor for the hi-speed, based on the playback speed
+		float hiSpeedAdjustFactor = 1.0;
+
+		if (g_gameConfig.GetBool(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed)
+			&& 0 < m_playOptions.playbackSpeed && m_playOptions.playbackSpeed < 1.0)
+		{
+			hiSpeedAdjustFactor = m_playOptions.playbackSpeed;
+		}
+		else if (g_gameConfig.GetBool(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed)
+			&& 1.0 < m_playOptions.playbackSpeed)
+		{
+			hiSpeedAdjustFactor = m_playOptions.playbackSpeed;
+		}
+
 		// 8 beats (2 measures) in view at 1x hi-speed
 		if (m_speedMod == SpeedMods::CMod)
 		{
-			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
+			m_track->SetViewRange(hiSpeedAdjustFactor / m_playback.cModSpeed);
             m_track->scrollSpeed = m_playback.cModSpeed;
 		}
 		else
 		{
-			m_track->SetViewRange(8.0f / m_hispeed);
+			m_track->SetViewRange(8 * (hiSpeedAdjustFactor / m_hispeed));
             m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
 		}
 
@@ -1543,6 +1557,44 @@ public:
 				gauge->SetValue(0.0f);
 			FailCurrentRun();
 		}
+
+		//lights
+		{
+			if (m_scoring.autoplayInfo.IsAutoplayButtons())
+			{
+				int buttonBits = 0;
+				for (size_t i = 0; i < 6; i++)
+				{
+					buttonBits |= (m_scoring.autoplayInfo.buttonAnimationTimer[i] > 0 ? 1 : 0) << i;
+				}
+				g_application->SetButtonLights(buttonBits);
+			}
+			else
+			{
+				g_application->SetButtonLights(g_input.GetButtonBits() & 0b111111);
+			}
+
+			float brightness = 1.0 - (m_playback.GetBeatTime() * 0.8);
+			brightness = Math::Clamp(brightness, 0.0f, 1.0f);
+			
+			
+			Color rgbColor = Color::FromHSV(180, 1.0, brightness);
+			for (size_t i = 0; i < 2; i++)
+			{
+				for (size_t j = 0; j < 3; j++)
+				{
+					if (j == 0)
+					{
+						const Color c(m_track->laserColors[1 - i] * brightness);
+						g_application->SetRgbLights(i, j, c.ToRGBA8());
+					}
+					else
+					{
+						g_application->SetRgbLights(i, j, rgbColor.ToRGBA8());
+					}
+				}
+			}
+		}
 	}
 
 	void BeginAfterGameTransition()
@@ -1656,9 +1708,20 @@ public:
 		{
 			m_loopStreak = 0;
 
+			const bool mayIncreaseOver100 = m_playOptions.playbackSpeed > 1.0f;
+
 			int speedPercentage = Math::RoundToInt(100 * (m_playOptions.playbackSpeed + m_playOptions.incSpeedAmount));
 
-			m_playOptions.playbackSpeed = speedPercentage >= 100 ? 1.0f : speedPercentage / 100.0f;
+			if (!mayIncreaseOver100 && speedPercentage > 100) speedPercentage = 100;
+
+			if (speedPercentage == 100)
+			{
+				m_playOptions.playbackSpeed = 1.0f;
+			}
+			else
+			{
+				m_playOptions.playbackSpeed = speedPercentage / 100.0f;
+			}
 		}
 		
 		if (m_playOptions.decSpeedOnFail && !success)
@@ -2508,6 +2571,10 @@ public:
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			return;
 
+		if (m_demo) {
+			TriggerManualExit();
+		}
+
 		if (m_isPracticeSetup)
 		{
 			if (buttonCode != Input::Button::Back && !m_isPracticeSetupNavEnabled)
@@ -2825,6 +2892,7 @@ public:
 			else m_audioPlayback.Pause();
 
 			m_paused = m_audioPlayback.IsPaused();
+			if (!m_paused) m_triggerPause = false;
 		});
 		m_practiceSetupDialog->onSettingChange.AddLambda([this]() {
 			int oldAudioOffset = GetAudioOffset();

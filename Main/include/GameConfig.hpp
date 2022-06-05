@@ -146,8 +146,11 @@ DefineEnum(GameConfigKeys,
 		   LevelFilterChal,
 		   FolderFilter,
 
-		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)
-		   AutoResetToSpeed,		//Mod-Speed to reset to after each song (when AutoResetSettings is true)
+		   //Settings useful for event/convention setups
+		   EventMode,
+		   AutoResetToSpeed,  //Mod-Speed to reset to after each song (when AutoResetSettings is true)
+		   DemoIdleTime,      //Enter demo mode after being idle for n seconds
+
 		   SlamThicknessMultiplier, //TODO: Remove after better values have been found(?)
 		   DelayedHitEffects,		// TODO: Think of a better name
 
@@ -163,6 +166,8 @@ DefineEnum(GameConfigKeys,
 		   WASAPI_Exclusive,
 		   MuteUnfocused,
 		   PrerenderEffects,
+           UseLightPlugins,
+		   LightPlugin,
 
 		   CheckForUpdates,
 		   OnlyRelease,
@@ -191,6 +196,9 @@ DefineEnum(GameConfigKeys,
 		   DefaultFailConditionMiss,
 		   DefaultFailConditionMissNear,
 		   DefaultFailConditionGauge,
+
+		   AdjustHiSpeedForLowerPlaybackSpeed,
+		   AdjustHiSpeedForHigherPlaybackSpeed,
 
 		   // Multiplayer
 		   MultiplayerHost,

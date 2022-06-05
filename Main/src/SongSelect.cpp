@@ -958,9 +958,10 @@ private:
 	bool m_hasRestored = false;
 	Map<Input::Button, float> m_timeSinceButtonPressed;
 	Map<Input::Button, float> m_timeSinceButtonReleased;
-	lua_State* m_lua = nullptr;
+	lua_State *m_lua = nullptr;
+	float m_lightTimer = 0.0f;
 
-	MultiplayerScreen* m_multiplayer = nullptr;
+	MultiplayerScreen *m_multiplayer = nullptr;
 	CollectionDialog m_collDiag;
 	GameplaySettingsDialog m_settDiag;
 
@@ -1073,7 +1074,9 @@ public:
 
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 		m_previewParams = {"", 0, 0};
-		m_hasCollDiag = m_collDiag.Init(m_mapDatabase);
+		if (!g_gameConfig.GetBool(GameConfigKeys::EventMode)) { //don't let people edit collections at events
+			m_hasCollDiag = m_collDiag.Init(m_mapDatabase);
+		}
 
 		if (!m_settDiag.Init())
 			return false;
@@ -1289,6 +1292,7 @@ public:
 
 	void m_OnButtonPressed(Input::Button buttonCode, int32 delta)
 	{
+
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
@@ -1366,11 +1370,11 @@ public:
 				switch (buttonCode)
 				{
 				case Input::Button::BT_1:
-					if (g_input.GetButton(Input::Button::BT_2))
+					if (g_input.GetButton(Input::Button::BT_2) && m_hasCollDiag)
 						m_collDiag.Open(GetCurrentSelectedChart());
 					break;
 				case Input::Button::BT_2:
-					if (g_input.GetButton(Input::Button::BT_1))
+					if (g_input.GetButton(Input::Button::BT_1) && m_hasCollDiag)
 						m_collDiag.Open(GetCurrentSelectedChart());
 					break;
 
@@ -1389,6 +1393,8 @@ public:
 				case Input::Button::BT_S:
 					break;
 				case Input::Button::Back:
+					if (g_gameConfig.GetBool(GameConfigKeys::EventMode))
+						break;
 					m_suspended = true;
 					g_application->RemoveTickable(this);
 					break;
@@ -1401,6 +1407,7 @@ public:
 
 	void m_OnButtonReleased(Input::Button buttonCode, int32 delta)
 	{
+
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
@@ -1532,21 +1539,7 @@ public:
 			}
 			else if (code == SDL_SCANCODE_F8 && m_multiplayer == nullptr) // start demo mode
 			{
-				ChartIndex *chart = m_mapDatabase->GetRandomChart();
-				PlaybackOptions opts;
-				Game *game = Game::Create(chart, opts);
-				if (!game)
-				{
-					Log("Failed to start game", Logger::Severity::Error);
-					return;
-				}
-				game->GetScoring().autoplayInfo.autoplay = true;
-				game->SetDemoMode(true);
-				game->SetSongDB(m_mapDatabase);
-				m_suspended = true;
-
-				// Transition to game
-				g_transition->TransitionTo(game);
+				StartDemoMode();
 			}
 			else if (code == SDL_SCANCODE_F9)
 			{
@@ -1624,8 +1617,28 @@ public:
 			}
 		}
 	}
+	bool StartDemoMode()
+	{
+		ChartIndex* chart = m_mapDatabase->GetRandomChart();
+		PlaybackOptions opts;
+		Game* game = Game::Create(chart, opts);
+		if (!game)
+		{
+			Log("Failed to start game", Logger::Severity::Error);
+			return false;
+		}
+		game->GetScoring().autoplayInfo.autoplay = true;
+		game->SetDemoMode(true);
+		game->SetSongDB(m_mapDatabase);
+		m_suspended = true;
+
+		// Transition to game
+		g_transition->TransitionTo(game);
+		return true;
+	}
 	void OnKeyReleased(SDL_Scancode code, int32 delta) override
 	{
+
 		if (code == SDL_SCANCODE_LSHIFT)
 		{
 			m_shiftDown &= ~(code == SDL_SCANCODE_LSHIFT? 1 : 2);
@@ -1643,14 +1656,43 @@ public:
 		if (!IsSuspended())
 		{
 			TickNavigation(deltaTime);
+
+
 			m_previewPlayer.Update(deltaTime);
 			m_searchInput->Tick();
 			m_selectionWheel->SetSearchFieldLua(m_searchInput);
+
+			//tick light
+			m_lightTimer += deltaTime;
+			m_lightTimer = fmodf(m_lightTimer, 2);
+			for (size_t i = 0; i < 2; i++)
+			{
+				for (size_t j = 0; j < 3; j++)
+				{
+					g_application->SetRgbLights(i, j, Colori::Black);
+				}
+			}
+
+			if (m_lightTimer >= 1)
+				g_application->SetButtonLights(1 << 6);
+			else
+				g_application->SetButtonLights(0);
+
 			if (m_collDiag.IsActive())
 			{
 				m_collDiag.Tick(deltaTime);
 			}
+
 			m_settDiag.Tick(deltaTime);
+
+			uint32 idleTimeout = g_gameConfig.GetInt(GameConfigKeys::DemoIdleTime);
+			if (g_gameConfig.GetBool(GameConfigKeys::EventMode) && idleTimeout > 0 && g_gameWindow->GetIdleTimsMs() > idleTimeout * 1000) {
+				StartDemoMode();
+			}
+		
+
+
+
 		}
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
@@ -1680,7 +1722,8 @@ public:
 			m_multiplayer->GetChatOverlay()->Render(deltaTime);
 	}
 
-	void TickNavigation(float deltaTime)
+	// Return true if any navigation occured
+	bool TickNavigation(float deltaTime)
 	{
 		// Lock mouse to screen when active
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse && g_gameWindow->IsActive())
@@ -1703,7 +1746,7 @@ public:
 
 		if (m_settDiag.IsActive())
 		{
-			return;
+			return true;
 		}
 
 		// Song navigation using laser inputs
@@ -1742,6 +1785,8 @@ public:
 
 		m_advanceDiff -= advanceDiffActual;
 		m_advanceSong -= advanceSongActual;
+
+		return advanceDiffActual != 0 || advanceSongActual != 0;
 	}
 
 	void OnSuspend() override
@@ -1764,9 +1809,9 @@ public:
 		m_mapDatabase->Update(); //flush pending db changes before setting lua tables
 		m_selectionWheel->ResetLuaTables();
 		m_mapDatabase->ResumeSearching();
-		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
+		if (g_gameConfig.GetBool(GameConfigKeys::EventMode))
 		{
-			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
+			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
 			m_filterSelection->SetFiltersByIndex(0, 0);
 		}

@@ -31,6 +31,7 @@
 #endif
 #include "archive.h"
 #include "archive_entry.h"
+#include "LightPlugin/LightPlugin.h"
 
 GameConfig g_gameConfig;
 SkinConfig *g_skinConfig;
@@ -98,6 +99,12 @@ void Application::SetCommandLine(const char *cmdLine)
 	// Split up command line parameters
 	m_commandLine = Path::SplitCommandLine(cmdLine);
 }
+
+static void PluginLog(char* msg)
+{
+	Logf("[Light Plugin]: %s", Logger::Severity::Info, msg);
+}
+
 void Application::ApplySettings()
 {
 	String newskin = g_gameConfig.GetString(GameConfigKeys::Skin);
@@ -111,6 +118,25 @@ void Application::ApplySettings()
 	m_loadResponsiveInputSetting();
 	m_UpdateWindowPosAndShape();
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
+
+	//restart light plugin
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->Close();
+		m_activeLightPlugin = nullptr;
+	}
+
+	String newPlugin = g_gameConfig.GetString(GameConfigKeys::LightPlugin);
+	if (m_lightPlugins.Contains(newPlugin))
+	{
+		m_activeLightPlugin = &m_lightPlugins.at(newPlugin);
+		if (m_activeLightPlugin->Init(PluginLog) != 0)
+		{
+			Logf("Failed to initialize light plugin: \"%s\"", Logger::Severity::Warning, newPlugin);
+			m_activeLightPlugin = nullptr;
+		}
+	}
+
 	m_SaveConfig();
 }
 int32 Application::Run()
@@ -219,7 +245,21 @@ NVGcontext *Application::GetVGContext()
 	return g_guiState.vg;
 }
 
+void Application::SetRgbLights(int left, int pos, Colori color)
+{
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->SetLights(left, pos, color.x, color.y, color.z);
+	}
+}
 
+void Application::SetButtonLights(uint32 buttonbits)
+{
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->SetButtons(buttonbits);
+	}
+}
 
 Vector<String> Application::GetUpdateAvailable()
 {
@@ -809,6 +849,70 @@ void Application::m_InitDiscord()
 	Discord_Initialize(DISCORD_APPLICATION_ID, &dhe, 1, nullptr);
 }
 
+void Application::m_InitLightPlugins()
+{
+	ProfilerScope $("Load Light Plugins");
+
+	String pluginpath = Path::Absolute("LightPlugins");
+
+#if WIN32
+	Vector<FileInfo> plugins = Files::ScanFiles(pluginpath, "dll");
+#else
+	Vector<FileInfo> plugins = Files::ScanFiles("LightPlugins", "so");
+#endif
+
+	Logf("Found %d light plugins.", Logger::Severity::Info, plugins.size());
+
+	auto verifyPlugin = [this](const LightPlugin& lp)
+	{
+		return lp.Close != nullptr &&
+			lp.GetName != nullptr &&
+			lp.Init != nullptr &&
+			lp.SetButtons != nullptr &&
+			lp.SetLights != nullptr &&
+			lp.Tick != nullptr;
+	};
+
+	for (auto& p : plugins)
+	{
+		SDL_ClearError();
+		void* handle = SDL_LoadObject(*p.fullPath);
+		if (handle)
+		{
+			LightPlugin lp;
+			lp.Init = (int(*)(void(*)(char*)))SDL_LoadFunction(handle, "Init");
+			lp.Close = (int(*)())SDL_LoadFunction(handle, "Close");
+			lp.SetButtons = (void(*)(uint32))SDL_LoadFunction(handle, "SetButtons");
+			lp.GetName = (char*(*)())SDL_LoadFunction(handle, "GetName");
+			lp.SetLights = (void(*)(uint8, uint32, uint8, uint8, uint8))SDL_LoadFunction(handle, "SetLights");
+			lp.Tick = (void(*)(float))SDL_LoadFunction(handle, "Tick");
+			if (verifyPlugin(lp))
+				m_lightPlugins.Add(lp.GetName(), lp);
+			else
+			{
+				Logf("Failed to verify light plugin \"%s\": %s", Logger::Severity::Warning, p.fullPath, SDL_GetError());
+				SDL_UnloadObject(handle);
+			}
+		}
+		else {
+			Logf("Failed to load light plugin \"%s\": %s", Logger::Severity::Warning, p.fullPath, SDL_GetError());
+		}
+	}
+
+
+	String newPlugin = g_gameConfig.GetString(GameConfigKeys::LightPlugin);
+	if (m_lightPlugins.Contains(newPlugin))
+	{
+		m_activeLightPlugin = &m_lightPlugins.at(newPlugin);
+		int res = m_activeLightPlugin->Init(PluginLog);
+		if (res != 0)
+		{
+			Logf("Failed to initialize light plugin: \"%s\"", Logger::Severity::Warning, newPlugin);
+			m_activeLightPlugin = nullptr;
+		}
+	}
+}
+
 SDL_semaphore* renderSema = nullptr; //TODO: move to somewhere better
 std::atomic<bool> rendering;
 void threadedRenderer() {
@@ -1062,6 +1166,11 @@ bool Application::m_Init()
 
 
 	m_InitDiscord();
+	if (g_gameConfig.GetBool(GameConfigKeys::UseLightPlugins))
+	{
+		m_InitLightPlugins();
+	}
+
 
 	CheckedLoad(m_fontMaterial = LoadMaterial("font"));
 	m_fontMaterial->opaque = false;
@@ -1228,7 +1337,6 @@ void Application::m_Tick()
 	{
 		tickable->Tick(m_deltaTime);
 	}
-
 	// Not minimized / Valid resolution
 	if (g_resolution.x > 0 && g_resolution.y > 0)
 	{
@@ -1259,17 +1367,29 @@ void Application::m_Tick()
 		m_needSkinReload = false;
 		ReloadSkin();
 	}
+
+	// Tick light plugin
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->Tick(m_deltaTime);
+	}
+
+}
+
+// Checks and clears OpenGL errors
+static void CheckGLErrors(const std::string_view label)
+{
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		Logf("OpenGL error %s: %p", Logger::Severity::Debug, label.data(), glErr);
+	}
 }
 
 void Application::RenderTickables()
 {
 	//Clear out opengl errors
-	GLenum glErr = glGetError();
-	while (glErr != GL_NO_ERROR)
-	{
-		Logf("OpenGL Error: %p", Logger::Severity::Debug, glErr);
-		glErr = glGetError();
-	}
+	CheckGLErrors("on entering Application::RenderTickables");
 
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -1288,11 +1408,17 @@ void Application::RenderTickables()
 
 	g_guiState.scissor = Rect(0, 0, -1, -1);
 	g_guiState.imageTint = nvgRGB(255, 255, 255);
+
+	CheckGLErrors("before rendering tickables");
+
 	// Render all items
 	for (auto& tickable : g_tickables)
 	{
 		tickable->Render(m_deltaTime);
+
+		CheckGLErrors("during rendering a tickable");
 	}
+
 	m_renderStateBase.projectionTransform = GetGUIProjection();
 	if (m_showFps)
 	{
@@ -1314,6 +1440,7 @@ void Application::RenderTickables()
 	m_renderQueueBase.Process();
 	glCullFace(GL_FRONT);
 
+	CheckGLErrors("after processing render queues");
 
 	//This FPS limiter seems unstable over 500fps
 	uint32 frameTime = m_frameTimer.Microseconds();
@@ -1336,9 +1463,20 @@ void Application::RenderTickables()
 			std::this_thread::yield();
 		} while (m_frameTimer.Microseconds() < m_targetRenderTime);
 	}
+
+	CheckGLErrors("just before buffer swapping");
+
 	// Swap buffers
 	g_gl->SwapBuffers();
 
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		// Have no idea why `SDL_GL_SwapWindow` causes these errors...
+		if (glErr == GL_INVALID_ENUM || glErr == GL_INVALID_OPERATION) continue;
+		
+		Logf("OpenGL error after buffer swapping: %p", Logger::Severity::Debug, glErr);
+	}
 }
 
 void Application::m_Cleanup()
@@ -1394,6 +1532,11 @@ void Application::m_Cleanup()
 	{
 		delete g_transition;
 		g_transition = nullptr;
+	}
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->Close();
+		m_activeLightPlugin = nullptr;
 	}
 
 	//if (m_skinHtpp)
@@ -2766,6 +2909,16 @@ void Application::SetLuaBindings(lua_State *state)
 	m_skinHttp.PushFunctions(state);
 }
 
+Vector<String> Application::GetLightPluginList()
+{
+	Vector<String> names;
+	names.Add("");
+	for (auto& p : m_lightPlugins)
+	{
+		names.Add(p.first);
+	}
+	return names;
+}
 
 
 bool JacketLoadingJob::Run()

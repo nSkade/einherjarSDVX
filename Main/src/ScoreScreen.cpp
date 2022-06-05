@@ -28,7 +28,7 @@ private:
 	Graphics::Font m_specialFont;
 	Sample m_applause;
 	Texture m_categorizedHitTextures[4];
-	lua_State* m_lua = nullptr;
+	lua_State *m_lua = nullptr;
 	bool m_autoplay;
 	bool m_autoButtons;
 	bool m_startPressed;
@@ -45,6 +45,7 @@ private:
 	uint32 m_timedHits[2];
 	int m_irState = IR::ResponseState::Unused;
 	String m_chartHash;
+	float m_lightsTimer = 0.0f;
 
 	//promote this to higher scope so i can use it in tick
 	String m_replayPath;
@@ -92,6 +93,7 @@ private:
 	uint32 m_gaugeOption;
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
+	Color m_lightsColor;
 
 	void m_PushStringToTable(const char* name, const String& data)
 	{
@@ -99,13 +101,13 @@ private:
 		lua_pushstring(m_lua, data.c_str());
 		lua_settable(m_lua, -3);
 	}
-	void m_PushFloatToTable(const char* name, float data)
+	void m_PushFloatToTable(const char *name, float data)
 	{
 		lua_pushstring(m_lua, name);
 		lua_pushnumber(m_lua, data);
 		lua_settable(m_lua, -3);
 	}
-	void m_PushIntToTable(const char* name, int data)
+	void m_PushIntToTable(const char *name, int data)
 	{
 		lua_pushstring(m_lua, name);
 		lua_pushinteger(m_lua, data);
@@ -434,8 +436,7 @@ private:
 	}
 
 public:
-
-	void loadScoresFromGame(class Game* game)
+	void loadScoresFromGame(class Game *game)
 	{
 		Scoring& scoring = game->GetScoring();
 		Gauge* gauge = scoring.GetTopGauge();
@@ -503,7 +504,7 @@ public:
 		if (m_displayIndex >= (int)m_stats->size())
 			return;
 
-		const nlohmann::json& data= (*m_stats)[m_displayIndex];
+		const nlohmann::json &data = (*m_stats)[m_displayIndex];
 
 		//TODO(gauge refactor): options are from flags, multi server needs update for the new options
 
@@ -543,7 +544,7 @@ public:
 		m_meanHitDelta[0] = data["mean_delta"];
 		m_medianHitDelta[0] = data["median_delta"];
 
-		m_playerName = static_cast<String>(data.value("name",""));
+		m_playerName = static_cast<String>(data.value("name", ""));
 
 		auto samples = data["graph"];
 
@@ -555,7 +556,7 @@ public:
 		}
 
 		m_numPlayersSeen = m_stats->size();
-		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid",""));
+		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid", ""));
 	}
 
 	ScoreScreen_Impl(class Game* game, MultiplayerScreen* multiplayer,
@@ -725,6 +726,29 @@ public:
 			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples.data(), sizeof(res.scorescreenInfo.gaugeSamples));
 		}
 
+		ClearMark badge = Scoring::CalculateBadge(m_scoredata);
+
+		switch (badge)
+		{
+		case ClearMark::Played:
+			m_lightsColor = Color::FromHSV(0, 1.0, 0.5);
+			break;
+		case ClearMark::NormalClear:
+			m_lightsColor = Color::FromHSV(180, 1.0, 0.8);
+			break;
+		case ClearMark::HardClear:
+			m_lightsColor = Color::FromHSV(10, 1.0, 0.8);
+			break;
+		case ClearMark::FullCombo:
+			m_lightsColor = Color::FromHSV(120, 1.0, 0.8);
+			break;
+		case ClearMark::Perfect:
+			m_lightsColor = Color::FromHSV(30, 1.0, 0.8);
+			break;
+		default:
+			m_lightsColor = Color::FromHSV(0, 0.0, 0.8);
+			break;
+		}
 	}
 	~ScoreScreen_Impl()
 	{
@@ -845,7 +869,7 @@ public:
 			lua_pushstring(m_lua, "highScores");
 			lua_newtable(m_lua);
 			int scoreIndex = 1;
-			for (auto& score : *m_stats)
+			for (auto &score : *m_stats)
 			{
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
@@ -869,7 +893,7 @@ public:
 			lua_pushstring(m_lua, "highScores");
 			lua_newtable(m_lua);
 			int scoreIndex = 1;
-			for (auto& score : m_highScores)
+			for (auto &score : m_highScores)
 			{
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
@@ -1004,7 +1028,7 @@ public:
 	}
 	virtual bool AsyncFinalize() override
 	{
-		if(!loader.Finalize())
+		if (!loader.Finalize())
 			return false;
 
 		m_lua = g_application->LoadScript("result");
@@ -1105,6 +1129,20 @@ public:
 
 		m_showStats = g_input.GetButton(Input::Button::FX_0);
 
+		m_lightsTimer += deltaTime * 2;
+		m_lightsTimer = fmodf(m_lightsTimer, Math::pi * 2);
+		float lightBreathe = (sinf(m_lightsTimer) + 1.0) * 0.4 + 0.2;
+		Color tempCol(m_lightsColor * lightBreathe);
+		Colori rgbColor = tempCol.ToRGBA8();
+
+		for (size_t i = 0; i < 2; i++)
+		{
+			for (size_t j = 0; j < 3; j++)
+			{
+				g_application->SetRgbLights(i, j, rgbColor);
+			}
+		}
+		g_application->SetButtonLights(0);
 		// Check for new scores
 		if (m_multiplayer && m_numPlayersSeen != (int)m_stats->size())
 		{
@@ -1195,8 +1233,7 @@ public:
 
 	void Capture()
 	{
-		auto luaPopInt = [this]
-		{
+		auto luaPopInt = [this] {
 			int a = lua_tonumber(m_lua, lua_gettop(m_lua));
 			lua_pop(m_lua, 1);
 			return a;
@@ -1223,7 +1260,8 @@ public:
 		{
 			if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
 			{
-				x = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;;
+				x = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
+				;
 				y = 0;
 				w = g_resolution.x;
 				h = g_resolution.y;
@@ -1259,10 +1297,9 @@ public:
 		}
 		lua_settop(m_lua, 0);
 	}
-
 };
 
-ScoreScreen* ScoreScreen::Create(class Game* game)
+ScoreScreen *ScoreScreen::Create(class Game *game)
 {
 	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, nullptr, "", nullptr, nullptr);
 	return impl;

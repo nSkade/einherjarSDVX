@@ -5,13 +5,13 @@
  * emscripten from 2016 by Chris Willcocks
  * OpenGL ES 2.0 from 2017 by Dmitry Hrabrov a.k.a. DeXPeriX
  */
- /*
-  * ==============================================================
-  *
-  *                              API
-  *
-  * ===============================================================
-  */
+/*
+ * ==============================================================
+ *
+ *                              API
+ *
+ * ===============================================================
+ */
 #ifndef NK_SDL_GLES2_H_
 #define NK_SDL_GLES2_H_
 
@@ -19,11 +19,11 @@
 #include <SDL2/SDL_opengles2.h>
 
 
-NK_API struct nk_context* nk_sdl_init(SDL_Window* win);
-NK_API void                 nk_sdl_font_stash_begin(struct nk_font_atlas** atlas);
+NK_API struct nk_context*   nk_sdl_init(SDL_Window *win);
+NK_API void                 nk_sdl_font_stash_begin(struct nk_font_atlas **atlas);
 NK_API void                 nk_sdl_font_stash_end(void);
-NK_API int                  nk_sdl_handle_event(SDL_Event* evt);
-NK_API void                 nk_sdl_render(enum nk_anti_aliasing, int max_vertex_buffer, int max_element_buffer);
+NK_API int                  nk_sdl_handle_event(SDL_Event *evt);
+NK_API void                 nk_sdl_render(enum nk_anti_aliasing , int max_vertex_buffer, int max_element_buffer);
 NK_API void                 nk_sdl_shutdown(void);
 NK_API void                 nk_sdl_device_destroy(void);
 NK_API void                 nk_sdl_device_create(void);
@@ -65,7 +65,7 @@ struct nk_sdl_vertex {
 };
 
 static struct nk_sdl {
-    SDL_Window* win;
+    SDL_Window *win;
     struct nk_sdl_device ogl;
     struct nk_context ctx;
     struct nk_font_atlas atlas;
@@ -79,7 +79,7 @@ NK_API void
 nk_sdl_device_create(void)
 {
     GLint status;
-    static const GLchar* vertex_shader =
+    static const GLchar *vertex_shader =
         NK_SHADER_VERSION
         "uniform mat4 ProjMtx;\n"
         "attribute vec2 Position;\n"
@@ -92,7 +92,7 @@ nk_sdl_device_create(void)
         "   Frag_Color = Color;\n"
         "   gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
         "}\n";
-    static const GLchar* fragment_shader =
+    static const GLchar *fragment_shader =
         NK_SHADER_VERSION
         "precision mediump float;\n"
         "uniform sampler2D Texture;\n"
@@ -102,8 +102,8 @@ nk_sdl_device_create(void)
         "   gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV);\n"
         "}\n";
 
-    struct nk_sdl_device* dev = &sdl.ogl;
-
+    struct nk_sdl_device *dev = &sdl.ogl;
+    
     nk_buffer_init_default(&dev->cmds);
     dev->prog = glCreateProgram();
     dev->vert_shdr = glCreateShader(GL_VERTEX_SHADER);
@@ -133,7 +133,7 @@ nk_sdl_device_create(void)
         dev->vp = offsetof(struct nk_sdl_vertex, position);
         dev->vt = offsetof(struct nk_sdl_vertex, uv);
         dev->vc = offsetof(struct nk_sdl_vertex, col);
-
+        
         /* Allocate buffers */
         glGenBuffers(1, &dev->vbo);
         glGenBuffers(1, &dev->ebo);
@@ -144,21 +144,21 @@ nk_sdl_device_create(void)
 }
 
 NK_INTERN void
-nk_sdl_device_upload_atlas(const void* image, int width, int height)
+nk_sdl_device_upload_atlas(const void *image, int width, int height)
 {
-    struct nk_sdl_device* dev = &sdl.ogl;
+    struct nk_sdl_device *dev = &sdl.ogl;
     glGenTextures(1, &dev->font_tex);
     glBindTexture(GL_TEXTURE_2D, dev->font_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
-        GL_RGBA, GL_UNSIGNED_BYTE, image);
+                GL_RGBA, GL_UNSIGNED_BYTE, image);
 }
 
 NK_API void
 nk_sdl_device_destroy(void)
 {
-    struct nk_sdl_device* dev = &sdl.ogl;
+    struct nk_sdl_device *dev = &sdl.ogl;
     glDetachShader(dev->prog, dev->vert_shdr);
     glDetachShader(dev->prog, dev->frag_shdr);
     glDeleteShader(dev->vert_shdr);
@@ -173,7 +173,7 @@ nk_sdl_device_destroy(void)
 NK_API void
 nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_buffer)
 {
-    struct nk_sdl_device* dev = &sdl.ogl;
+    struct nk_sdl_device *dev = &sdl.ogl;
     int width, height;
     int display_width, display_height;
     struct nk_vec2 scale;
@@ -188,11 +188,11 @@ nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
     ortho[0][0] /= (GLfloat)width;
     ortho[1][1] /= (GLfloat)height;
 
-    scale.x = (float)display_width / (float)width;
-    scale.y = (float)display_height / (float)height;
+    scale.x = (float)display_width/(float)width;
+    scale.y = (float)display_height/(float)height;
 
     /* setup global state */
-    glViewport(0, 0, display_width, display_height);
+    glViewport(0,0,display_width,display_height);
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -207,14 +207,14 @@ nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
     glUniformMatrix4fv(dev->uniform_proj, 1, GL_FALSE, &ortho[0][0]);
     {
         /* convert from command queue into draw list and draw to screen */
-        const struct nk_draw_command* cmd;
-        void* vertices, * elements;
-        const nk_draw_index* offset = NULL;
+        const struct nk_draw_command *cmd;
+        void *vertices, *elements;
+        const nk_draw_index *offset = NULL;
 
         /* Bind buffers */
         glBindBuffer(GL_ARRAY_BUFFER, dev->vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dev->ebo);
-
+        
         {
             /* buffer setup */
             glEnableVertexAttribArray((GLuint)dev->attrib_pos);
@@ -287,20 +287,20 @@ nk_sdl_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_b
 }
 
 static void
-nk_sdl_clipboard_paste(nk_handle usr, struct nk_text_edit* edit)
+nk_sdl_clipboard_paste(nk_handle usr, struct nk_text_edit *edit)
 {
-    const char* text = SDL_GetClipboardText();
+    const char *text = SDL_GetClipboardText();
     if (text) nk_textedit_paste(edit, text, nk_strlen(text));
     (void)usr;
 }
 
 static void
-nk_sdl_clipboard_copy(nk_handle usr, const char* text, int len)
+nk_sdl_clipboard_copy(nk_handle usr, const char *text, int len)
 {
-    char* str = 0;
+    char *str = 0;
     (void)usr;
     if (!len) return;
-    str = (char*)malloc((size_t)len + 1);
+    str = (char*)malloc((size_t)len+1);
     if (!str) return;
     memcpy(str, text, (size_t)len);
     str[len] = '\0';
@@ -309,7 +309,7 @@ nk_sdl_clipboard_copy(nk_handle usr, const char* text, int len)
 }
 
 NK_API struct nk_context*
-nk_sdl_init(SDL_Window* win)
+nk_sdl_init(SDL_Window *win)
 {
     sdl.win = win;
     nk_init_default(&sdl.ctx, 0);
@@ -321,7 +321,7 @@ nk_sdl_init(SDL_Window* win)
 }
 
 NK_API void
-nk_sdl_font_stash_begin(struct nk_font_atlas** atlas)
+nk_sdl_font_stash_begin(struct nk_font_atlas **atlas)
 {
     nk_font_atlas_init_default(&sdl.atlas);
     nk_font_atlas_begin(&sdl.atlas);
@@ -331,7 +331,7 @@ nk_sdl_font_stash_begin(struct nk_font_atlas** atlas)
 NK_API void
 nk_sdl_font_stash_end(void)
 {
-    const void* image; int w, h;
+    const void *image; int w, h;
     image = nk_font_atlas_bake(&sdl.atlas, &w, &h, NK_FONT_ATLAS_RGBA32);
     nk_sdl_device_upload_atlas(image, w, h);
     nk_font_atlas_end(&sdl.atlas, nk_handle_id((int)sdl.ogl.font_tex), &sdl.ogl.null);
@@ -341,9 +341,9 @@ nk_sdl_font_stash_end(void)
 }
 
 NK_API int
-nk_sdl_handle_event(SDL_Event* evt)
+nk_sdl_handle_event(SDL_Event *evt)
 {
-    struct nk_context* ctx = &sdl.ctx;
+    struct nk_context *ctx = &sdl.ctx;
     if (evt->type == SDL_KEYUP || evt->type == SDL_KEYDOWN) {
         /* key events */
         int down = evt->type == SDL_KEYDOWN;
@@ -362,18 +362,14 @@ nk_sdl_handle_event(SDL_Event* evt)
         else if (sym == SDLK_HOME) {
             nk_input_key(ctx, NK_KEY_TEXT_START, down);
             nk_input_key(ctx, NK_KEY_SCROLL_START, down);
-        }
-        else if (sym == SDLK_END) {
+        } else if (sym == SDLK_END) {
             nk_input_key(ctx, NK_KEY_TEXT_END, down);
             nk_input_key(ctx, NK_KEY_SCROLL_END, down);
-        }
-        else if (sym == SDLK_PAGEDOWN) {
+        } else if (sym == SDLK_PAGEDOWN) {
             nk_input_key(ctx, NK_KEY_SCROLL_DOWN, down);
-        }
-        else if (sym == SDLK_PAGEUP) {
+        } else if (sym == SDLK_PAGEUP) {
             nk_input_key(ctx, NK_KEY_SCROLL_UP, down);
-        }
-        else if (sym == SDLK_z)
+        } else if (sym == SDLK_z)
             nk_input_key(ctx, NK_KEY_TEXT_UNDO, down && state[SDL_SCANCODE_LCTRL]);
         else if (sym == SDLK_r)
             nk_input_key(ctx, NK_KEY_TEXT_REDO, down && state[SDL_SCANCODE_LCTRL]);
@@ -395,16 +391,13 @@ nk_sdl_handle_event(SDL_Event* evt)
             if (state[SDL_SCANCODE_LCTRL])
                 nk_input_key(ctx, NK_KEY_TEXT_WORD_LEFT, down);
             else nk_input_key(ctx, NK_KEY_LEFT, down);
-        }
-        else if (sym == SDLK_RIGHT) {
+        } else if (sym == SDLK_RIGHT) {
             if (state[SDL_SCANCODE_LCTRL])
                 nk_input_key(ctx, NK_KEY_TEXT_WORD_RIGHT, down);
             else nk_input_key(ctx, NK_KEY_RIGHT, down);
-        }
-        else return 0;
+        } else return 0;
         return 1;
-    }
-    else if (evt->type == SDL_MOUSEBUTTONDOWN || evt->type == SDL_MOUSEBUTTONUP) {
+    } else if (evt->type == SDL_MOUSEBUTTONDOWN || evt->type == SDL_MOUSEBUTTONUP) {
         /* mouse button */
         int down = evt->type == SDL_MOUSEBUTTONDOWN;
         const int x = evt->button.x, y = evt->button.y;
@@ -412,32 +405,27 @@ nk_sdl_handle_event(SDL_Event* evt)
             if (evt->button.clicks > 1)
                 nk_input_button(ctx, NK_BUTTON_DOUBLE, x, y, down);
             nk_input_button(ctx, NK_BUTTON_LEFT, x, y, down);
-        }
-        else if (evt->button.button == SDL_BUTTON_MIDDLE)
+        } else if (evt->button.button == SDL_BUTTON_MIDDLE)
             nk_input_button(ctx, NK_BUTTON_MIDDLE, x, y, down);
         else if (evt->button.button == SDL_BUTTON_RIGHT)
             nk_input_button(ctx, NK_BUTTON_RIGHT, x, y, down);
         return 1;
-    }
-    else if (evt->type == SDL_MOUSEMOTION) {
+    } else if (evt->type == SDL_MOUSEMOTION) {
         /* mouse motion */
         if (ctx->input.mouse.grabbed) {
             int x = (int)ctx->input.mouse.prev.x, y = (int)ctx->input.mouse.prev.y;
             nk_input_motion(ctx, x + evt->motion.xrel, y + evt->motion.yrel);
-        }
-        else nk_input_motion(ctx, evt->motion.x, evt->motion.y);
+        } else nk_input_motion(ctx, evt->motion.x, evt->motion.y);
         return 1;
-    }
-    else if (evt->type == SDL_TEXTINPUT) {
+    } else if (evt->type == SDL_TEXTINPUT) {
         /* text input */
         nk_glyph glyph;
         memcpy(glyph, evt->text.text, NK_UTF_SIZE);
         nk_input_glyph(ctx, glyph);
         return 1;
-    }
-    else if (evt->type == SDL_MOUSEWHEEL) {
+    } else if (evt->type == SDL_MOUSEWHEEL) {
         /* mouse wheel */
-        nk_input_scroll(ctx, nk_vec2((float)evt->wheel.x, (float)evt->wheel.y));
+        nk_input_scroll(ctx,nk_vec2((float)evt->wheel.x,(float)evt->wheel.y));
         return 1;
     }
     return 0;

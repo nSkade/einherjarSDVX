@@ -5,13 +5,13 @@
 
 namespace Debug
 {
-    bool IsDebuggerAttached()
-    {
-        return false;
-    }
-    Vector<StackFrame> GetStackTrace(uint32_t offset)
-    {
-        Vector<StackFrame> ret;
-        return ret;
-    }
+	bool IsDebuggerAttached()
+	{
+		return false;
+	}
+	Vector<StackFrame> GetStackTrace(uint32_t offset)
+	{
+		Vector<StackFrame> ret;
+		return ret;
+	}
 }

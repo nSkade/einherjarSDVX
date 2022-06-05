@@ -4,296 +4,296 @@
 class SettingsPage
 {
 protected:
-    SettingsPage(nk_context* nctx, const std::string_view& name) : m_nctx(nctx), m_name(name) {}
+	SettingsPage(nk_context* nctx, const std::string_view& name) : m_nctx(nctx), m_name(name) {}
 
-    /// Called when the page is opened; may be called multiple times, but only when the page is opening.
-    virtual void Load() = 0;
+	/// Called when the page is opened; may be called multiple times, but only when the page is opening.
+	virtual void Load() = 0;
 
-    /// Called when the page is closed; may be called multiple times, but only when the page is closing.
-    virtual void Save() = 0;
+	/// Called when the page is closed; may be called multiple times, but only when the page is closing.
+	virtual void Save() = 0;
 
-    virtual void RenderContents() = 0;
+	virtual void RenderContents() = 0;
 
-    class SettingTextData
-    {
-    public:
-        SettingTextData() noexcept {}
+	class SettingTextData
+	{
+	public:
+		SettingTextData() noexcept {}
 
-        void Load();
-        void Save();
+		void Load();
+		void Save();
 
-        void Render(nk_context* nctx);
-        void RenderPassword(nk_context* nctx);
+		void Render(nk_context* nctx);
+		void RenderPassword(nk_context* nctx);
 
-    protected:
-        constexpr static size_t BUFFER_SIZE = 1024;
+	protected:
+		constexpr static size_t BUFFER_SIZE = 1024;
 
-        virtual String LoadConfig() { return ""; }
-        virtual void SaveConfig(const String& value) {}
+		virtual String LoadConfig() { return ""; }
+		virtual void SaveConfig(const String& value) {}
 
-    private:
-        bool m_loaded = false;
-        std::array<char, BUFFER_SIZE> m_buffer;
-        int m_len = 0;
-    };
+	private:
+		bool m_loaded = false;
+		std::array<char, BUFFER_SIZE> m_buffer;
+		int m_len = 0;
+	};
 
-    class GameConfigTextData : public SettingTextData
-    {
-    public:
-        GameConfigTextData(GameConfigKeys key) : m_key(key) {}
+	class GameConfigTextData : public SettingTextData
+	{
+	public:
+		GameConfigTextData(GameConfigKeys key) : m_key(key) {}
 
-    protected:
-        String LoadConfig() override;
-        void SaveConfig(const String& value) override;
+	protected:
+		String LoadConfig() override;
+		void SaveConfig(const String& value) override;
 
-        GameConfigKeys m_key;
-    };
+		GameConfigKeys m_key;
+	};
 
-    // Useful elements
-    inline void LayoutRowStatic(int num_columns, int item_width) { LayoutRowStatic(num_columns, item_width, m_lineHeight); }
-    inline void LayoutRowStatic(int num_columns, int item_width, int height) { LayoutRowStatic(num_columns, item_width, static_cast<float>(height)); }
-    void LayoutRowStatic(int num_columns, int item_width, float height);
+	// Useful elements
+	inline void LayoutRowStatic(int num_columns, int item_width) { LayoutRowStatic(num_columns, item_width, m_lineHeight); }
+	inline void LayoutRowStatic(int num_columns, int item_width, int height) { LayoutRowStatic(num_columns, item_width, static_cast<float>(height)); }
+	void LayoutRowStatic(int num_columns, int item_width, float height);
 
-    inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, m_lineHeight); }
-    inline void LayoutRowDynamic(int num_columns, int height) { LayoutRowDynamic(num_columns, static_cast<float>(height)); }
-    void LayoutRowDynamic(int num_columns, float height);
+	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, m_lineHeight); }
+	inline void LayoutRowDynamic(int num_columns, int height) { LayoutRowDynamic(num_columns, static_cast<float>(height));  }
+	void LayoutRowDynamic(int num_columns, float height);
 
-    inline void Separator() { Separator(m_lineHeight); }
-    inline void Separator(int height) { Separator(static_cast<float>(height)); }
-    void Separator(float height);
+	inline void Separator() { Separator(m_lineHeight); }
+	inline void Separator(int height) { Separator(static_cast<float>(height)); }
+	void Separator(float height);
 
-    void Label(const std::string_view& label, enum nk_text_alignment alignment = nk_text_alignment::NK_TEXT_LEFT);
-    void SectionHeader(const std::string_view& label);
+	void Label(const std::string_view& label, enum nk_text_alignment alignment = nk_text_alignment::NK_TEXT_LEFT);
+	void SectionHeader(const std::string_view& label);
 
-    bool ToggleInput(bool val, const std::string_view& label);
-    bool ToggleSetting(GameConfigKeys key, const std::string_view& label);
+	bool ToggleInput(bool val, const std::string_view& label);
+	bool ToggleSetting(GameConfigKeys key, const std::string_view& label);
 
-    template<typename EnumClass>
-    bool EnumSetting(GameConfigKeys key, const std::string_view& label)
-    {
-        const auto& nameMap = EnumClass::GetMap();
-        Vector<const char*> names;
+	template<typename EnumClass>
+	bool EnumSetting(GameConfigKeys key, const std::string_view& label)
+	{
+		const auto& nameMap = EnumClass::GetMap();
+		Vector<const char*> names;
 
-        for (auto it = nameMap.begin(); it != nameMap.end(); it++)
-        {
-            names.Add(it->second.data());
-        }
+		for (auto it = nameMap.begin(); it != nameMap.end(); it++)
+		{
+			names.Add(it->second.data());
+		}
 
-        const int value = static_cast<int>(g_gameConfig.GetEnum<EnumClass>(key));
-        const int newValue = SelectionInput(value, names, label);
+		const int value = static_cast<int>(g_gameConfig.GetEnum<EnumClass>(key));
+		const int newValue = SelectionInput(value, names, label);
 
-        if (newValue != value) {
-            g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[newValue]));
-            return true;
-        }
-        return false;
-    }
+		if (newValue != value) {
+			g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[newValue]));
+			return true;
+		}
+		return false;
+	}
 
-    template<typename ConstCharVec>
-    std::enable_if_t<std::is_same_v<typename ConstCharVec::value_type, const char*>, int>
-        SelectionInput(int val, const ConstCharVec& options, const std::string_view& label);
+	template<typename ConstCharVec>
+	std::enable_if_t<std::is_same_v<typename ConstCharVec::value_type, const char*>, int>
+	SelectionInput(int val, const ConstCharVec& options, const std::string_view& label);
 
-    template<typename ConstCharVec>
-    std::enable_if_t<std::is_same_v<typename ConstCharVec::value_type, const char*>, bool>
-        SelectionSetting(GameConfigKeys key, const ConstCharVec& options, const std::string_view& label);
+	template<typename ConstCharVec>
+	std::enable_if_t<std::is_same_v<typename ConstCharVec::value_type, const char*>, bool>
+	SelectionSetting(GameConfigKeys key, const ConstCharVec& options, const std::string_view& label);
 
-    template<typename StringVec>
-    std::enable_if_t<std::is_same_v<typename StringVec::value_type, const char*> || std::is_same_v<typename StringVec::value_type::const_pointer, const char*>, bool>
-        StringSelectionSetting(GameConfigKeys key, const StringVec& options, const std::string_view& label);
+	template<typename StringVec>
+	std::enable_if_t<std::is_same_v<typename StringVec::value_type, const char*> || std::is_same_v<typename StringVec::value_type::const_pointer, const char*>, bool>
+	StringSelectionSetting(GameConfigKeys key, const StringVec& options, const std::string_view& label);
 
-    int IntInput(int val, const std::string_view& label, int min, int max, int step = 1, float perPixel = 1.0f);
-    bool IntSetting(GameConfigKeys key, const std::string_view& label, int min, int max, int step = 1, float perPixel = 1.0f);
+	int IntInput(int val, const std::string_view& label, int min, int max, int step = 1, float perPixel = 1.0f);
+	bool IntSetting(GameConfigKeys key, const std::string_view& label, int min, int max, int step = 1, float perPixel = 1.0f);
 
-    float FloatInput(float val, const std::string_view& label, float min, float max, float step, float perPixel);
-    bool FloatSetting(GameConfigKeys key, const std::string_view& label, float min, float max, float step = 0.01f);
-    bool PercentSetting(GameConfigKeys key, const std::string_view& label);
+	float FloatInput(float val, const std::string_view& label, float min, float max, float step, float perPixel);
+	bool FloatSetting(GameConfigKeys key, const std::string_view& label, float min, float max, float step = 0.01f);
+	bool PercentSetting(GameConfigKeys key, const std::string_view& label);
 
-    Color ColorInput(const Color& val, const std::string_view& label, bool& useHSV);
+	Color ColorInput(const Color& val, const std::string_view& label, bool& useHSV);
 
 public:
-    void Open()
-    {
-        if (m_opened) return;
+	void Open()
+	{
+		if (m_opened) return;
 
-        Load();
-        m_opened = true;
-    }
+		Load();
+		m_opened = true;
+	}
 
-    void Close()
-    {
-        if (!m_opened) return;
+	void Close()
+	{
+		if (!m_opened) return;
 
-        Save();
-        m_opened = false;
-    }
+		Save();
+		m_opened = false;
+	}
 
-    void Render(const struct nk_rect& rect);
+	void Render(const struct nk_rect& rect);
 
-    inline const String& GetName() const { return m_name; }
+	inline const String& GetName() const { return m_name; }
 
 protected:
-    nk_context* m_nctx = nullptr;
-    String m_name;
+	nk_context* m_nctx = nullptr;
+	String m_name;
 
-    inline void UpdateLayoutMaxY() { UpdateLayoutMaxY(0.0f); }
+	inline void UpdateLayoutMaxY() { UpdateLayoutMaxY(0.0f); }
 
-    /// Marks max-y needs to be shown
-    inline void UpdateLayoutMaxY(int offset) { UpdateLayoutMaxY(static_cast<float>(offset)); }
-    inline void UpdateLayoutMaxY(float offset) { m_layout_max_y = Math::Max(m_layout_max_y, m_nctx->current->layout->at_y + m_lineHeight + offset); };
+	/// Marks max-y needs to be shown
+	inline void UpdateLayoutMaxY(int offset) { UpdateLayoutMaxY(static_cast<float>(offset)); }
+	inline void UpdateLayoutMaxY(float offset) { m_layout_max_y = Math::Max(m_layout_max_y, m_nctx->current->layout->at_y + m_lineHeight + offset); };
 
-    int m_lineHeight = 30;
-    struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
+	int m_lineHeight = 30;
+	struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
 
-    float m_pageInnerWidth = 0.0f;
-    bool m_opened = false;
+	float m_pageInnerWidth = 0.0f;
+	bool m_opened = false;
 
 private:
-    float m_layout_max_y = 0;
+	float m_layout_max_y = 0;
 };
 
 class SettingsPageCollection : public BasicNuklearGui
 {
 public:
-    bool Init() override;
+	bool Init() override;
 
-    ~SettingsPageCollection() override;
+	~SettingsPageCollection() override;
 
-    void Tick(float deltaTime) override;
+	void Tick(float deltaTime) override;
 
-    void Render(float deltaTime) override;
+	void Render(float deltaTime) override;
 
-    void OnKeyPressed(SDL_Scancode code, int32 delta) override;
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override;
 
-    void Exit();
+	void Exit();
 
-    void Reload();
+	void Reload();
 
 protected:
-    virtual void AddPages(Vector<std::unique_ptr<SettingsPage>>& pages) = 0;
+	virtual void AddPages(Vector<std::unique_ptr<SettingsPage>>& pages) = 0;
 
-    void SetCurrPage(size_t ind);
-
-private:
-    bool m_forceReload = false;
-    bool m_forcePortrait = false;
+	void SetCurrPage(size_t ind);
 
 private:
-    void InitStyles();
+	bool m_forceReload = false;
+	bool m_forcePortrait = false;
 
-    Vector<std::unique_ptr<SettingsPage>> m_pages;
+private:
+	void InitStyles();
 
-    float m_pageButtonHeight = 40;
+	Vector<std::unique_ptr<SettingsPage>> m_pages;
+	
+	float m_pageButtonHeight = 40;
 
-    constexpr static int PAGE_NAME_SIZE = 18;
-    Vector<Ref<TextRes>> m_pageNames;
+	constexpr static int PAGE_NAME_SIZE = 18;
+	Vector<Ref<TextRes>> m_pageNames;
 
-    Ref<TextRes> m_exitText = nullptr;
+	Ref<TextRes> m_exitText = nullptr;
 
-    size_t m_currPage = 0;
+	size_t m_currPage = 0;
 
-    struct nk_rect m_pageHeaderRegion;
-    struct nk_rect m_pageContentRegion;
+	struct nk_rect m_pageHeaderRegion;
+	struct nk_rect m_pageContentRegion;
 
-    struct nk_rect m_profileButtonRegion;
-    struct nk_rect m_exitButtonRegion;
+	struct nk_rect m_profileButtonRegion;
+	struct nk_rect m_exitButtonRegion;
 
-    bool m_enableSwitchPageOnHover = false;
-    Vector2i m_prevMousePos;
-    int m_prevMouseInd = -1;
+	bool m_enableSwitchPageOnHover = false;
+	Vector2i m_prevMousePos;
+	int m_prevMouseInd = -1;
 
-    void InitPages();
+	void InitPages();
 
-    void RenderPages();
+	void RenderPages();
 
-    void UpdatePageRegions();
-    void RenderPageHeaders();
-    void RenderPageContents();
+	void UpdatePageRegions();
+	void RenderPageHeaders();
+	void RenderPageContents();
 
-    void ProcessTabHandleMouseHover(const Vector2i& mousePos);
+	void ProcessTabHandleMouseHover(const Vector2i& mousePos);
 
-    void OnMousePressed(MouseButton button);
-    int GetPageIndFromMousePos(const Vector2i& mousePos) const;
+	void OnMousePressed(MouseButton button);
+	int GetPageIndFromMousePos(const Vector2i& mousePos) const;
 };
 
 template<typename ConstCharVec>
 std::enable_if_t<std::is_same_v<typename ConstCharVec::value_type, const char*>, int>
 SettingsPage::SelectionInput(int val, const ConstCharVec& options, const std::string_view& label)
 {
-    assert(options.size() > 0);
+	assert(options.size() > 0);
 
-    if (0 <= val && val < static_cast<int>(options.size()))
-    {
-        Label(label);
+	if (0 <= val && val < static_cast<int>(options.size()))
+	{
+		Label(label);
 
-        nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_lineHeight, m_comboBoxSize);
-        UpdateLayoutMaxY((m_lineHeight + 5) * std::min(static_cast<int>(options.size()), 7));
-    }
-    else
-    {
-        std::stringstream str;
-        str << std::string(label) << " [currently set to an unknown value " << val << "]";
+		nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_lineHeight, m_comboBoxSize);
+		UpdateLayoutMaxY((m_lineHeight + 5) * std::min(static_cast<int>(options.size()), 7));
+	} 
+	else
+	{
+		std::stringstream str;
+		str << std::string(label) << " [currently set to an unknown value " << val << "]";
 
-        Label(str.str().data());
-        str.clear();
+		Label(str.str().data());
+		str.clear();
 
-        if (nk_button_label(m_nctx, "Press this button to reset."))
-        {
-            val = 0;
-        }
-    }
+		if (nk_button_label(m_nctx, "Press this button to reset."))
+		{
+			val = 0;
+		}
+	}
 
-    return val;
+	return val;
 }
 
 template<typename ConstCharVec>
 std::enable_if_t<std::is_same_v<typename ConstCharVec::value_type, const char*>, bool>
 SettingsPage::SelectionSetting(GameConfigKeys key, const ConstCharVec& options, const std::string_view& label)
 {
-    assert(options.size() > 0);
+	assert(options.size() > 0);
 
-    const int value = g_gameConfig.GetInt(key);
-    const int newValue = SelectionInput(value, options, label);
+	const int value = g_gameConfig.GetInt(key);
+	const int newValue = SelectionInput(value, options, label);
 
-    if (newValue != value)
-    {
-        g_gameConfig.Set(key, newValue);
-        return true;
-    }
+	if (newValue != value)
+	{
+		g_gameConfig.Set(key, newValue);
+		return true;
+	}
 
-    return false;
+	return false;
 }
 
 template<typename StringVec>
 std::enable_if_t<std::is_same_v<typename StringVec::value_type, const char*> || std::is_same_v<typename StringVec::value_type::const_pointer, const char*>, bool>
 SettingsPage::StringSelectionSetting(GameConfigKeys key, const StringVec& options, const std::string_view& label)
 {
-    String value = g_gameConfig.GetString(key);
-    int selection = 0;
+	String value = g_gameConfig.GetString(key);
+	int selection = 0;
 
-    const auto stringSearch = std::find(options.begin(), options.end(), value);
-    if (stringSearch != options.end())
-    {
-        selection = static_cast<int>(stringSearch - options.begin());
-    }
+	const auto stringSearch = std::find(options.begin(), options.end(), value);
+	if (stringSearch != options.end())
+	{
+		selection = static_cast<int>(stringSearch - options.begin());
+	}
 
-    Vector<const char*> displayData;
-    for (const auto& s : options)
-    {
-        if constexpr (std::is_same_v<typename StringVec::value_type, const char*>)
-        {
-            displayData.Add(s);
-        }
-        else
-        {
-            displayData.Add(s.data());
-        }
-    }
+	Vector<const char*> displayData;
+	for (const auto& s : options)
+	{
+		if constexpr (std::is_same_v<typename StringVec::value_type, const char*>)
+		{
+			displayData.Add(s);
+		}
+		else
+		{
+			displayData.Add(s.data());
+		}
+	}
 
-    const int newSelection = SelectionInput(selection, displayData, label);
+	const int newSelection = SelectionInput(selection, displayData, label);
 
-    if (newSelection != selection) {
-        g_gameConfig.Set(key, options[newSelection]);
-        return true;
-    }
-    return false;
+	if (newSelection != selection) {
+		g_gameConfig.Set(key, options[newSelection]);
+		return true;
+	}
+	return false;
 }

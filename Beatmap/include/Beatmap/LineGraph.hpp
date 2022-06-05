@@ -12,7 +12,7 @@ class LineGraph {
 public:
     LineGraph(double defaultValue = 0.0) : m_default(defaultValue) {}
 
-    struct Point {
+    struct Point     {
         explicit Point(double val) : value(val, val) {}
         explicit Point(double start, double end) : value(start, end) {}
 

@@ -8,7 +8,7 @@ void LineGraph::Insert(MapTime mapTime, double point)
     auto it = m_points.find(mapTime);
     if (it == m_points.end())
     {
-        m_points.emplace_hint(it, mapTime, Point{ point });
+        m_points.emplace_hint(it, mapTime, Point{point});
     }
     else
     {
@@ -38,23 +38,18 @@ void LineGraph::Insert(MapTime mapTime, const std::string& point)
         {
             Insert(mapTime, std::stod(point));
         }
-        catch (const std::invalid_argument&)
-        {
-        }
-        catch (const std::out_of_range&)
-        {
-        }
+        catch (const std::invalid_argument&) {}
+        catch (const std::out_of_range&) {}
     }
     else
     {
-        Insert(mapTime, LineGraph::Point{ std::stod(point.substr(semicolonIdx + 1)), std::stod(point.substr(semicolonIdx + 1)) });
+        Insert(mapTime, LineGraph::Point{std::stod(point.substr(semicolonIdx + 1)), std::stod(point.substr(semicolonIdx + 1))});
     }
 }
 
 void LineGraph::RangeSet(MapTime begin, MapTime end, double value)
 {
-    if (begin >= end)
-        return;
+    if (begin >= end) return;
 
     const double beginValue = ValueAt(begin);
     const double endValue = ValueAt(end);
@@ -62,17 +57,15 @@ void LineGraph::RangeSet(MapTime begin, MapTime end, double value)
     const auto beginIt = m_points.lower_bound(begin);
     const auto endIt = m_points.upper_bound(end);
 
-    for (auto it = beginIt; it != endIt; it = m_points.erase(it))
-        ;
+    for (auto it = beginIt; it != endIt; it = m_points.erase(it));
 
-    Insert(begin, LineGraph::Point{ beginValue, value });
-    Insert(end, LineGraph::Point{ value, endValue });
+    Insert(begin, LineGraph::Point{beginValue, value});
+    Insert(end, LineGraph::Point{value, endValue});
 }
 
 void LineGraph::RangeAdd(MapTime begin, MapTime end, double delta)
 {
-    if (begin >= end)
-        return;
+    if (begin >= end) return;
 
     const double beginValue = ValueAt(begin);
     const double endValue = ValueAt(end);
@@ -86,15 +79,14 @@ void LineGraph::RangeAdd(MapTime begin, MapTime end, double delta)
         it->second.value.second += delta;
     }
 
-    Insert(begin, LineGraph::Point{ beginValue, beginValue + delta });
+    Insert(begin, LineGraph::Point{beginValue, beginValue + delta});
 
     if (endIt != m_points.end() && endIt->first == end)
     {
         endIt->second.value.first += delta;
-    }
-    else
+    } else
     {
-        Insert(end, LineGraph::Point{ endValue + delta, endValue });
+        Insert(end, LineGraph::Point{endValue + delta, endValue});
     }
 }
 

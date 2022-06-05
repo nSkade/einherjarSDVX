@@ -27,93 +27,93 @@ typedef int SOCKET;
 
 enum TCPPacketMode
 {
-    NOT_READING = 0,
-    JSON_LINE,
-    UNKNOWN
+	NOT_READING = 0,
+	JSON_LINE,
+	UNKNOWN
 };
 
 struct LuaTCPHandler
 {
-    struct lua_State* L;
-    int callback;
+	struct lua_State* L;
+	int callback;
 };
 
 class TCPSocket
 {
 public:
-    TCPSocket();
-    ~TCPSocket();
+	TCPSocket();
+	~TCPSocket();
 
-    int lConnect(struct lua_State* L);
-    int lSendLine(struct lua_State* L);
-    int lClose(struct lua_State* L);
-    int lSetTopicHandler(struct lua_State* L);
+	int lConnect(struct lua_State* L);
+	int lSendLine(struct lua_State* L);
+	int lClose(struct lua_State* L);
+	int lSetTopicHandler(struct lua_State* L);
 
-    void SendLine(String);
-    void SendJSON(nlohmann::json packet);
+	void SendLine(String);
+	void SendJSON(nlohmann::json packet);
 
-    void PushFunctions(struct lua_State* L);
-    void ClearState(struct lua_State* L);
+	void PushFunctions(struct lua_State* L);
+	void ClearState(struct lua_State* L);
 
-    void ProcessSocket();
+	void ProcessSocket();
 
-    bool Connect(String host);
-    void Close();
+	bool Connect(String host);
+	void Close();
 
-    // Add a new bound member function for a given topic
-    template<typename Class>
-    void SetTopicHandler(String topic, Class* object, bool (Class::* func)(nlohmann::json&))
-    {
-        auto binding = new ObjectBinding<Class, bool, nlohmann::json&>(object, func);
-        m_topicHandlers.Add(topic, binding);
-    }
+	// Add a new bound member function for a given topic
+	template<typename Class>
+	void SetTopicHandler(String topic, Class* object, bool (Class::* func)(nlohmann::json&))
+	{
+		auto binding = new ObjectBinding<Class, bool, nlohmann::json&>(object, func);
+		m_topicHandlers.Add(topic, binding);
+	}
 
-    // Add a bound member function to call on socket close
-    template<typename Class>
-    void SetCloseHandler(Class* object, void (Class::* func)(void))
-    {
-        m_closeCallback = new ObjectBinding<Class, void>(object, func);
-    }
+	// Add a bound member function to call on socket close
+	template<typename Class>
+	void SetCloseHandler(Class* object, void (Class::* func)(void))
+	{
+		m_closeCallback = new ObjectBinding<Class, void>(object, func);
+	}
 
-    // Clear handles for a given topic
-    void ClearTopicHandler(String topic)
-    {
-        m_topicHandlers.erase(topic);
-    }
+	// Clear handles for a given topic
+	void ClearTopicHandler(String topic)
+	{
+		m_topicHandlers.erase(topic);
+	}
 
-    bool IsOpen()
-    {
-        return m_open;
-    }
+	bool IsOpen()
+	{
+		return m_open;
+	}
 
-    // TODO(itszn) move this somewhere else
-    static void PushJsonValue(lua_State* L, const nlohmann::json& val);
-    static void PushJsonObject(lua_State* L, const nlohmann::json& packet);
+	// TODO(itszn) move this somewhere else
+	static void PushJsonValue(lua_State* L, const nlohmann::json& val);
+	static void PushJsonObject(lua_State* L, const nlohmann::json& packet);
 
 private:
-    void m_processPacket(char* data, size_t length, TCPPacketMode mode);
-    void m_eraseBuffer(size_t end);
+	void m_processPacket(char* data, size_t length, TCPPacketMode mode);
+	void m_eraseBuffer(size_t end);
 
 
-    bool m_readyToRead();
+	bool m_readyToRead();
 
-    // Bound lua states
-    Map<struct lua_State*, class LuaBindable*> m_boundStates;
+	// Bound lua states
+	Map<struct lua_State*, class LuaBindable*> m_boundStates;
 
-    // TODO(itszn) maybe support a stack of handlers per topic
-    Map<String, IFunctionBinding<bool, nlohmann::json&>*> m_topicHandlers;
-    Map<String, LuaTCPHandler*> m_luaTopicHandlers;
-    IFunctionBinding<void>* m_closeCallback = nullptr;
+	// TODO(itszn) maybe support a stack of handlers per topic
+	Map<String, IFunctionBinding<bool, nlohmann::json&>*> m_topicHandlers;
+	Map<String, LuaTCPHandler*> m_luaTopicHandlers;
+	IFunctionBinding<void>* m_closeCallback = nullptr;
 
-    // Underlying socket for the class
-    SOCKET m_socket;
+	// Underlying socket for the class
+	SOCKET m_socket;
 
-    // Tell if the socket is currently open and connected
-    bool m_open;
+	// Tell if the socket is currently open and connected
+	bool m_open;
 
-    // Internal variables for data buffering and packet reading
-    uint32 m_dataLength = 0;
-    uint32 m_amountRead = 0;
-    char* m_dataBuff = nullptr;
-    TCPPacketMode m_readingMode = TCPPacketMode::NOT_READING;
+	// Internal variables for data buffering and packet reading
+	uint32 m_dataLength = 0;
+	uint32 m_amountRead = 0;
+	char* m_dataBuff = nullptr;
+	TCPPacketMode m_readingMode = TCPPacketMode::NOT_READING;
 };

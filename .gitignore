@@ -40,8 +40,6 @@ Release
 *.ipdb
 lib/
 vcpkg_installed/
-build/
-.cmake/
 
 # Profiling results
 *.vspx

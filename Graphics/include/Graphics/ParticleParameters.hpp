@@ -1,6 +1,6 @@
-/*
-    Macro file for creating particle parameter entries in particle systems
-    when this file is included it will call PARTICLE_PARAMETER() or PARTICLE_DEFAULT() if they are defined with the values in this file
+/* 
+	Macro file for creating particle parameter entries in particle systems 
+	when this file is included it will call PARTICLE_PARAMETER() or PARTICLE_DEFAULT() if they are defined with the values in this file
 */
 #ifdef PARTICLE_PARAMETER
 PARTICLE_PARAMETER(Lifetime, float)

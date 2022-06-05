@@ -6,22 +6,22 @@
 
 BaseGameSettingsDialog::~BaseGameSettingsDialog()
 {
-    if (m_lua)
-    {
-        g_application->DisposeLua(m_lua);
-        m_lua = nullptr;
-    }
+	if (m_lua)
+	{
+		g_application->DisposeLua(m_lua);
+		m_lua = nullptr;
+	}
 
-    for (auto& tab : m_tabs)
-    {
-        tab->settings.clear();
-    }
+	for (auto& tab : m_tabs)
+	{
+		tab->settings.clear();
+	}
 
-    m_tabs.clear();
+	m_tabs.clear();
 
-    g_input.OnButtonReleased.RemoveAll(this);
-    g_input.OnButtonPressed.RemoveAll(this);
-    g_gameWindow->OnKeyPressed.RemoveAll(this);
+	g_input.OnButtonReleased.RemoveAll(this);
+	g_input.OnButtonPressed.RemoveAll(this);
+	g_gameWindow->OnKeyPressed.RemoveAll(this);
 }
 
 void BaseGameSettingsDialog::ResetTabs()
@@ -31,12 +31,12 @@ void BaseGameSettingsDialog::ResetTabs()
 
 void BaseGameSettingsDialog::m_ResetTabs()
 {
-    for (auto& tab : m_tabs)
-    {
-        tab->settings.clear();
-    }
+	for (auto& tab : m_tabs)
+	{
+		tab->settings.clear();
+	}
 
-    m_tabs.clear();
+	m_tabs.clear();
 
     InitTabs();
 }
@@ -68,7 +68,7 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
         m_enableFXInputs = !g_input.GetButton(Input::Button::FX_0) && !g_input.GetButton(Input::Button::FX_1);
     }
 
-    // tick inputs
+    //tick inputs
     for (size_t i = 0; i < 2; i++)
     {
         m_knobAdvance[i] += g_input.GetInputLaserDir(i) * m_sensMult;
@@ -130,7 +130,7 @@ bool BaseGameSettingsDialog::Init()
     m_lua = g_application->LoadScript("gamesettingsdialog");
     if (!m_lua)
     {
-        return false;
+		return false;
     }
 
     InitTabs();
@@ -158,13 +158,11 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateFloatSetting(GameC
 {
     Setting s = std::make_unique<SettingData>(name, SettingType::Floating);
 
-    auto getter = [key](SettingData& data)
-    {
+    auto getter = [key](SettingData& data) {
         data.floatSetting.val = g_gameConfig.GetFloat(key);
     };
 
-    auto setter = [key](const SettingData& data)
-    {
+    auto setter = [key](const SettingData& data) {
         g_gameConfig.Set(key, data.floatSetting.val);
     };
 
@@ -180,14 +178,12 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateFloatSetting(GameC
 BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateBoolSetting(String label, bool& val)
 {
     Setting s = std::make_unique<SettingData>(label, SettingType::Boolean);
-
-    auto getter = [&val](SettingData& data)
-    {
+    
+    auto getter = [&val](SettingData& data) {
         data.boolSetting.val = val;
     };
 
-    auto setter = [&val](const SettingData& data)
-    {
+    auto setter = [&val](const SettingData& data) {
         val = data.boolSetting.val;
     };
 
@@ -202,13 +198,11 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(String 
 {
     Setting s = std::make_unique<SettingData>(label, SettingType::Integer);
 
-    auto getter = [&val](SettingData& data)
-    {
+    auto getter = [&val](SettingData& data) {
         data.intSetting.val = val;
     };
 
-    auto setter = [&val](const SettingData& data)
-    {
+    auto setter = [&val](const SettingData& data) {
         val = data.intSetting.val;
     };
 
@@ -223,7 +217,7 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(String 
     return s;
 }
 
-BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateButton(String label, std::function<void(const BaseGameSettingsDialog::SettingData&)>&& callback)
+BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateButton(String label, std::function<void(const BaseGameSettingsDialog::SettingData &)>&& callback)
 {
     Setting s = std::make_unique<SettingData>(label, SettingType::Button);
     s->setter.AddLambda(std::move(callback));
@@ -235,13 +229,11 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(GameCon
 {
     Setting s = std::make_unique<SettingData>(name, SettingType::Integer);
 
-    auto getter = [key](SettingData& data)
-    {
+    auto getter = [key](SettingData& data) {
         data.intSetting.val = g_gameConfig.GetInt(key);
     };
 
-    auto setter = [key](const SettingData& data)
-    {
+    auto setter = [key](const SettingData& data) {
         g_gameConfig.Set(key, data.intSetting.val);
     };
 
@@ -258,13 +250,11 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateBoolSetting(GameCo
 {
     Setting s = std::make_unique<SettingData>(name, SettingType::Boolean);
 
-    auto getter = [key](SettingData& data)
-    {
+    auto getter = [key](SettingData& data) {
         data.boolSetting.val = g_gameConfig.GetBool(key);
     };
 
-    auto setter = [key](const SettingData& data)
-    {
+    auto setter = [key](const SettingData& data) {
         g_gameConfig.Set(key, data.boolSetting.val);
     };
 
@@ -274,29 +264,26 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateBoolSetting(GameCo
     return s;
 }
 
-void pushStringToTable(lua_State* lua, const char* name, const String& data)
-{
+
+void pushStringToTable(lua_State* lua, const char* name, const String& data) {
     lua_pushstring(lua, name);
     lua_pushstring(lua, data.c_str());
     lua_settable(lua, -3);
 };
 
-void pushIntToTable(lua_State* lua, const char* name, int data)
-{
+void pushIntToTable(lua_State* lua, const char* name, int data) {
     lua_pushstring(lua, name);
     lua_pushinteger(lua, data);
     lua_settable(lua, -3);
 };
 
-void pushBoolToTable(lua_State* lua, const char* name, bool data)
-{
+void pushBoolToTable(lua_State* lua, const char* name, bool data) {
     lua_pushstring(lua, name);
     lua_pushboolean(lua, data);
     lua_settable(lua, -3);
 };
 
-void pushFloatToTable(lua_State* lua, const char* name, float data)
-{
+void pushFloatToTable(lua_State* lua, const char* name, float data) {
     lua_pushstring(lua, name);
     lua_pushnumber(lua, data);
     lua_settable(lua, -3);
@@ -412,7 +399,7 @@ void BaseGameSettingsDialog::m_AdvanceTab(int steps)
 
     m_currentSetting = 0;
     AdvanceLooping(m_currentTab, steps, m_tabs.size());
-
+    
     OnAdvanceTab();
 }
 
@@ -526,7 +513,7 @@ void BaseGameSettingsDialog::TabData::SetLua(lua_State* lua)
                 if (setting->intSetting.div > 1)
                 {
                     pushStringToTable(lua, "type", "float");
-                    pushFloatToTable(lua, "value", setting->intSetting.val / (float)setting->intSetting.div);
+                    pushFloatToTable(lua, "value", setting->intSetting.val / (float) setting->intSetting.div);
                     pushIntToTable(lua, "min", setting->intSetting.min / (float)setting->intSetting.div);
                     pushIntToTable(lua, "max", setting->intSetting.max / (float)setting->intSetting.div);
                 }
@@ -563,7 +550,7 @@ void BaseGameSettingsDialog::TabData::SetLua(lua_State* lua)
                 }
                 lua_settable(lua, -3);
             }
-            break;
+                break;
             case SettingType::Button:
                 pushStringToTable(lua, "type", "button");
                 break;

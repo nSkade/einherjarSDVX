@@ -27,7 +27,13 @@ source_group("Include\\FastGUI" FILES ${FAST_GUI_INC})
 file(GLOB NUK_INC "${INCROOT}/nuklear/*.h")
 source_group("Include\\nuklear" FILES ${NUK_INC})
 
-set(MAIN_SRC ${SRC} ${INC} ${AUDIO_SRC} ${AUDIO_INC} ${FAST_GUI_SRC} ${FAST_GUI_INC} ${NUK_INC})
+file(GLOB NUK_INC "${INCROOT}/nuklear/*.h")
+source_group("Include\\nuklear" FILES ${NUK_INC})
+
+file(GLOB LIGHT_INC "${INCROOT}/LightPlugin/*.h")
+source_group("Include\\LightPlugin" FILES ${LIGHT_INC})
+
+set(MAIN_SRC ${SRC} ${INC} ${AUDIO_SRC} ${AUDIO_INC} ${FAST_GUI_SRC} ${FAST_GUI_INC} ${NUK_INC} ${LIGHT_INC})
 
 file(GLOB RESOURCE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Resource.rc)
 source_group("" FILES ${RESOURCE_SRC})
@@ -70,6 +76,7 @@ else(GIT_FOUND)
 endif(GIT_FOUND)
 
 set_output_postfixes(usc-game)
+set_werror(usc-game)
 
 if(MSVC)
 	# Set debugging folder
@@ -78,8 +85,6 @@ if(MSVC)
 	# Target subsystem on windows, enable multiprocess build and faster PDB gen
 	set_target_properties(usc-game PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
 	set_target_properties(usc-game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
-elseif(NOT APPLE)
-    target_compile_options(usc-game PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function)
 endif(MSVC)
 
 # Dependencies
@@ -110,6 +115,11 @@ if(WIN32)
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Debug.lib
     )
     target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
+endif()
+
+find_package(ZLIB REQUIRED)
+if(ZLIB_FOUND)
+    target_compile_definitions(usc-game PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
 endif()
 
 target_link_libraries(usc-game cc-common)

@@ -4,14 +4,15 @@
 #include <Audio/DSP.hpp>
 #include <Audio/Audio.hpp>
 
-DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate)
+DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate, float playbackSpeed)
 {
 	DSP *ret = nullptr;
 
 	double noteDuration = tp.GetWholeNoteLength();
+	if (playbackSpeed > 0) noteDuration /= playbackSpeed;
 
-	uint32 actualLength = duration.Sample(filterInput).Absolute(noteDuration);
-	uint32 maxLength = Math::Max(duration.Sample(0.f).Absolute(noteDuration), duration.Sample(1.f).Absolute(noteDuration));
+	const uint32 actualLength = duration.Sample(filterInput).Absolute(noteDuration);
+	const uint32 maxLength = Math::Max(duration.Sample(0.f).Absolute(noteDuration), duration.Sample(1.f).Absolute(noteDuration));
 
 	switch (type)
 	{
@@ -78,9 +79,13 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 	{
 		PhaserDSP *phs = new PhaserDSP(sampleRate);
 		phs->SetLength(actualLength);
-		phs->dmin = phaser.min.Sample(filterInput);
-		phs->dmax = phaser.max.Sample(filterInput);
-		phs->fb = phaser.feedback.Sample(filterInput);
+		phs->SetStage(phaser.stage.Sample(filterInput));
+		phs->fmin = phaser.min.Sample(filterInput);
+		phs->fmax = phaser.max.Sample(filterInput);
+		phs->q = phaser.q.Sample(filterInput);
+		phs->feedback = phaser.feedback.Sample(filterInput);
+		phs->stereoWidth = phaser.stereoWidth.Sample(filterInput);
+		phs->hiCutGain = phaser.hiCutGain.Sample(filterInput);
 		ret = phs;
 		break;
 	}
@@ -90,6 +95,9 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 		fl->SetLength(actualLength);
 		fl->SetDelayRange(abs(flanger.offset.Sample(filterInput)),
 						  abs(flanger.depth.Sample(filterInput)));
+		fl->SetFeedback(flanger.feedback.Sample(filterInput));
+		fl->SetStereoWidth(flanger.stereoWidth.Sample(filterInput));
+		fl->SetVolume(flanger.volume.Sample(filterInput));
 		ret = fl;
 		break;
 	}
@@ -97,8 +105,10 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 	{
 		SidechainDSP *sc = new SidechainDSP(sampleRate);
 		sc->SetLength(actualLength);
-		sc->amount = 1.0f;
-		sc->curve = Interpolation::CubicBezier(0.39, 0.575, 0.565, 1);
+		sc->SetAttackTime(sidechain.attackTime.Sample(filterInput).Absolute(noteDuration));
+		sc->SetHoldTime(sidechain.holdTime.Sample(filterInput).Absolute(noteDuration));
+		sc->SetReleaseTime(sidechain.releaseTime.Sample(filterInput).Absolute(noteDuration));
+		sc->ratio = sidechain.ratio.Sample(filterInput);
 		ret = sc;
 		break;
 	}
@@ -119,6 +129,7 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 		return nullptr;
 	}
 
+	ret->mix = mix.Sample(filterInput);
 	return ret;
 }
 void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectState *object)
@@ -138,7 +149,6 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	{
 		GateDSP *gateDSP = (GateDSP *)dsp;
 		gateDSP->SetLength(noteDuration / object->effectParams[0]);
-		gateDSP->SetGating(0.5f);
 		break;
 	}
 	case EffectType::TapeStop:
@@ -151,7 +161,6 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	{
 		RetriggerDSP *retriggerDSP = (RetriggerDSP *)dsp;
 		retriggerDSP->SetLength(noteDuration / object->effectParams[0]);
-		retriggerDSP->SetGating(0.65f);
 		break;
 	}
 	case EffectType::Echo:
@@ -170,14 +179,11 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	case EffectType::Phaser:
 	{
 		PhaserDSP *phs = (PhaserDSP *)dsp;
-		phs->time = object->time;
 		break;
 	}
 	case EffectType::Flanger:
 	{
 		FlangerDSP *fl = (FlangerDSP *)dsp;
-		double delay = (noteDuration) / 1000.0;
-		fl->SetDelayRange(10, 40);
 		break;
 	}
 	case EffectType::PitchShift:

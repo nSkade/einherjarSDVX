@@ -7,7 +7,7 @@
 
 // When this should change, the UpdateVersion MUST be updated to update the old config files.
 // If there's no need to update the UpdateVersion, there's no need to touch this too.
-int32 GameConfig::VERSION = 1;
+int32 GameConfig::VERSION = 2;
 
 inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
 {
@@ -66,6 +66,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::AdjustWindowPositionOnStartup, true);
 	Set(GameConfigKeys::AntiAliasing, 1);
 	Set(GameConfigKeys::MasterVolume, 1.0f);
+	Set(GameConfigKeys::FXVolume, 1.0f);
+	Set(GameConfigKeys::SlamVolume, 1.0f);
 	Set(GameConfigKeys::ScreenX, -1);
 	Set(GameConfigKeys::ScreenY, -1);
 	Set(GameConfigKeys::VSync, false);
@@ -102,12 +104,36 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DisableBackgrounds, false);
 	Set(GameConfigKeys::LeadInTime, 3000);
 	Set(GameConfigKeys::PracticeLeadInTime, 1500);
+	Set(GameConfigKeys::AutoComputeSongOffset, false);
+	SetEnum<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs, QualityLevel::Off);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, SongOffsetUpdateMethod::None);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, SongOffsetUpdateMethod::None);
+
 	Set(GameConfigKeys::PracticeSetupNavEnabled, true);
 	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 	Set(GameConfigKeys::DisplayPracticeInfoInGame, true);
-	Set(GameConfigKeys::AutoComputeSongOffset, false);
-	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, SongOffsetUpdateMethod::None);
-	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, SongOffsetUpdateMethod::None);
+
+	Set(GameConfigKeys::DefaultPlaybackSpeed, 100);
+	Set(GameConfigKeys::DefaultLoopOnSuccess, true);
+	Set(GameConfigKeys::DefaultLoopOnFail, true);
+	Set(GameConfigKeys::DefaultIncSpeedOnSuccess, false);
+	Set(GameConfigKeys::DefaultIncSpeedAmount, 2);
+	Set(GameConfigKeys::DefaultIncStreak, 1);
+	Set(GameConfigKeys::DefaultDecSpeedOnFail, false);
+	Set(GameConfigKeys::DefaultDecSpeedAmount, 2);
+	Set(GameConfigKeys::DefaultMinPlaybackSpeed, 50);
+	Set(GameConfigKeys::DefaultEnableMaxRewind, false);
+	Set(GameConfigKeys::DefaultMaxRewindMeasure, 1);
+
+	Set(GameConfigKeys::DefaultFailConditionType, 0);
+	Set(GameConfigKeys::DefaultFailConditionScore, (int32) MAX_SCORE);
+	Set(GameConfigKeys::DefaultFailConditionGrade, 0);
+	Set(GameConfigKeys::DefaultFailConditionMiss, 0);
+	Set(GameConfigKeys::DefaultFailConditionMissNear, 0);
+	Set(GameConfigKeys::DefaultFailConditionGauge, 0);
+
+	Set(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed, true);
+	Set(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed, true);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
@@ -188,12 +214,21 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LevelFilterChal, 0);
 	Set(GameConfigKeys::FolderFilter, 0);
 
-	Set(GameConfigKeys::AutoResetSettings, false);
+	Set(GameConfigKeys::EventMode, false);
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
+	Set(GameConfigKeys::DemoIdleTime, 0);
+
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
 	Set(GameConfigKeys::DelayedHitEffects, true);
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
+	SetEnum<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay, AutoSaveReplaySettings::Highscore);
+	Set(GameConfigKeys::UseLegacyReplay, false);
+#ifdef ZLIB_FOUND
+	Set(GameConfigKeys::UseCompressedReplay, true);
+#else
+	Set(GameConfigKeys::UseCompressedReplay, false);
+#endif
 
 	Set(GameConfigKeys::EditorPath, "PathToEditor");
 	Set(GameConfigKeys::EditorParamsFormat, "%s");
@@ -204,6 +239,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true); // deprecated
 	Set(GameConfigKeys::LimitSettingsFont, false);
+	Set(GameConfigKeys::UseLightPlugins, false);
+	Set(GameConfigKeys::LightPlugin, "");
 
 	// Multiplayer
 	Set(GameConfigKeys::MultiplayerHost, "usc-multi.drewol.me:39079");
@@ -290,6 +327,17 @@ void GameConfig::UpdateVersion()
 		++configVersion;
 	}
 
+	// 1 -> 2: Convert mouse sensitivity from old range to new range.
+	if (configVersion == 1) 
+	{
+		float oldSens = GetFloat(GameConfigKeys::Mouse_Sensitivity);
+		float newSens = static_cast<float>(Input::CalculateSensFromPpr(6.0f / oldSens));
+		Logf("Recalculated mouse sensitivity: %.4f -> %.4f", Logger::Severity::Info, oldSens, newSens);
+
+		Set(GameConfigKeys::Mouse_Sensitivity, newSens);
+		++configVersion;
+	}
+
 	assert(configVersion == GameConfig::VERSION);
 	Set(GameConfigKeys::ConfigVersion, configVersion);
 }
@@ -315,6 +363,9 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(Mouse_Laser0Axis),
 	Key(Mouse_Laser1Axis),
 	Key(Mouse_Sensitivity),
+
+	Key(LaserInputDevice),
+	Key(ButtonInputDevice),
 
 	Key(Key_BTS),
 	Key(Key_BTSAlt),
@@ -367,6 +418,6 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(ExitPlayHoldDuration),
 	Key(DisableNonButtonInputsDuringPlay),
 
-	Key(MultiplayerUsername)
+	Key(MultiplayerUsername),
 };
 #undef Key

@@ -36,8 +36,7 @@ void AudioStreamBase::m_initSampling(uint32 sampleRate)
 	// Calculate the sample step if the rate is not the same as the output rate
 	double sampleStep = (double)sampleRate / (double)m_audio->GetSampleRate();
 	m_sampleStepIncrement = (uint64)(sampleStep * (double)fp_sampleStep);
-	double stepCheck = (double)m_sampleStepIncrement / (double)fp_sampleStep;
-	// TODO: for practice mode: m_sampleStepIncrement *= playback_speed;
+
 	m_numChannels = 2;
 	m_readBuffer = new float *[m_numChannels];
 	for (uint32 c = 0; c < m_numChannels; c++)
@@ -147,6 +146,8 @@ void AudioStreamBase::Process(float *out, uint32 numSamples)
 
 	m_lock.lock();
 
+	const uint64 sampleStepIncrement = static_cast<uint64>(m_sampleStepIncrement * PlaybackSpeed);
+
 	uint32 outCount = 0;
 	while (outCount < numSamples)
 	{
@@ -169,7 +170,7 @@ void AudioStreamBase::Process(float *out, uint32 numSamples)
 				outCount++;
 
 				// Increment source sample with resampling
-				m_sampleStep += static_cast<uint64>(m_sampleStepIncrement * PlaybackSpeed);
+				m_sampleStep += sampleStepIncrement;
 				while (m_sampleStep >= fp_sampleStep)
 				{
 					m_sampleStep -= fp_sampleStep;
@@ -178,7 +179,15 @@ void AudioStreamBase::Process(float *out, uint32 numSamples)
 					m_samplePos++;
 				}
 			}
-			m_remainingBufferData -= readOffset;
+
+			if (readOffset > m_remainingBufferData)
+			{
+				m_remainingBufferData = 0;
+			}
+			else
+			{
+				m_remainingBufferData -= readOffset;
+			}
 		}
 
 		if (outCount >= numSamples)

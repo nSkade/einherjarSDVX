@@ -31,6 +31,7 @@
 #endif
 #include "archive.h"
 #include "archive_entry.h"
+#include "LightPlugin/LightPlugin.h"
 
 GameConfig g_gameConfig;
 SkinConfig *g_skinConfig;
@@ -98,6 +99,12 @@ void Application::SetCommandLine(const char *cmdLine)
 	// Split up command line parameters
 	m_commandLine = Path::SplitCommandLine(cmdLine);
 }
+
+static void PluginLog(char* msg)
+{
+	Logf("[Light Plugin]: %s", Logger::Severity::Info, msg);
+}
+
 void Application::ApplySettings()
 {
 	String newskin = g_gameConfig.GetString(GameConfigKeys::Skin);
@@ -108,9 +115,28 @@ void Application::ApplySettings()
 	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
-
+	m_loadResponsiveInputSetting();
 	m_UpdateWindowPosAndShape();
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
+
+	//restart light plugin
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->Close();
+		m_activeLightPlugin = nullptr;
+	}
+
+	String newPlugin = g_gameConfig.GetString(GameConfigKeys::LightPlugin);
+	if (m_lightPlugins.Contains(newPlugin))
+	{
+		m_activeLightPlugin = &m_lightPlugins.at(newPlugin);
+		if (m_activeLightPlugin->Init(PluginLog) != 0)
+		{
+			Logf("Failed to initialize light plugin: \"%s\"", Logger::Severity::Warning, newPlugin);
+			m_activeLightPlugin = nullptr;
+		}
+	}
+
 	m_SaveConfig();
 }
 int32 Application::Run()
@@ -129,7 +155,18 @@ int32 Application::Run()
 		// Play the map specified in the command line
 		if (m_commandLine.size() > 1 && m_commandLine[1].front() != '-')
 		{
-			Game *game = LaunchMap(m_commandLine[1]);
+			Game* game = nullptr;
+			String& p = m_commandLine[1];
+			bool isReplay = false;
+			if (p.length() > 4 && p.substr(p.length() - 3) == "urf")
+			{
+				isReplay = true;
+				game = LaunchReplay(p);
+			}
+			else
+			{
+				game = LaunchMap(p);
+			}
 			if (!game)
 			{
 				Logf("LaunchMap(%s) failed", Logger::Severity::Error, m_commandLine[1]);
@@ -137,7 +174,7 @@ int32 Application::Run()
 			else
 			{
 				auto &cmdLine = g_application->GetAppCommandLine();
-				if (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto"))
+				if (!isReplay && (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto")))
 				{
 					game->GetScoring().autoplayInfo.autoplay = true;
 				}
@@ -208,7 +245,21 @@ NVGcontext *Application::GetVGContext()
 	return g_guiState.vg;
 }
 
+void Application::SetRgbLights(int left, int pos, Colori color)
+{
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->SetLights(left, pos, color.x, color.y, color.z);
+	}
+}
 
+void Application::SetButtonLights(uint32 buttonbits)
+{
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->SetButtons(buttonbits);
+	}
+}
 
 Vector<String> Application::GetUpdateAvailable()
 {
@@ -419,6 +470,41 @@ void Application::m_unpackSkins()
 		{
 			Path::Delete(fi.fullPath);
 		}
+	}
+}
+
+void Application::m_loadResponsiveInputSetting()
+{
+	QualityLevel responsiveInputSetting = g_gameConfig.GetEnum<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs);
+	switch (responsiveInputSetting)
+	{
+	case QualityLevel::Off:
+		m_responsiveInputs = false;
+		break;
+	case QualityLevel::Low:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 4;
+		break;
+	case QualityLevel::Medium:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 3;
+		break;
+	case QualityLevel::High:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 2;
+		break;
+	case QualityLevel::Ultra:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 1;
+		break;
+	case QualityLevel::Max:
+		m_responsiveInputs = true;
+		m_responsiveInputsSleep = 0;
+		break;
+	default:
+		m_responsiveInputs = false;
+		g_gameConfig.SetEnum<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs, QualityLevel::Off);
+		break;
 	}
 }
 
@@ -763,6 +849,91 @@ void Application::m_InitDiscord()
 	Discord_Initialize(DISCORD_APPLICATION_ID, &dhe, 1, nullptr);
 }
 
+void Application::m_InitLightPlugins()
+{
+	ProfilerScope $("Load Light Plugins");
+
+	String pluginpath = Path::Absolute("LightPlugins");
+
+#if WIN32
+	Vector<FileInfo> plugins = Files::ScanFiles(pluginpath, "dll");
+#else
+	Vector<FileInfo> plugins = Files::ScanFiles("LightPlugins", "so");
+#endif
+
+	Logf("Found %d light plugins.", Logger::Severity::Info, plugins.size());
+
+	auto verifyPlugin = [this](const LightPlugin& lp)
+	{
+		return lp.Close != nullptr &&
+			lp.GetName != nullptr &&
+			lp.Init != nullptr &&
+			lp.SetButtons != nullptr &&
+			lp.SetLights != nullptr &&
+			lp.Tick != nullptr;
+	};
+
+	for (auto& p : plugins)
+	{
+		SDL_ClearError();
+		void* handle = SDL_LoadObject(*p.fullPath);
+		if (handle)
+		{
+			LightPlugin lp;
+			lp.Init = (int(*)(void(*)(char*)))SDL_LoadFunction(handle, "Init");
+			lp.Close = (int(*)())SDL_LoadFunction(handle, "Close");
+			lp.SetButtons = (void(*)(uint32))SDL_LoadFunction(handle, "SetButtons");
+			lp.GetName = (char*(*)())SDL_LoadFunction(handle, "GetName");
+			lp.SetLights = (void(*)(uint8, uint32, uint8, uint8, uint8))SDL_LoadFunction(handle, "SetLights");
+			lp.Tick = (void(*)(float))SDL_LoadFunction(handle, "Tick");
+			if (verifyPlugin(lp))
+				m_lightPlugins.Add(lp.GetName(), lp);
+			else
+			{
+				Logf("Failed to verify light plugin \"%s\": %s", Logger::Severity::Warning, p.fullPath, SDL_GetError());
+				SDL_UnloadObject(handle);
+			}
+		}
+		else {
+			Logf("Failed to load light plugin \"%s\": %s", Logger::Severity::Warning, p.fullPath, SDL_GetError());
+		}
+	}
+
+
+	String newPlugin = g_gameConfig.GetString(GameConfigKeys::LightPlugin);
+	if (m_lightPlugins.Contains(newPlugin))
+	{
+		m_activeLightPlugin = &m_lightPlugins.at(newPlugin);
+		int res = m_activeLightPlugin->Init(PluginLog);
+		if (res != 0)
+		{
+			Logf("Failed to initialize light plugin: \"%s\"", Logger::Severity::Warning, newPlugin);
+			m_activeLightPlugin = nullptr;
+		}
+	}
+}
+
+SDL_semaphore* renderSema = nullptr; //TODO: move to somewhere better
+std::atomic<bool> rendering;
+void threadedRenderer() {
+	while (true)
+	{
+		SDL_SemWait(renderSema);
+
+		if (g_tickables.empty())
+		{
+			rendering.store(false);
+			return;
+		}
+
+		g_gl->MakeCurrent();
+		g_application->RenderTickables();
+		g_gl->ReleaseCurrent();
+		rendering.store(false);
+	}
+}
+
+
 bool Application::m_Init()
 {
 	ProfilerScope $("Application Setup");
@@ -859,6 +1030,7 @@ bool Application::m_Init()
 		{
 			if (cl == "-convertmaps")
 			{
+				// Note: this feature should be re-implemented. See `Beatmap.cpp`.
 				m_allowMapConversion = true;
 			}
 			else if (cl == "-mute")
@@ -994,6 +1166,11 @@ bool Application::m_Init()
 
 
 	m_InitDiscord();
+	if (g_gameConfig.GetBool(GameConfigKeys::UseLightPlugins))
+	{
+		m_InitLightPlugins();
+	}
+
 
 	CheckedLoad(m_fontMaterial = LoadMaterial("font"));
 	m_fontMaterial->opaque = false;
@@ -1019,6 +1196,11 @@ bool Application::m_Init()
 		BasicNuklearGui::StartFontInit();
 		m_fontBakeThread = Thread(BasicNuklearGui::BakeFontWithLock);
 	}
+	m_loadResponsiveInputSetting();
+	renderSema = SDL_CreateSemaphore(0);
+	m_renderThread = Thread(threadedRenderer);
+
+
 
 	///TODO: check if directory exists already?
 	Path::CreateDir(Path::Absolute("screenshots"));
@@ -1032,11 +1214,10 @@ void Application::m_MainLoop()
 {
 	Timer appTimer;
 	m_deltaTime = 0.5f;
-	Timer frameTimer;
 	while (true)
 	{
 		m_appTime = appTimer.SecondsAsFloat();
-		frameTimer.Restart();
+		m_frameTimer.Restart();
 		//run discord callbacks
 		Discord_RunCallbacks();
 
@@ -1101,7 +1282,7 @@ void Application::m_MainLoop()
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
-		uint32 targetRenderTime = 0;
+		m_targetRenderTime = 0;
 		for (auto tickable : g_tickables)
 		{
 			int32 tempTarget = 0;
@@ -1111,7 +1292,7 @@ void Application::m_MainLoop()
 			}
 		}
 		if (targetFPS > 0)
-			targetRenderTime = 1000000 / targetFPS;
+			m_targetRenderTime = 1000000 / targetFPS;
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
@@ -1134,31 +1315,9 @@ void Application::m_MainLoop()
 		// processed callbacks for finished tasks
 		g_jobSheduler->Update();
 
-		//This FPS limiter seems unstable over 500fps
-		uint32 frameTime = frameTimer.Microseconds();
-		if (frameTime < targetRenderTime)
-		{
-			uint32 timeLeft = (targetRenderTime - frameTime);
-			uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
-			if (sleepMicroSecs > 1000)
-			{
-				uint32 sleepStart = frameTimer.Microseconds();
-				std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
-				float actualSleep = frameTimer.Microseconds() - sleepStart;
 
-				m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
-				m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
-			}
 
-			do
-			{
-				std::this_thread::yield();
-			} while (frameTimer.Microseconds() < targetRenderTime);
-		}
-		// Swap buffers
-		g_gl->SwapBuffers();
-
-		m_deltaTime = frameTimer.SecondsAsFloat();
+		m_deltaTime = m_frameTimer.SecondsAsFloat();
 	}
 }
 
@@ -1178,66 +1337,145 @@ void Application::m_Tick()
 	{
 		tickable->Tick(m_deltaTime);
 	}
-
 	// Not minimized / Valid resolution
 	if (g_resolution.x > 0 && g_resolution.y > 0)
 	{
-		//Clear out opengl errors
-		GLenum glErr = glGetError();
-		while (glErr != GL_NO_ERROR)
+		if (m_responsiveInputs)
 		{
-			Logf("OpenGL Error: %p", Logger::Severity::Debug, glErr);
-			glErr = glGetError();
+			rendering.store(true);
+			g_gl->ReleaseCurrent();
+			SDL_SemPost(renderSema);
+			while (rendering.load()) {
+				SDL_PumpEvents();
+				if (m_responsiveInputsSleep) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(m_responsiveInputsSleep));
+				}
+				else {
+					std::this_thread::yield();
+				}
+			}
+			g_gl->MakeCurrent();
+		}
+		else {
+			RenderTickables();
 		}
 
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
-		m_renderQueueBase = RenderQueue(g_gl, m_renderStateBase);
-		g_guiState.rq = &m_renderQueueBase;
-		g_guiState.t = Transform();
-		g_guiState.fontMaterial = &m_fontMaterial;
-		g_guiState.fillMaterial = &m_fillMaterial;
-		g_guiState.resolution = g_resolution;
-
-		if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
-			g_guiState.scissorOffset = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
-		else
-			g_guiState.scissorOffset = 0;
-
-		g_guiState.scissor = Rect(0, 0, -1, -1);
-		g_guiState.imageTint = nvgRGB(255, 255, 255);
-		// Render all items
-		for (auto &tickable : g_tickables)
-		{
-			tickable->Render(m_deltaTime);
-		}
-		m_renderStateBase.projectionTransform = GetGUIProjection();
-		if (m_showFps)
-		{
-			nvgReset(g_guiState.vg);
-			nvgBeginPath(g_guiState.vg);
-			nvgFontFace(g_guiState.vg, "fallback");
-			nvgFontSize(g_guiState.vg, 20);
-			nvgTextAlign(g_guiState.vg, NVG_ALIGN_RIGHT);
-			nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
-			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
-			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
-			// Visualize m_fpsTargetSleepMult for debugging
-			//nvgBeginPath(g_guiState.vg);
-			//float h = m_fpsTargetSleepMult * g_resolution.y;
-			//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
-			//nvgFill(g_guiState.vg);
-		}
-		nvgEndFrame(g_guiState.vg);
-		m_renderQueueBase.Process();
-		glCullFace(GL_FRONT);
 	}
 
 	if (m_needSkinReload)
 	{
 		m_needSkinReload = false;
 		ReloadSkin();
+	}
+
+	// Tick light plugin
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->Tick(m_deltaTime);
+	}
+
+}
+
+// Checks and clears OpenGL errors
+static void CheckGLErrors(const std::string_view label)
+{
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		Logf("OpenGL error %s: %p", Logger::Severity::Debug, label.data(), glErr);
+	}
+}
+
+void Application::RenderTickables()
+{
+	//Clear out opengl errors
+	CheckGLErrors("on entering Application::RenderTickables");
+
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
+	m_renderQueueBase = RenderQueue(g_gl, m_renderStateBase);
+	g_guiState.rq = &m_renderQueueBase;
+	g_guiState.t = Transform();
+	g_guiState.fontMaterial = &m_fontMaterial;
+	g_guiState.fillMaterial = &m_fillMaterial;
+	g_guiState.resolution = g_resolution;
+
+	if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
+		g_guiState.scissorOffset = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
+	else
+		g_guiState.scissorOffset = 0;
+
+	g_guiState.scissor = Rect(0, 0, -1, -1);
+	g_guiState.imageTint = nvgRGB(255, 255, 255);
+
+	CheckGLErrors("before rendering tickables");
+
+	// Render all items
+	for (auto& tickable : g_tickables)
+	{
+		tickable->Render(m_deltaTime);
+
+		CheckGLErrors("during rendering a tickable");
+	}
+
+	m_renderStateBase.projectionTransform = GetGUIProjection();
+	if (m_showFps)
+	{
+		nvgReset(g_guiState.vg);
+		nvgBeginPath(g_guiState.vg);
+		nvgFontFace(g_guiState.vg, "fallback");
+		nvgFontSize(g_guiState.vg, 20);
+		nvgTextAlign(g_guiState.vg, NVG_ALIGN_RIGHT);
+		nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
+		String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
+		nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+		// Visualize m_fpsTargetSleepMult for debugging
+		//nvgBeginPath(g_guiState.vg);
+		//float h = m_fpsTargetSleepMult * g_resolution.y;
+		//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
+		//nvgFill(g_guiState.vg);
+	}
+	nvgEndFrame(g_guiState.vg);
+	m_renderQueueBase.Process();
+	glCullFace(GL_FRONT);
+
+	CheckGLErrors("after processing render queues");
+
+	//This FPS limiter seems unstable over 500fps
+	uint32 frameTime = m_frameTimer.Microseconds();
+	if (frameTime < m_targetRenderTime)
+	{
+		uint32 timeLeft = (m_targetRenderTime - frameTime);
+		uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
+		if (sleepMicroSecs > 1000)
+		{
+			uint32 sleepStart = m_frameTimer.Microseconds();
+			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+			float actualSleep = m_frameTimer.Microseconds() - sleepStart;
+
+			m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
+			m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+		}
+
+		do
+		{
+			std::this_thread::yield();
+		} while (m_frameTimer.Microseconds() < m_targetRenderTime);
+	}
+
+	CheckGLErrors("just before buffer swapping");
+
+	// Swap buffers
+	g_gl->SwapBuffers();
+
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		// Have no idea why `SDL_GL_SwapWindow` causes these errors...
+		if (glErr == GL_INVALID_ENUM || glErr == GL_INVALID_OPERATION) continue;
+		
+		Logf("OpenGL error after buffer swapping: %p", Logger::Severity::Debug, glErr);
 	}
 }
 
@@ -1250,6 +1488,11 @@ void Application::m_Cleanup()
 		delete it;
 	}
 	g_tickables.clear();
+
+	SDL_SemPost(renderSema);
+	m_renderThread.join();
+	SDL_DestroySemaphore(renderSema);
+
 
 	if (g_audio)
 	{
@@ -1289,6 +1532,11 @@ void Application::m_Cleanup()
 	{
 		delete g_transition;
 		g_transition = nullptr;
+	}
+	if (m_activeLightPlugin)
+	{
+		m_activeLightPlugin->Close();
+		m_activeLightPlugin = nullptr;
 	}
 
 	//if (m_skinHtpp)
@@ -1335,6 +1583,26 @@ class Game *Application::LaunchMap(const String &mapPath)
 {
 	PlaybackOptions opt;
 	Game *game = Game::Create(mapPath, opt);
+	g_transition->TransitionTo(game);
+	return game;
+}
+class Game* Application::LaunchReplay(const String& replayPath, MapDatabase** database /*= nullptr*/)
+{
+	Replay* replay = Replay::Load(replayPath);
+	if (!replay)
+	{
+		g_gameWindow->ShowMessageBox("Failed to load replay", "Failed to load replay file, it may be corrupted or for a newer version of USC", 0);
+		return nullptr;
+	}
+	ChartIndex* chart = replay->FindChart(database);
+	if (!chart)
+	{
+		g_gameWindow->ShowMessageBox("Failed to load replay", "Could not find a matching chart for this replay", 0);
+		return nullptr;
+	}
+	PlaybackOptions opt;
+	Game* game = Game::Create(chart, opt);
+	game->InitPlayReplay(replay);
 	g_transition->TransitionTo(game);
 	return game;
 }
@@ -1878,7 +2146,7 @@ int Application::IsNamedSamplePlaying(String name)
 		return -1;
 	}
 }
-void Application::m_OnKeyPressed(SDL_Scancode code)
+void Application::m_OnKeyPressed(SDL_Scancode code, int32 delta)
 {
 	// Fullscreen toggle
 	if (code == SDL_SCANCODE_RETURN)
@@ -1895,15 +2163,15 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 	// Pass key to application
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
-		(*it)->OnKeyPressed(code);
+		(*it)->OnKeyPressed(code, delta);
 		break;
 	}
 }
-void Application::m_OnKeyReleased(SDL_Scancode code)
+void Application::m_OnKeyReleased(SDL_Scancode code, int32 delta)
 {
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
-		(*it)->OnKeyReleased(code);
+		(*it)->OnKeyReleased(code, delta);
 		break;
 	}
 }
@@ -2085,7 +2353,8 @@ static int lGetButton(lua_State *L /* int button */)
 {
     int button = luaL_checkinteger(L, 1);
     if (g_application->autoplayInfo
-        && (g_application->autoplayInfo->IsAutoplayButtons()) && button < 6)
+        && (g_application->autoplayInfo->IsAutoplayButtons() || g_application->autoplayInfo->IsReplayingButtons())
+		&& button < 6)
         lua_pushboolean(L, g_application->autoplayInfo->buttonAnimationTimer[button] > 0);
     else
         lua_pushboolean(L, g_input.GetButton((Input::Button)button));
@@ -2640,12 +2909,24 @@ void Application::SetLuaBindings(lua_State *state)
 	m_skinHttp.PushFunctions(state);
 }
 
+Vector<String> Application::GetLightPluginList()
+{
+	Vector<String> names;
+	names.Add("");
+	for (auto& p : m_lightPlugins)
+	{
+		names.Add(p.first);
+	}
+	return names;
+}
+
+
 bool JacketLoadingJob::Run()
 {
 	// Create loading task
 	if (web)
 	{
-		auto response = cpr::Get(imagePath);
+		auto response = cpr::Get(cpr::Url(imagePath));
 		if (response.error.code != cpr::ErrorCode::OK || response.status_code >= 300)
 		{
 			return false;

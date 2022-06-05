@@ -28,6 +28,8 @@ DefineEnum(GameConfigKeys,
 
 		   AntiAliasing,
 		   MasterVolume,
+	       FXVolume,
+	       SlamVolume,
 		   VSync,
 		   ShowFps,
 		   ForcePortrait,
@@ -53,6 +55,7 @@ DefineEnum(GameConfigKeys,
 		   FPSTarget,
 		   GaugeDrainNormal,
 		   GaugeDrainHalf,
+		   ResponsiveInputs,
 
 		   EnableHiddenSudden,
 		   HiddenCutoff,
@@ -71,9 +74,6 @@ DefineEnum(GameConfigKeys,
 
 		   LeadInTime,
 		   PracticeLeadInTime,
-		   PracticeSetupNavEnabled,
-		   RevertToSetupAfterScoreScreen,
-		   DisplayPracticeInfoInGame,
 
 		   // Input device setting per element
 		   LaserInputDevice,
@@ -146,8 +146,11 @@ DefineEnum(GameConfigKeys,
 		   LevelFilterChal,
 		   FolderFilter,
 
-		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)
-		   AutoResetToSpeed,		//Mod-Speed to reset to after each song (when AutoResetSettings is true)
+		   //Settings useful for event/convention setups
+		   EventMode,
+		   AutoResetToSpeed,  //Mod-Speed to reset to after each song (when AutoResetSettings is true)
+		   DemoIdleTime,      //Enter demo mode after being idle for n seconds
+
 		   SlamThicknessMultiplier, //TODO: Remove after better values have been found(?)
 		   DelayedHitEffects,		// TODO: Think of a better name
 
@@ -155,14 +158,47 @@ DefineEnum(GameConfigKeys,
 		   EditorParamsFormat,
 
 		   AutoScoreScreenshot,
+		   AutoSaveReplay,
+		   UseLegacyReplay,
+		   UseCompressedReplay,
+
 
 		   WASAPI_Exclusive,
 		   MuteUnfocused,
 		   PrerenderEffects,
+           UseLightPlugins,
+		   LightPlugin,
 
 		   CheckForUpdates,
 		   OnlyRelease,
 		   LimitSettingsFont,
+
+		   // Practice Mode
+		   PracticeSetupNavEnabled,
+		   RevertToSetupAfterScoreScreen,
+		   DisplayPracticeInfoInGame,
+
+		   DefaultPlaybackSpeed,
+		   DefaultLoopOnSuccess,
+		   DefaultLoopOnFail,
+		   DefaultIncSpeedOnSuccess,
+		   DefaultIncSpeedAmount,
+		   DefaultIncStreak,
+		   DefaultDecSpeedOnFail,
+		   DefaultDecSpeedAmount,
+		   DefaultMinPlaybackSpeed,
+		   DefaultEnableMaxRewind,
+		   DefaultMaxRewindMeasure,
+
+		   DefaultFailConditionType,
+		   DefaultFailConditionScore,
+		   DefaultFailConditionGrade,
+		   DefaultFailConditionMiss,
+		   DefaultFailConditionMissNear,
+		   DefaultFailConditionGauge,
+
+		   AdjustHiSpeedForLowerPlaybackSpeed,
+		   AdjustHiSpeedForHigherPlaybackSpeed,
 
 		   // Multiplayer
 		   MultiplayerHost,
@@ -228,6 +264,11 @@ DefineEnum(AutoScoreScreenshotSettings,
 		   Highscore,
 		   Always)
 
+DefineEnum(AutoSaveReplaySettings,
+		   Off,
+		   Highscore,
+		   Always)
+
 DefineEnum(SongOffsetUpdateMethod,
 		   None,
 		   Play,
@@ -238,6 +279,15 @@ DefineEnum(ButtonComboModeSettings,
 		   Disabled,
 		   Hold,
 		   Instant)
+
+DefineEnum(QualityLevel,
+           Off,
+	       Low,
+	       Medium,
+	       High,
+	       Ultra,
+	       Max)
+	       
 
 	// Config for game settings
 	class GameConfig : public Config<Enum_GameConfigKeys>

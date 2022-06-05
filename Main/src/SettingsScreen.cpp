@@ -334,6 +334,7 @@ private:
 			break;
 		case InputDevice::Mouse:
 			laserSensKey = GameConfigKeys::Mouse_Sensitivity;
+			Label(Utility::Sprintf("Estimated PPR: %.0f", Input::EstimatePprFromSens(g_gameConfig.GetFloat(laserSensKey))));
 			break;
 		case InputDevice::Keyboard:
 		default:
@@ -488,8 +489,8 @@ protected:
 		SectionHeader("After Playing");
 		ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 		EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
-
-		ToggleSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the practice setup after the score screen is shown");
+		EnumSetting<Enum_AutoSaveReplaySettings>(GameConfigKeys::AutoSaveReplay, "Automatically save replay:");
+		ToggleSetting(GameConfigKeys::UseLegacyReplay, "Use legacy replay format");
 
 		EnumSetting<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, "Based on hit stats, update song offset for first:");
 		EnumSetting<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, "After having updated first time, update song offset for every:");
@@ -694,6 +695,7 @@ protected:
 	void Load() override
 	{
 		m_channels = { "release", "master", "develop" };
+		m_lightPlugins = g_application->GetLightPluginList();
 		String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
 
 		if (!m_channels.Contains(channel))
@@ -712,6 +714,8 @@ protected:
 
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_channels;
+	Vector<String> m_lightPlugins;
+	bool m_showWarning = false;
 
 protected:
 	void RenderContents() override
@@ -724,14 +728,37 @@ protected:
 		SectionHeader("Audio");
 
 		PercentSetting(GameConfigKeys::MasterVolume, "Master volume (%.1f%%):");
+		PercentSetting(GameConfigKeys::SlamVolume, "Slam/Clap volume (%.1f%%):");
 		ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
 #ifdef _WIN32
 		ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI exclusive mode (requires restart)");
 #endif // _WIN32
 		ToggleSetting(GameConfigKeys::PrerenderEffects, "Pre-render song effects (experimental)");
 
-		SectionHeader("Render");
+		SectionHeader("Lights");
+		const bool currentUseLight = g_gameConfig.GetBool(GameConfigKeys::UseLightPlugins);
+		const bool newUseLight = ToggleInput(currentUseLight, "Enable light plugins (may require restart):");
 
+		if (currentUseLight && !newUseLight) {
+			g_gameConfig.Set(GameConfigKeys::UseLightPlugins, false);
+		}
+
+		if (m_lightPlugins.size() > 1) {
+			StringSelectionSetting(GameConfigKeys::LightPlugin, m_lightPlugins, "Light plugin:");
+		}
+		m_showWarning = (!currentUseLight && newUseLight) || m_showWarning;
+		if (m_showWarning) {
+			nk_label(m_nctx, "Only install plugins from trusted sources as they", NK_TEXT_ALIGN_CENTERED);
+			nk_label(m_nctx, "can execute arbitrary code on your system.", NK_TEXT_ALIGN_CENTERED);
+			if (nk_button_label(m_nctx, "Ok")) {
+				g_gameConfig.Set(GameConfigKeys::UseLightPlugins, true);
+				m_showWarning = false;
+			}
+		}
+
+
+		SectionHeader("Render");
+		SetApply(EnumSetting<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs, "Responsive Inputs (CPU intensive)"));
 		SetApply(ToggleSetting(GameConfigKeys::Fullscreen, "Fullscreen"));
 		SetApply(ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen"));
 
@@ -744,7 +771,20 @@ protected:
 		SetApply(ToggleSetting(GameConfigKeys::ShowFps, "Show FPS"));
 		SetApply(ToggleSetting(GameConfigKeys::KeepFontTexture, "Save font texture (settings load faster but uses more memory)"));
 
-
+		SectionHeader("Replays");
+#ifdef ZLIB_FOUND
+		ToggleSetting(GameConfigKeys::UseCompressedReplay, "Compress replays when possible");
+#endif
+		if (nk_button_label(m_nctx, "Prune extra replays"))
+		{
+            BasicPrompt* w = new BasicPrompt(
+                "Prune Extra Replays",
+                "How many replays per song would you like\nto keep? (>=1)",
+                "Prune Replays","3");
+			w->OnResult.Add(this, &SettingsPage_System::m_pruneReplaysCheck);
+            w->Focus();
+            g_application->AddTickable(w);
+		}
 
 		SectionHeader("Update");
 
@@ -763,6 +803,201 @@ protected:
 		{
 			g_application->ApplySettings();
 		}
+
+		if (m_readyToPrune && m_mapDatabase && !m_replayPruneWindow)
+		{
+			m_replayPruneWindow = new BasicTextWindow(
+				"Pruning Extra Replays",
+				"Pruned 0 replays so far...");
+			g_application->AddTickable(m_replayPruneWindow);
+			m_replayPruneWindow->OnTick.Add(this, &SettingsPage_System::m_pruneReplaysImpl);
+		}
+
+		SectionHeader("Event Mode");
+		ToggleSetting(GameConfigKeys::EventMode, "Enable");
+		if (g_gameConfig.GetBool(GameConfigKeys::EventMode)) {
+
+			IntSetting(GameConfigKeys::DemoIdleTime, "Enter demo after %d seconds idle. (0 = Disable)", 0, 600);
+			FloatSetting(GameConfigKeys::AutoResetToSpeed, "Reset speed to after each play", 50, 1500, 0.5f);
+		}
+		
+	}
+private:
+	MapDatabase* m_mapDatabase = nullptr;
+	bool m_readyToPrune = false;
+	uint32 m_replaysProcessed = 0;
+	uint32 m_chartsProcessed = 0;
+	uint32 m_replaysRemoved = 0;
+	bool m_removeMissingScores;
+	
+	BasicTextWindow* m_replayPruneWindow = nullptr;
+	size_t m_numReplaysToKeep = 1;
+	Map<int32, ChartIndex*>::const_iterator m_replayPruneIter;
+
+
+	void m_pruneReplaysCheck(bool valid, char* data)
+	{
+		if (!valid || strlen(data) == 0)
+			return;
+
+		long num = strtol(data, NULL, 10);
+		if (num <= 0)
+			return g_gameWindow->ShowMessageBox("Prune Extra Replays","Invalid number entered", 0);
+		m_removeMissingScores = g_gameWindow->ShowYesNoMessage("Prune Extra Replays",
+			"Do you want to also remove replays for scores that are missing from the database?");
+		if (!g_gameWindow->ShowYesNoMessage("Prune Extra Replays",
+			Utility::Sprintf("Are you sure you want to delete all but %u replay%s per chart?\n%sThis cannot be undone",
+				num, num == 1? "":"s",
+				m_removeMissingScores?"This will include replays of scores no longer in the database.\n":""
+			)))
+		{
+			return;
+		}
+		m_numReplaysToKeep = std::min(num, 100l);
+
+		m_replaysProcessed = 0;
+		m_chartsProcessed = 0;
+		m_replaysRemoved= 0;
+		m_mapDatabase = new MapDatabase(true);
+		m_mapDatabase->SetChartUpdateBehavior(g_gameConfig.GetBool(GameConfigKeys::TransferScoresOnChartUpdate));
+		m_mapDatabase->FinishInit();
+		m_mapDatabase->LoadDatabaseWithoutSearching();
+
+		m_replayPruneIter = m_mapDatabase->GetChartMap().begin();
+
+		m_readyToPrune = true;
+	}
+	void m_pruneReplaysImpl(float delta)
+	{
+		if (!m_mapDatabase)
+			return;
+
+		int count = 0;
+		const auto& end = m_mapDatabase->GetChartMap().end();
+		for (; m_replayPruneIter != end && count < 100; m_replayPruneIter++)
+		{
+			uint32 numSaved = 0;
+			m_chartsProcessed++;
+			const auto* chart = m_replayPruneIter->second;
+			Vector<String> saved(m_numReplaysToKeep, "");
+			for (auto* score : chart->scores)
+			{
+				count++;
+				m_replaysProcessed++;
+				const String& path = score->replayPath;
+				if (path.empty())
+					continue;
+				if (!Path::FileExists(path))
+					continue;
+
+				// Scores are already sorted so first n is the n best
+				if (numSaved < m_numReplaysToKeep)
+				{
+					if (m_removeMissingScores)
+						Path::RemoveLast(path, &saved[numSaved]);
+					numSaved++;
+					continue;
+				}
+
+				if (!Path::Delete(path))
+					continue;
+				
+				m_replaysRemoved++;
+			}
+			if (!m_removeMissingScores)
+				continue;
+
+			String replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/"));
+			Vector<FileInfo> files = Files::ScanFiles(replayPath, "urf");
+			for (auto& s : files)
+			{
+				String name;
+				Path::RemoveLast(s.fullPath, &name);
+				if (saved.Contains(name))
+					continue;
+
+				m_replaysProcessed++;
+				count++;
+
+				if (!Path::Delete(s.fullPath))
+					continue;
+				
+				m_replaysRemoved++;
+			}
+		}
+		m_replayPruneWindow->SetText(Utility::Sprintf("Pruned %u replays so far...", m_replaysProcessed));
+		if (m_replayPruneIter == end)
+		{
+			m_replayPruneWindow->Close();
+			m_replayPruneWindow = nullptr;
+			delete m_mapDatabase;
+			m_readyToPrune = false;
+
+			g_gameWindow->ShowMessageBox("Done Pruning Replays",
+				Utility::Sprintf("Successfully removed %u/%u replay file%s from %u charts!",
+					m_replaysRemoved,
+					m_replaysProcessed,
+					m_replaysProcessed==1?"":"s",
+					m_chartsProcessed
+				), 2);
+		}
+	}
+};
+
+class SettingsPage_Practice : public SettingsPage
+{
+public:
+	SettingsPage_Practice(nk_context* nctx) : SettingsPage(nctx, "Practice") {}
+
+protected:
+	void Load() override {}
+	void Save() override {}
+
+protected:
+	void RenderContents() override
+	{
+		SectionHeader("Settings");
+		IntSetting(GameConfigKeys::PracticeLeadInTime, "Lead-in time (ms)", 250, 10000, 250);
+		ToggleSetting(GameConfigKeys::PracticeSetupNavEnabled, "Enable navigation inputs for the setup");
+		ToggleSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the setup after the result is shown");
+		ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice-mode info during gameplay");
+
+		ToggleSetting(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed, "Adjust HiSpeed for playback speeds lower than x1.0");
+		ToggleSetting(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed, "Adjust HiSpeed for playback speeds higher than x1.0");
+
+
+		SectionHeader("Defaults for Playback and Loop Control");
+		IntSetting(GameConfigKeys::DefaultPlaybackSpeed, "Playback speed (%)", 25, 400);
+
+		Separator();
+
+		ToggleSetting(GameConfigKeys::DefaultLoopOnSuccess, "Loop on success");
+		ToggleSetting(GameConfigKeys::DefaultIncSpeedOnSuccess, "Increase speed on success");
+		IntSetting(GameConfigKeys::DefaultIncSpeedAmount, "Increment (%p)", 1, 10);
+		IntSetting(GameConfigKeys::DefaultIncStreak, "Required streaks", 1, 10);
+		
+		Separator();
+
+		ToggleSetting(GameConfigKeys::DefaultLoopOnSuccess, "Loop on fail");
+		ToggleSetting(GameConfigKeys::DefaultDecSpeedOnFail, "Decrease speed on fail");
+		IntSetting(GameConfigKeys::DefaultDecSpeedAmount, "Decrement (%p)", 1, 10);
+		IntSetting(GameConfigKeys::DefaultMinPlaybackSpeed, "Minimum speed (%)", 25, 100);
+
+		Separator();
+
+		ToggleSetting(GameConfigKeys::DefaultEnableMaxRewind, "Set maximum amount of rewinding on fail");
+		IntSetting(GameConfigKeys::DefaultMaxRewindMeasure, "Amount in # of measures", 0, 20);
+
+		SectionHeader("Defaults for Mission");
+		SelectionSetting(GameConfigKeys::DefaultFailConditionType, GameFailCondition::TYPE_STR, "Fail Condition");
+
+		Separator();
+
+		IntSetting(GameConfigKeys::DefaultFailConditionScore, "Score less than", 800 * 10000, 1000 * 10000, 10000);
+		SelectionSetting(GameConfigKeys::DefaultFailConditionGrade, GRADE_MARK_STR, "Grade less than");
+		IntSetting(GameConfigKeys::DefaultFailConditionMiss, "Miss more than", 0, 100);
+		IntSetting(GameConfigKeys::DefaultFailConditionMissNear, "Miss+Near more than", 0, 100);
+		IntSetting(GameConfigKeys::DefaultFailConditionGauge, "Gauge less than", 0, 100);
 	}
 };
 
@@ -1097,6 +1332,7 @@ protected:
 		pages.emplace_back(std::make_unique<SettingsPage_Game>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_Visual>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_System>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_Practice>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_Online>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_Skin>(m_nctx));
 	}
@@ -1159,7 +1395,7 @@ public:
 		}
 	}
 
-	bool Init()
+	bool Init() override
 	{
 		if (m_isGamepad)
 		{
@@ -1191,7 +1427,7 @@ public:
 		return true;
 	}
 
-	void Tick(float deltatime)
+	void Tick(float deltatime) override
 	{
 		if (m_knobs && m_isGamepad)
 		{
@@ -1222,7 +1458,7 @@ public:
 
 	}
 
-	void Render(float deltatime)
+	void Render(float deltatime) override
 	{
 		String prompt = "Press the key";
 
@@ -1254,7 +1490,7 @@ public:
 		g_application->FastText(prompt, static_cast<float>(g_resolution.x / 2), static_cast<float>(g_resolution.y / 2), 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 	}
 
-	void OnButtonPressed(uint8 key)
+	void OnButtonPressed(uint8 key, int32 delta)
 	{
 		if (!m_knobs)
 		{
@@ -1263,7 +1499,7 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(SDL_Scancode code)
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
 		if (!m_isGamepad && !m_knobs)
 		{
@@ -1311,11 +1547,11 @@ public:
 		}
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>());
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		//Canvas::Slot* slot = g_rootCanvas->Add(m_canvas.As<GUIElementBase>());
 		//slot->anchor = Anchors::Full;
@@ -1337,6 +1573,7 @@ private:
 	float m_delta = 0.f;
 	float m_currentSetting = 0.f;
 	bool m_firstStart = false;
+	MouseLockHandle m_mouseLock;
 public:
 	LaserSensCalibrationScreen_Impl()
 	{
@@ -1348,36 +1585,49 @@ public:
 		g_input.OnButtonPressed.RemoveAll(this);
 	}
 
-	bool Init()
+	bool Init() override
 	{
 		g_input.GetInputLaserDir(0); //poll because there might be something idk
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller)
+		{
 			m_currentSetting = g_gameConfig.GetFloat(GameConfigKeys::Controller_Sensitivity);
+		}
 		else
+		{
 			m_currentSetting = g_gameConfig.GetFloat(GameConfigKeys::Mouse_Sensitivity);
+			m_mouseLock = g_input.LockMouse();
+		}
 
 		g_input.OnButtonPressed.Add(this, &LaserSensCalibrationScreen_Impl::OnButtonPressed);
 		return true;
 	}
 
-	void Tick(float deltatime)
+	void Tick(float deltatime) override
 	{
 		m_delta += g_input.GetAbsoluteInputLaserDir(0);
 
 	}
 
-	void Render(float deltatime)
+	void Render(float deltatime) override
 	{
 		const Vector2 center = { static_cast<float>(g_resolution.x / 2), static_cast<float>(g_resolution.y / 2) };
 
 		if (m_state)
 		{
-			const float sens = 6.0f / m_delta;
+			float sens = 6.0f / m_delta;
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+			{
+				sens = Input::CalculateSensFromPpr(m_delta);
+			}
+
 
 			g_application->FastText("Turn left knob one revolution clockwise", center.x, center.y, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText("then press start.", center.x, center.y + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
-			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+				g_application->FastText(Utility::Sprintf("Current Sens: %.2f, ppr: (%.0f)", sens, fabs(m_delta)), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			else
+				g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);	
 
 		}
 		else
@@ -1387,7 +1637,7 @@ public:
 		}
 	}
 
-	void OnButtonPressed(Input::Button button)
+	void OnButtonPressed(Input::Button button, int32 delta)
 	{
 		if (button == Input::Button::BT_S)
 		{
@@ -1396,7 +1646,12 @@ public:
 				if (m_state)
 				{
 					// calc sens and then call delegate
-					SensSet.Call(6.0f / m_delta);
+					float sens = 6.0f / m_delta;
+					if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+					{
+						sens = Input::CalculateSensFromPpr(m_delta);
+					}
+					SensSet.Call(sens);
 					g_application->RemoveTickable(this);
 				}
 				else
@@ -1412,17 +1667,17 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(SDL_Scancode code)
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
 		if (code == SDL_SCANCODE_ESCAPE)
 			g_application->RemoveTickable(this);
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>());
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		//Canvas::Slot* slot = g_rootCanvas->Add(m_canvas.As<GUIElementBase>());
 		//slot->anchor = Anchors::Full;

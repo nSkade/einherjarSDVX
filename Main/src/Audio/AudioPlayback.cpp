@@ -200,7 +200,8 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState *object, class Beatm
 
 	dsp = m_buttonEffects[index].CreateDSP(m_playback->GetCurrentTimingPoint(),
 										   GetLaserFilterInput(),
-										   audioTrack->GetAudioSampleRate());
+										   audioTrack->GetAudioSampleRate(),
+										   GetPlaybackSpeed());
 	if (!dsp)
 		return;
 
@@ -220,7 +221,7 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState *object, class Beatm
 void AudioPlayback::SetEffectEnabled(uint32 index, bool enabled)
 {
 	assert(index <= 1);
-	m_effectMix[index] = enabled ? 1.0f : 0.0f;
+	m_effectMix[index] = enabled ? m_buttonEffects[index].mix.Sample() : 0.0f;
 
 	if (m_buttonEffects[index].type == EffectType::SwitchAudio)
 	{
@@ -286,7 +287,8 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 
 			m_laserDSP = m_laserEffect.CreateDSP(m_playback->GetCurrentTimingPoint(),
 												 GetLaserFilterInput(),
-												 audioTrack->GetAudioSampleRate());
+												 audioTrack->GetAudioSampleRate(),
+												 GetPlaybackSpeed());
 			if (!m_laserDSP)
 			{
 				Logf("Failed to create laser DSP with type %d", Logger::Severity::Warning, m_laserEffect.type);
@@ -521,18 +523,19 @@ void AudioPlayback::m_PreRenderDSPTrack()
 {
 	ProfilerScope $("Pre-rendering FX effects");
 	Vector<DSP *> DSPs;
-	for (auto chartObj : m_playback->GetBeatmap().GetLinearObjects())
+	for (const auto& chartObj : m_playback->GetBeatmap().GetObjectStates())
 	{
 		if (chartObj->type == ObjectType::Hold)
 		{
-			HoldObjectState *holdObj = (HoldObjectState *)chartObj;
+			HoldObjectState *holdObj = (HoldObjectState *) chartObj.get();
 			if (holdObj->effectType != EffectType::None)
 			{
 				//Add DSP
 				GameAudioEffect effect = m_beatmap->GetEffect(holdObj->effectType);
 				DSP *dsp = effect.CreateDSP(*m_playback->GetTimingPointAt(chartObj->time),
 											1.0f,
-											m_fxtrack->GetSampleRate());
+											m_fxtrack->GetSampleRate(),
+											1.0f);
 				if (dsp != nullptr)
 				{
 					effect.SetParams(dsp, *this, holdObj);

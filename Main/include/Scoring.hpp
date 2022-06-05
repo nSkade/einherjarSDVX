@@ -3,6 +3,7 @@
 #include "HitStat.hpp"
 #include "Input.hpp"
 #include "Game.hpp"
+#include "Replay.hpp"
 
 #define AUTOPLAY_BUTTON_HIT_DURATION (4 / 60.f)
 
@@ -27,6 +28,7 @@ enum class TickFlags : uint8
 };
 TickFlags operator|(const TickFlags& a, const TickFlags& b);
 TickFlags operator&(const TickFlags& a, const TickFlags& b);
+inline HitStatType HitStatTypeFromFlags(TickFlags flags);
 
 // Tick object to record hits
 struct ScoreTick
@@ -53,8 +55,10 @@ struct AutoplayInfo
     // Autoplay but for buttons
     bool autoplayButtons = false;
     float buttonAnimationTimer[6] = { 0 };
+	bool replay = false;
 
     bool IsAutoplayButtons() const { return autoplay || autoplayButtons; };
+	bool IsReplayingButtons() const { return replay; };
 };
 
 // Various information about all the objects in a map
@@ -99,6 +103,9 @@ public:
 	void Reset(const MapTimeRange& range = {});
 
 	void FinishGame();
+	void SetScoreForReplay();
+
+	void SetReplayForPlayback(Replay * replay);
 
 	// Updates the list of objects that are possible to hit
 	void Tick(float deltaTime);
@@ -138,7 +145,7 @@ public:
 	uint32 CalculateScore(uint32 hitScore) const;
 
 	uint32 CalculateCurrentDisplayScore() const;
-	uint32 CalculateCurrentDisplayScore(const ScoreReplay& replay) const;
+	uint32 CalculateCurrentDisplayScore(const Replay* replay) const;
 	uint32 CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const;
 
 	// The score if the rest would be played perfectly
@@ -155,6 +162,8 @@ public:
 	inline bool IsFullCombo() const { return GetMisses() == 0; }
 
 	bool HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine);
+
+	void RenderDebugHUD(float deltaTime, Vector2& textPos);
 
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))
@@ -245,14 +254,14 @@ private:
 	void m_OnFXBegin(HoldObjectState* obj);
 
 	// Button event handlers
-	void m_OnButtonPressed(Input::Button buttonCode);
-	void m_OnButtonReleased(Input::Button buttonCode);
+	void m_OnButtonPressed(Input::Button buttonCode, int32 delta);
+	void m_OnButtonReleased(Input::Button buttonCode, int32 delta);
 	void m_CleanupInput();
 
 	// Updates all pending ticks
 	void m_UpdateTicks();
 	// Tries to trigger a hit event on an approaching tick
-	ObjectState* m_ConsumeTick(uint32 buttonCode);
+	ObjectState* m_ConsumeTick(uint32 buttonCode, int32 delta);
 	// Called whenether missed or not
 	void m_OnTickProcessed(ScoreTick* tick, uint32 index);
 	void m_TickHit(ScoreTick* tick, uint32 index, MapTime delta = 0);
@@ -347,9 +356,22 @@ private:
 	PlaybackOptions m_options;
 	MapTimeRange m_range;
 
+	Replay* m_replay = nullptr;
+
 	// A stack of gauges which are all calculated at the same time.
 	// The top gauge is what the user should see and if that one raches its fail state
 	// then the next gauge is to be used. If the last gauge fails out then the player
 	// shall be put on the score screen.
 	Vector<class Gauge*> m_gaugeStack;
+
+	struct {
+		uint32 missingTickCount = 0;
+		uint32 tickOffTimingCount = 0;
+		uint32 nearOnNonButtonCount = 0;
+		uint32 tickProcessedWithoutJudgement = 0;
+		uint32 unkownJudgementType = 0;
+		uint32 ticksProcessed = 0;
+		uint32 judgementsProcessed = 0;
+	} m_replayDebugInfo;
 };
+

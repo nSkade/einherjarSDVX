@@ -21,6 +21,7 @@
 #include "ItemSelectionWheel.hpp"
 #include <Audio/Audio.hpp>
 #include "Gauge.hpp"
+#include "Search.hpp"
 
 
 using ChalItemSelectionWheel = ItemSelectionWheel<ChallengeSelectIndex, ChallengeIndex>;
@@ -877,7 +878,7 @@ public:
 		}
 	}
 
-	void m_OnButtonPressed(Input::Button buttonCode)
+	void m_OnButtonPressed(Input::Button buttonCode, int32 delta)
 	{
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 		if (m_suspended || m_settDiag.IsActive())
@@ -959,7 +960,7 @@ public:
 		}
 	}
 
-	void m_OnButtonReleased(Input::Button buttonCode)
+	void m_OnButtonReleased(Input::Button buttonCode, int32 delta)
 	{
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 		if (m_suspended || m_settDiag.IsActive())
@@ -1010,7 +1011,7 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(SDL_Scancode code)
+	void OnKeyPressed(SDL_Scancode code, int32 delta) override
 	{
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
 
@@ -1109,11 +1110,11 @@ public:
 		}
 	}
 
-	virtual void OnKeyReleased(SDL_Scancode code)
+	void OnKeyReleased(SDL_Scancode code, int32 delta) override
 	{
 	}
 
-	virtual void Tick(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (m_dbUpdateTimer.Milliseconds() > 500)
 		{
@@ -1133,7 +1134,7 @@ public:
 		//	m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime) override
 	{
 		if (m_suspended && m_hasRestored) return;
 
@@ -1231,7 +1232,7 @@ public:
 		m_advanceChal -= advanceChalActual;
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		m_lastChalIndex = m_selectionWheel->GetCurrentItemIndex();
 
@@ -1242,7 +1243,7 @@ public:
 			m_lockMouse.reset();
 	}
 
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		// NOTE: we can't trigger the next chart here bc you can't add tickables on restore
 		g_application->DiscordPresenceMenu("Challenge Select");
@@ -1254,9 +1255,9 @@ public:
 		//TODO if the manager is going to trigger in the next tick we probably should not do this
 		//     we could add a delegate for finishing the charts and then use that to restart searching
 		m_mapDatabase->ResumeSearching();
-		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
+		if (g_gameConfig.GetBool(GameConfigKeys::EventMode))
 		{
-			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
+			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
 			m_filterSelection->SetFiltersByIndex(0, 0);
 		}

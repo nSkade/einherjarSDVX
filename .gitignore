@@ -6,6 +6,9 @@
 *.lib
 *.exe
 *.a
+bin/usc-game
+bin/Tests.Game
+bin/Tests.Shared
 
 # Memory dump files
 *.dmp
@@ -23,6 +26,7 @@ bin/skins/Default/nautica.json
 bin/replays
 bin/profiles
 bin/preview
+_deps/*
 
 # Intermediate Files
 x64
@@ -35,6 +39,7 @@ Release
 *.iobj
 *.ipdb
 lib/
+vcpkg_installed/
 
 # Profiling results
 *.vspx

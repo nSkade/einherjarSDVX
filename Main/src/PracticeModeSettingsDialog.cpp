@@ -9,6 +9,12 @@ PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& last
     m_tempOffset(tempOffset), m_playOptions(playOptions), m_range(range)
 {
     m_pos = { 0.75f, 0.75f };
+
+    m_condScore = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionScore);
+    m_condGrade = static_cast<GradeMark>(g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionGrade));
+    m_condMiss = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionMiss);
+    m_condMissNear = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionMissNear);
+    m_condGauge = g_gameConfig.GetInt(GameConfigKeys::DefaultFailConditionGauge);
 }
 
 void PracticeModeSettingsDialog::InitTabs()
@@ -55,7 +61,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
 
     Setting speedSetting = std::make_unique<SettingData>("Playback speed (%)", SettingType::Integer);
     speedSetting->intSetting.min = 25;
-    speedSetting->intSetting.max = 100;
+    speedSetting->intSetting.max = 400;
     speedSetting->intSetting.val = Math::RoundToInt(m_playOptions.playbackSpeed * 100);
     speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(data.intSetting.val == 100 ? 1.0f : data.intSetting.val / 100.0f); });
     speedSetting->getter.AddLambda([this](SettingData& data) { data.intSetting.val = Math::RoundToInt(m_playOptions.playbackSpeed * 100); });
@@ -104,6 +110,11 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             });
         loopingTab->settings.emplace_back(std::move(loopBeginButton));
 
+        Setting loopStartClearButton = CreateButton("Clear the start point", [this](const auto&) {
+            m_SetStartTime(0);
+            });
+        loopingTab->settings.emplace_back(std::move(loopStartClearButton));
+
         Setting loopBeginMeasureSetting = CreateIntSetting("- in measure no.", m_startMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopBeginMeasureSetting->setter.AddLambda([this](const SettingData& data) {
             m_SetStartTime(m_MeasureToTime(data.intSetting.val), data.intSetting.val);
@@ -126,6 +137,12 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             });
         loopingTab->settings.emplace_back(std::move(loopEndButton));
 
+
+        Setting loopEndClearButton = CreateButton("Clear the end point", [this](const auto&) {
+            m_SetEndTime(0);
+            });
+        loopingTab->settings.emplace_back(std::move(loopEndClearButton));
+
         Setting loopEndMeasureSetting = CreateIntSetting("- in measure no.", m_endMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopEndMeasureSetting->setter.AddLambda([this](const SettingData& data) {
             m_SetEndTime(m_MeasureToTime(data.intSetting.val), data.intSetting.val);
@@ -137,19 +154,6 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetEndTime(data.intSetting.val);
         });
         loopingTab->settings.emplace_back(std::move(loopEndMSSetting));
-    }
-    
-    // Clearing
-    {   
-        Setting loopStartClearButton = CreateButton("Clear the start point", [this](const auto&) {
-            m_SetStartTime(0);
-        });
-        loopingTab->settings.emplace_back(std::move(loopStartClearButton));
-        
-        Setting loopEndClearButton = CreateButton("Clear the end point", [this](const auto&) {
-            m_SetEndTime(0);
-        });
-        loopingTab->settings.emplace_back(std::move(loopEndClearButton));
     }
 
     return loopingTab;
@@ -184,7 +188,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopControlT
         incSpeedAmount->getter.AddLambda([this](SettingData& data) {data.intSetting.val = Math::RoundToInt(m_playOptions.incSpeedAmount * 100); });
         loopControlTab->settings.emplace_back(std::move(incSpeedAmount));
 
-        Setting incStreak = CreateIntSetting("- required streakes", m_playOptions.incStreak, { 1, 10 });
+        Setting incStreak = CreateIntSetting("- required streaks", m_playOptions.incStreak, { 1, 10 });
         incStreak->setter.AddLambda([this](const SettingData&) { m_playOptions.incSpeedOnSuccess = m_playOptions.loopOnSuccess = true; });
         loopControlTab->settings.emplace_back(std::move(incStreak));
     }
@@ -207,8 +211,8 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopControlT
         loopControlTab->settings.emplace_back(std::move(decSpeedAmount));
 
         Setting minSpeed = std::make_unique<SettingData>("- minimum speed (%)", SettingType::Integer);
-        minSpeed->intSetting.min = 1;
-        minSpeed->intSetting.max = 10;
+        minSpeed->intSetting.min = 25;
+        minSpeed->intSetting.max = 100;
         minSpeed->intSetting.val = Math::RoundToInt(m_playOptions.minPlaybackSpeed * 100);
         minSpeed->setter.AddLambda([this](const SettingData& data) {
             m_playOptions.minPlaybackSpeed = data.intSetting.val / 100.0f;
@@ -367,6 +371,22 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingT
         onSettingChange.Call();
     });
     gameSettingTab->settings.emplace_back(std::move(revertToSetupSetting));
+
+    Setting adjustHSforLowerPSSetting = CreateBoolSetting(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed, "Adjust HiSpeed for playback speeds lower than x1.0");
+    adjustHSforLowerPSSetting->setter.Clear();
+    adjustHSforLowerPSSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::AdjustHiSpeedForLowerPlaybackSpeed, data.boolSetting.val);
+        onSettingChange.Call();
+    });
+    gameSettingTab->settings.emplace_back(std::move(adjustHSforLowerPSSetting));
+
+    Setting adjustHSforHigherPSSetting = CreateBoolSetting(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed, "Adjust HiSpeed for playback speeds higher than x1.0");
+    adjustHSforHigherPSSetting->setter.Clear();
+    adjustHSforHigherPSSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::AdjustHiSpeedForHigherPlaybackSpeed, data.boolSetting.val);
+        onSettingChange.Call();
+    });
+    gameSettingTab->settings.emplace_back(std::move(adjustHSforHigherPSSetting));
 
     return gameSettingTab;
 }

@@ -24,13 +24,15 @@ class TitleScreen_Impl : public TitleScreen
 private:
 	lua_State* m_lua = nullptr;
 	LuaBindable* m_luaBinds = nullptr;
+	MapDatabase* m_mapDatabase = nullptr;
+	float m_lightTimer = 0.0f;
 
 	void Exit()
 	{
 		g_application->Shutdown();
 	}
 
-	int lExit(lua_State* L)
+	int lExit(lua_State *L)
 	{
 		Exit();
 		return 0;
@@ -38,22 +40,28 @@ private:
 
 	void Start()
 	{
+		// Only have one open at a time
+		if (m_mapDatabase)
+		{
+			delete m_mapDatabase;
+			m_mapDatabase = nullptr;
+		}
 		g_transition->TransitionTo(SongSelect::Create());
 	}
 
-	int lStart(lua_State* L)
+	int lStart(lua_State *L)
 	{
 		Start();
 		return 0;
 	}
 
-	int lDownloads(lua_State* L)
+	int lDownloads(lua_State *L)
 	{
 		g_application->AddTickable(new DownloadScreen());
 		return 0;
 	}
 
-	int lMultiplayer(lua_State* L)
+	int lMultiplayer(lua_State *L)
 	{
 		g_transition->TransitionTo(new MultiplayerScreen());
 		return 0;
@@ -76,7 +84,7 @@ private:
 		g_application->AddTickable(SettingsScreen::Create());
 	}
 
-	int lSettings(lua_State* L)
+	int lSettings(lua_State *L)
 	{
 		Settings();
 		return 0;
@@ -110,7 +118,18 @@ private:
 		}
 	}
 
-	void m_OnButtonPressed(Input::Button buttonCode)
+	void m_OnFileDropped(const char* file)
+	{
+		if (IsSuspended())
+			return;
+		String path = file;
+		String ext = Path::GetExtension(path);
+		if (ext != "urf")
+			return;
+		g_application->LaunchReplay(path, &m_mapDatabase);
+	}
+
+	void m_OnButtonPressed(Input::Button buttonCode, int32 delta)
 	{
 		if (IsSuspended())
 			return;
@@ -128,7 +147,7 @@ private:
 	}
 
 public:
-	bool Init()
+	bool Init() override
 	{
 		m_lua = g_application->LoadScript("titlescreen");
 		if (m_lua == nullptr)
@@ -150,9 +169,10 @@ public:
 		lua_settop(m_lua, 0);
 		g_gameWindow->OnMousePressed.Add(this, &TitleScreen_Impl::MousePressed);
 		g_input.OnButtonPressed.Add(this, &TitleScreen_Impl::m_OnButtonPressed);
+		g_gameWindow->OnFileDropped.Add(this, &TitleScreen_Impl::m_OnFileDropped);
 		return true;
 	}
-	
+
 	TitleScreen_Impl()
 	{
 		g_gameWindow->OnMousePressed.RemoveAll(this);
@@ -161,6 +181,7 @@ public:
 	~TitleScreen_Impl()
 	{
 		g_gameWindow->OnMousePressed.RemoveAll(this);
+		g_gameWindow->OnFileDropped.RemoveAll(this);
 		g_input.OnButtonPressed.RemoveAll(this);
 		if (m_lua)
 		{
@@ -172,9 +193,14 @@ public:
 			delete m_luaBinds;
 			m_luaBinds = nullptr;
 		}
+		if (m_mapDatabase)
+		{
+			delete m_mapDatabase;
+			m_mapDatabase = nullptr;
+		}
 	}
 
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime) override
 	{
 		if (IsSuspended())
 			return;
@@ -189,20 +215,37 @@ public:
 			}
 		}
 	}
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		g_gameWindow->SetCursorVisible(true);
 		g_application->DiscordPresenceMenu("Title Screen");
 	}
 
+	virtual void Tick(float deltaTime)
+	{
+		if (IsSuspended())
+			return;
+		m_lightTimer += deltaTime;
+		Color c = Color::FromHSV(fmodf(m_lightTimer * 180, 360), 1.0, 0.1);
 
+		for (size_t i = 0; i < 2; i++)
+		{
+			for (size_t j = 0; j < 3; j++)
+			{
+				g_application->SetRgbLights(i,j, c.ToRGBA8());
+			}
+		}
+
+		uint32 button = 1 << (int)(m_lightTimer * 10) % 6;
+		g_application->SetButtonLights(button);
+	}
 };
 
-TitleScreen* TitleScreen::Create()
+TitleScreen *TitleScreen::Create()
 {
-	TitleScreen_Impl* impl = new TitleScreen_Impl();
+	TitleScreen_Impl *impl = new TitleScreen_Impl();
 	return impl;
 }

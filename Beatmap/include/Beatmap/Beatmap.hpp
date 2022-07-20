@@ -55,6 +55,10 @@ struct BeatmapSettings
 /*
 	Generic beatmap format, Can either load it's own format or KShoot maps
 */
+namespace kson {
+	struct MetaInfo;
+}
+
 class Beatmap : public Unique
 {
 public:
@@ -69,7 +73,7 @@ public:
 	using LaneTogglePointsIterator = LaneTogglePoints::const_iterator;
 
 public:
-	bool Load(BinaryStream& input, bool metadataOnly = false);
+	bool Load(std::istream& input, bool metadataOnly = false);
 
 	/// Returns the settings of the map, contains metadata + song/image paths.
 	const BeatmapSettings& GetMapSettings() const;
@@ -156,7 +160,8 @@ public:
 	float GetScrollSpeedAt(MapTime mapTime) const;
 
 private:
-	bool m_ProcessKShootMap(BinaryStream& input, bool metadataOnly);
+	bool m_ProcessKShootMap(std::istream& input, bool metadataOnly);
+	void m_SetMetadata(kson::MetaInfo* data);
 
 	Map<EffectType, AudioEffect> m_customAudioEffects;
 	Map<EffectType, AudioEffect> m_customAudioFilters;

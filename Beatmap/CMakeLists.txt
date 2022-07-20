@@ -34,12 +34,13 @@ target_include_directories(Beatmap PRIVATE
 
 # Dependencies
 
-## Local Dependencies
+# # Local Dependencies
 target_link_libraries(Beatmap Shared)
 
-## 3rd Party dependencies
+# # 3rd Party dependencies
 target_link_libraries(Beatmap sqlite3)
 target_link_libraries(Beatmap nlohmann_json)
+target_link_libraries(Beatmap kson)
 
 target_link_libraries(Beatmap cc-common)
 

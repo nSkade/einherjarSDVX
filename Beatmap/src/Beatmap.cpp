@@ -7,7 +7,7 @@
 
 static const uint32 c_mapVersion = 1;
 
-bool Beatmap::Load(BinaryStream& input, bool metadataOnly)
+bool Beatmap::Load(std::istream& input, bool metadataOnly)
 {
 	ProfilerScope $("Load Beatmap");
 

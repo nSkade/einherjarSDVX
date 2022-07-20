@@ -36,13 +36,7 @@ Ref<Beatmap> TryLoadMap(const String& path)
 {
 	// Load map file
 	Beatmap* newMap = new Beatmap();
-	File mapFile;
-	if(!mapFile.OpenRead(path))
-	{
-		delete newMap;
-		return Ref<Beatmap>();
-	}
-	FileReader reader(mapFile);
+	std::ifstream reader(path);
 	if(!newMap->Load(reader))
 	{
 		delete newMap;

@@ -33,12 +33,8 @@ bool OffsetComputer::Compute(const ChartIndex* chart, int& outOffset)
 	const String chartRootPath = Path::RemoveLast(chartPath, nullptr);
 
 	Beatmap beatmap;
-	File mapFile;
 
-	if (!mapFile.OpenRead(chartPath))
-		return false;
-
-	FileReader reader(mapFile);
+	std::ifstream reader(chartPath);
 	if (!beatmap.Load(reader))
 		return false;
 

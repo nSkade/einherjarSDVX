@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "Beatmap.hpp"
 #include "KShootMap.hpp"
+#include "kson/kson.hpp"
+#include "kson/util/timing_utils.hpp"
 
 // Temporary object to keep track if a button is a hold button
 struct TempButtonState
@@ -53,32 +55,31 @@ public:
 	EffectTypeMap()
 	{
 		// Add common effect types
-		effectTypes["None"] = EffectType::None;
-		effectTypes["Retrigger"] = EffectType::Retrigger;
-		effectTypes["Flanger"] = EffectType::Flanger;
-		effectTypes["Phaser"] = EffectType::Phaser;
-		effectTypes["Gate"] = EffectType::Gate;
-		effectTypes["TapeStop"] = EffectType::TapeStop;
-		effectTypes["BitCrusher"] = EffectType::Bitcrush;
-		effectTypes["Wobble"] = EffectType::Wobble;
-		effectTypes["SideChain"] = EffectType::SideChain;
-		effectTypes["Echo"] = EffectType::Echo;
-		effectTypes["Panning"] = EffectType::Panning;
-		effectTypes["PitchShift"] = EffectType::PitchShift;
-		effectTypes["LPF"] = EffectType::LowPassFilter;
-		effectTypes["HPF"] = EffectType::HighPassFilter;
-		effectTypes["PEAK"] = EffectType::PeakingFilter;
-		effectTypes["SwitchAudio"] = EffectType::SwitchAudio;
+		effectTypes[kson::AudioEffectType::Unspecified] = EffectType::None;
+		effectTypes[kson::AudioEffectType::Retrigger] = EffectType::Retrigger;
+		effectTypes[kson::AudioEffectType::Flanger] = EffectType::Flanger;
+		effectTypes[kson::AudioEffectType::Phaser] = EffectType::Phaser;
+		effectTypes[kson::AudioEffectType::Gate] = EffectType::Gate;
+		effectTypes[kson::AudioEffectType::Tapestop] = EffectType::TapeStop;
+		effectTypes[kson::AudioEffectType::Bitcrusher] = EffectType::Bitcrush;
+		effectTypes[kson::AudioEffectType::Wobble] = EffectType::Wobble;
+		effectTypes[kson::AudioEffectType::Sidechain] = EffectType::SideChain;
+		effectTypes[kson::AudioEffectType::Echo] = EffectType::Echo;
+		effectTypes[kson::AudioEffectType::PitchShift] = EffectType::PitchShift;
+		effectTypes[kson::AudioEffectType::LowPassFilter] = EffectType::LowPassFilter;
+		effectTypes[kson::AudioEffectType::HighPassFilter] = EffectType::HighPassFilter;
+		effectTypes[kson::AudioEffectType::PeakingFilter] = EffectType::PeakingFilter;
+		effectTypes[kson::AudioEffectType::SwitchAudio] = EffectType::SwitchAudio;
 	}
 
 	// Only checks if a mapping exists and returns this, or None
-	const EffectType *FindEffectType(const String &name) const
+	const EffectType *FindEffectType(const kson::AudioEffectType &name) const
 	{
 		return effectTypes.Find(name);
 	}
 
 	// Adds or returns the enum value mapping to this effect
-	EffectType FindOrAddEffectType(const String &name)
+	EffectType FindOrAddEffectType(const kson::AudioEffectType &name)
 	{
 		EffectType *id = effectTypes.Find(name);
 		if (!id)
@@ -86,7 +87,7 @@ public:
 		return *id;
 	};
 
-	Map<String, EffectType> effectTypes;
+	Map<kson::AudioEffectType, EffectType> effectTypes;
 };
 
 template <typename T>
@@ -217,86 +218,83 @@ static MultiParam ParseParam(const String &in)
 	}
 	return ret;
 }
-AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> &switchablePaths)
+AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &switchablePaths)
 {
 	static EffectTypeMap defaultEffects;
 	AudioEffect effect;
 	bool typeSet = false;
 
-	Map<String, MultiParamRange> params;
-	for (const auto& s : def.parameters)
+	// Get the default effect for this name
+	const EffectType* type = defaultEffects.FindEffectType(def.type);
+	
+	if (!type)
 	{
-		// This one is easy
-		if (s.first == "type")
+		Logf("Unknown base effect type for custom effect type: %s", Logger::Severity::Warning, kson::AudioEffectTypeToStr(def.type));
+		return effect;
+	}
+
+	effect = AudioEffect::GetDefault(*type);
+	typeSet = true;
+
+	Map<String, MultiParamRange> params;
+	for (const auto& s : def.v)
+	{
+		// Special case for SwitchAudio effect
+		if (s.first == "fileName")
 		{
-			// Get the default effect for this name
-			const EffectType *type = defaultEffects.FindEffectType(s.second);
-			if (!type)
+			MultiParam switchableIndex;
+			switchableIndex.type = MultiParam::Int;
+
+			auto it = std::find(switchablePaths.begin(), switchablePaths.end(), s.second);
+			if (it == switchablePaths.end())
 			{
-				Logf("Unknown base effect type for custom effect type: %s", Logger::Severity::Warning, s.second);
-				continue;
+				switchableIndex.ival = static_cast<int32>(switchablePaths.size());
+				switchablePaths.Add(s.second);
 			}
-			effect = AudioEffect::GetDefault(*type);
-			typeSet = true;
+			else
+			{
+				switchableIndex.ival = static_cast<int32>(std::distance(switchablePaths.begin(), it));
+			}
+
+			params.Add("index", switchableIndex);
+			continue;
+		}
+
+		size_t splitArrow = s.second.find('>', 1);
+		String param;
+		if (splitArrow != -1)
+		{
+			param = s.second.substr(splitArrow + 1);
 		}
 		else
 		{
-			// Special case for SwitchAudio effect
-			if (s.first == "fileName")
+			param = s.second;
+		}
+		size_t split = param.find('-', 1);
+		if (split != -1)
+		{
+			String a, b;
+			a = param.substr(0, split);
+			b = param.substr(split + 1);
+
+			MultiParamRange pr = {ParseParam(a), ParseParam(b)};
+			if (pr.params[0].type != pr.params[1].type)
 			{
-				MultiParam switchableIndex;
-				switchableIndex.type = MultiParam::Int;
-
-				auto it = std::find(switchablePaths.begin(), switchablePaths.end(), s.second);
-				if (it == switchablePaths.end())
-				{
-					switchableIndex.ival = static_cast<int32>(switchablePaths.size());
-					switchablePaths.Add(s.second);
-				}
-				else
-				{
-					switchableIndex.ival = static_cast<int32>(std::distance(switchablePaths.begin(), it));
-				}
-
-				params.Add("index", switchableIndex);
+				Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Severity::Warning, s.first, param, s.first);
 				continue;
 			}
-
-			size_t splitArrow = s.second.find('>', 1);
-			String param;
-			if (splitArrow != -1)
-			{
-				param = s.second.substr(splitArrow + 1);
-			}
-			else
-			{
-				param = s.second;
-			}
-			size_t split = param.find('-', 1);
-			if (split != -1)
-			{
-				String a, b;
-				a = param.substr(0, split);
-				b = param.substr(split + 1);
-
-				MultiParamRange pr = {ParseParam(a), ParseParam(b)};
-				if (pr.params[0].type != pr.params[1].type)
-				{
-					Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Severity::Warning, s.first, param, s.first);
-					continue;
-				}
-				params.Add(s.first, pr);
-			}
-			else
-			{
-				params.Add(s.first, ParseParam(param));
-			}
+			params.Add(s.first, pr);
+		}
+		else
+		{
+			params.Add(s.first, ParseParam(param));
 		}
 	}
+	
 
 	if (!typeSet)
 	{
-		Logf("Type not set for custom effect type: %s", Logger::Severity::Warning, def.typeName);
+		Logf("Type not set for custom effect type: %s", Logger::Severity::Warning, kson::AudioEffectTypeToStr(def.type));
 		return effect;
 	}
 
@@ -396,16 +394,28 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 	return effect;
 };
 
-bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
+bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 {
-	KShootMap kshootMap;
-	if (!kshootMap.Init(input, metadataOnly))
-		return false;
+	if (metadataOnly) {
+		auto chartMeta = kson::LoadKSHMetaChartData(input);
+		if (chartMeta.error == kson::Error::None) {
+			m_SetMetadata(&chartMeta.meta);
+			m_settings.previewDuration = chartMeta.audio.bgm.preview.duration;
+			m_settings.previewOffset = chartMeta.audio.bgm.preview.offset;
+			m_settings.audioNoFX = chartMeta.audio.bgm.filename;
+			return true;
+		}
+		else {
+			Logf("Ksh parse error: %s", Logger::Severity::Warning, kson::GetErrorString(chartMeta.error));
+			return false;
+		}
+	}
+
 
 	EffectTypeMap effectTypeMap;
 	EffectTypeMap filterTypeMap;
 	Map<EffectType, int16> defaultEffectParams;
-
+	auto kshootMap = kson::LoadKSHChartData(input);
 	// Set defaults
 	{
 		defaultEffectParams[EffectType::Bitcrush] = 4;
@@ -418,17 +428,19 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		defaultEffectParams[EffectType::TapeStop] = 50;
 	}
 
+	m_SetMetadata(&kshootMap.meta);
+
 	// Add all the custom effect types
-	for (auto it = kshootMap.fxDefines.begin(); it != kshootMap.fxDefines.end(); it++)
+	for (auto it = kshootMap.audio.audioEffect.fx.def.begin(); it != kshootMap.audio.audioEffect.fx.def.end(); it++)
 	{
-		EffectType type = effectTypeMap.FindOrAddEffectType(it->first);
+		EffectType type = effectTypeMap.FindOrAddEffectType(it->second.type);
 		if (m_customAudioEffects.Contains(type))
 			continue;
 		m_customAudioEffects.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
 	}
-	for (auto it = kshootMap.filterDefines.begin(); it != kshootMap.filterDefines.end(); it++)
+	for (auto it = kshootMap.audio.audioEffect.laser.def.begin(); it != kshootMap.audio.audioEffect.laser.def.end(); it++)
 	{
-		EffectType type = filterTypeMap.FindOrAddEffectType(it->first);
+		EffectType type = filterTypeMap.FindOrAddEffectType(it->second.type);
 		if (m_customAudioFilters.Contains(type))
 			continue;
 		m_customAudioFilters.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
@@ -454,114 +466,30 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		}
 		else
 		{
-			const EffectType *foundType = filterTypeMap.FindEffectType(str);
+			//TODO
+			/*const EffectType *foundType = filterTypeMap.FindEffectType(str);
 			if (foundType)
 				type = *foundType;
 			else
-				Logf("[KSH]Unknown filter type: %s", Logger::Severity::Warning, str);
+				Logf("[KSH]Unknown filter type: %s", Logger::Severity::Warning, str);*/
 		}
 		return type;
 	};
 
 	// Process map settings
-	m_settings.previewOffset = 0;
-	m_settings.previewDuration = 0;
-	for (auto &s : kshootMap.settings)
-	{
-		if (s.first == "title")
-			m_settings.title = s.second;
-		else if (s.first == "artist")
-			m_settings.artist = s.second;
-		else if (s.first == "effect")
-			m_settings.effector = s.second;
-		else if (s.first == "illustrator")
-			m_settings.illustrator = s.second;
-		else if (s.first == "t")
-			m_settings.bpm = s.second;
-		else if (s.first == "jacket")
-			m_settings.jacketPath = s.second;
-		else if (s.first == "bg")
-			m_settings.backgroundPath = s.second;
-		else if (s.first == "layer")
-			m_settings.foregroundPath = s.second;
-		else if (s.first == "m")
-		{
-			if (s.second.find(';') != -1)
-			{
-				String audioFX, audioNoFX;
-				s.second.Split(";", &audioNoFX, &audioFX);
-				size_t splitMore = audioFX.find(';');
-				if (splitMore != -1)
-					audioFX = audioFX.substr(0, splitMore);
-				m_settings.audioFX = audioFX;
-				m_settings.audioNoFX = audioNoFX;
-			}
-			else
-			{
-				m_settings.audioNoFX = s.second;
-			}
-		}
-		else if (s.first == "o")
-		{
-			m_settings.offset = atol(*s.second);
-		}
-		// TODO: Move initial laser effect settings to an event instead
-		else if (s.first == "filtertype")
-		{
-			m_settings.laserEffectType = ParseFilterType(s.second);
-		}
-		else if (s.first == "pfiltergain")
-		{
-			m_settings.laserEffectMix = (float)atol(*s.second) / 100.0f;
-		}
-		else if (s.first == "chokkakuvol")
-		{
-			m_settings.slamVolume = (float)atol(*s.second) / 100.0f;
-		}
-		// end TODO
-		else if (s.first == "level")
-		{
-			m_settings.level = atoi(*s.second);
-		}
-		else if (s.first == "difficulty")
-		{
-			m_settings.difficulty = 0;
-			if (s.second == "challenge")
-			{
-				m_settings.difficulty = 1;
-			}
-			else if (s.second == "extended")
-			{
-				m_settings.difficulty = 2;
-			}
-			else if (s.second == "infinite")
-			{
-				m_settings.difficulty = 3;
-			}
-		}
-		else if (s.first == "po")
-		{
-			m_settings.previewOffset = atoi(*s.second);
-		}
-		else if (s.first == "plength")
-		{
-			m_settings.previewDuration = atoi(*s.second);
-		}
-		else if (s.first == "total")
-		{
-			m_settings.total = atoi(*s.second);
-		}
-		else if (s.first == "mvol")
-		{
-			m_settings.musicVolume = (float)atoi(*s.second) / 100.0f;
-		}
-		else if (s.first == "to")
-		{
-			m_settings.speedBpm = atof(*s.second);
-		}
-	}
+	m_settings.previewOffset = kshootMap.audio.bgm.preview.offset;
+	m_settings.previewDuration = kshootMap.audio.bgm.preview.duration;
 
-	const static int tickResolution = 240;
+	//TODO: Bounds check
+	m_settings.backgroundPath = kshootMap.bg.legacy.bg.at(0).filename;
+	m_settings.foregroundPath = kshootMap.bg.legacy.layer.filename;
+	m_settings.audioNoFX = kshootMap.audio.bgm.filename;
+	m_settings.audioFX = kshootMap.audio.bgm.legacy.empty() ? "" : kshootMap.audio.bgm.legacy.filenameF;
+	m_settings.offset = kshootMap.audio.bgm.offset;
+	m_settings.total = kshootMap.gauge.total;
+	m_settings.musicVolume = kshootMap.audio.bgm.vol;
+	m_settings.speedBpm = kshootMap.meta.stdBPM;
+	auto timingCache = kson::CreateTimingCache(kshootMap.beat);
 
 	const TimingPoint* currTimingPoint = nullptr;
 
@@ -572,38 +500,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	Vector<uint32> timingPointTicks = {0};
 
 	auto TickToMapTime = [&](uint32 tick) {
-		if (tick < timingPointTicks[refTimingPointInd])
-		{
-			refTimingPointInd = 0;
-			refTimingPointTime = static_cast<double>(m_timingPoints[refTimingPointInd].time);
-		}
-		while (refTimingPointInd + 1 < timingPointTicks.size() && timingPointTicks[refTimingPointInd + 1] <= tick)
-		{
-			const MapTime timeDiff = timingPointTicks[refTimingPointInd+1] - timingPointTicks[refTimingPointInd];
-			refTimingPointTime += Math::MSFromTicks((double) timeDiff, m_timingPoints[refTimingPointInd].GetBPM(), static_cast<double>(tickResolution));
-			++refTimingPointInd;
-		}
-
-		const uint32 tickDiff = tick - timingPointTicks[refTimingPointInd];
-
-		double mapTime = refTimingPointTime;
-		mapTime += Math::MSFromTicks((double) tickDiff, m_timingPoints[refTimingPointInd].GetBPM(), static_cast<double>(tickResolution));
-		return Math::RoundToInt(mapTime);
+		return Math::RoundToInt(kson::PulseToMs(tick, kshootMap.beat, timingCache));
 	};
-
-	{
-		TimingPoint firstTimingPoint;
-		firstTimingPoint.numerator = 4;
-		firstTimingPoint.denominator = 4;
-
-		firstTimingPoint.time = atol(*kshootMap.settings["o"]);
-		refTimingPointTime = static_cast<double>(firstTimingPoint.time);
-
-		const double bpm = atof(*kshootMap.settings["t"]);
-		firstTimingPoint.beatDuration = 60000.0 / bpm;
-
-		currTimingPoint = &(m_timingPoints.Add(std::move(firstTimingPoint)));
-	}
 
 	// Add First Lane Toggle Point
 	{
@@ -619,778 +517,133 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		return true;
 	}
 
-	// Button hold states
-	TempButtonState *buttonStates[6] = {nullptr};
-	// Laser segment states
-	TempLaserState *laserStates[2] = {nullptr};
+	int lastMapTime = 0;
 
-	EffectType currentButtonEffectTypes[2] = {EffectType::None};
-	// 2 per button
-	int16 currentButtonEffectParams[4] = {-1};
-	const uint32 maxEffectParamsPerButtons = 2;
-	float laserRanges[2] = {1.0f, 1.0f};
-	MapTime lastLaserPointTime[2] = {0, 0};
-
-	// Stops will be applied after the scroll speed graph is constructed.
-	// Tuple of (stopBegin, stopEnd, isOverlappingStop)
-	Vector<std::tuple<MapTime, MapTime, bool>> stops;
-
-	MapTime lastMapTime = 0;
-	uint32 currentTick = 0;
-
-	bool isManualTilt = false;
-	for (KShootMap::TickIterator it(kshootMap); it; ++it)
+	//BT
+	for (size_t i = 0; i < kson::kNumBTLanes; i++)
 	{
-		const KShootBlock &block = it.GetCurrentBlock();
-		KShootTime time = it.GetTime();
-		const KShootTick &tick = *it;
-		float fxSampleVolume[2] = {1.0, 1.0};
-		bool useFxSample[2] = {false, false};
-		uint8 fxSampleIndex[2] = {0, 0};
-		MapTime mapTime = TickToMapTime(currentTick);
-		bool lastTick = &block == &kshootMap.blocks.back() &&
-						&tick == &block.ticks.back();
-
-		// flag set when a new effect parameter is set and a new hold notes should be created
-		bool splitupHoldNotes[2] = {false, false};
-
-		uint32 tickSettingIndex = 0;
-		// Process settings
-		for (auto &p : tick.settings)
-		{
-			// Functions that adds a new timing point at current location if it's not yet there
-			auto AddTimingPoint = [&](double newDuration, uint32 newNum, uint32 newDenom, int8 tickrateOffset) {
-				if (currTimingPoint->time != mapTime)
-				{
-					TimingPoint newTimingPoint = TimingPoint(*currTimingPoint);
-					newTimingPoint.time = mapTime;
-
-					currTimingPoint = &(m_timingPoints.Add(std::move(newTimingPoint)));
-					timingPointTicks.Add(currentTick);
-				}
-
-				TimingPoint& lastTimingPoint = *m_timingPoints.rbegin();
-
-				lastTimingPoint.numerator = newNum;
-				lastTimingPoint.denominator = newDenom;
-				lastTimingPoint.beatDuration = newDuration;
-				lastTimingPoint.tickrateOffset = tickrateOffset;
-			};
-
-			// Parser the effect and parameters of an FX button (1.60)
-			auto ParseFXAndParameters = [&](String in, int16 *paramsOut) {
-				// Clear parameters
-				memset(paramsOut, -1, sizeof(uint16) * maxEffectParamsPerButtons);
-
-				String effectName = in;
-				size_t paramSplit = in.find_first_of(';');
-				if (paramSplit != -1)
-					effectName = effectName.substr(0, paramSplit);
-				effectName.Trim();
-
-				// Clear effect instead?
-				if (effectName.empty())
-					return EffectType::None;
-
-				const EffectType *type = effectTypeMap.FindEffectType(effectName);
-				if (type == nullptr)
-				{
-					Logf("Invalid custom effect name in ksh map: %s", Logger::Severity::Warning, effectName);
-					return EffectType::None;
-				}
-
-				if (paramSplit != -1)
-				{
-					String paramA, paramB;
-					String effectParams = p.second.substr(paramSplit + 1);
-					if (effectParams.Split(";", &paramA, &paramB))
-					{
-						paramsOut[0] = atoi(*paramA);
-						paramsOut[1] = atoi(*paramB);
-					}
-					else
-						paramsOut[0] = atoi(*effectParams);
-				}
-				else //set default params
-				{
-					if (*type < EffectType::UserDefined0) {
-						switch (*type)
-						{
-						case EffectType::Flanger:
-							paramsOut[0] = 45;
-							paramsOut[1] = 15;
-							break;
-
-						default:
-							break;
-						}
-					}
-					else {
-						m_customAudioEffects.at(*type).SetDefaultEffectParams(paramsOut);
-					}
-				}
-
-				return *type;
-			};
-
-			if (p.first == "beat")
-			{
-				String n, d;
-				if (!p.second.Split("/", &n, &d))
-					assert(false);
-
-				uint32 num = atol(*n);
-				uint32 denom = atol(*d);
-
-				AddTimingPoint(currTimingPoint->beatDuration, num, denom, currTimingPoint->tickrateOffset);
+		for (auto& note : kshootMap.note.bt[i]) {
+			if (note.second.length > 0) {
+				HoldObjectState* hos = new HoldObjectState();
+				hos->index = i;
+				hos->time = TickToMapTime(note.first);
+				hos->duration = TickToMapTime(note.first + note.second.length) - hos->time;
+				lastMapTime = Math::Max(lastMapTime, hos->time + hos->duration);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*hos));
 			}
-			else if (p.first == "t")
-			{
-				const double bpm = atof(*p.second);
-				AddTimingPoint(60000.0 / bpm, currTimingPoint->numerator, currTimingPoint->denominator, currTimingPoint->tickrateOffset);
-			}
-			else if (p.first == "tickrate_offset")
-			{
-				int8 value = atoi(*p.second);
-				AddTimingPoint(currTimingPoint->beatDuration, currTimingPoint->numerator, currTimingPoint->denominator, value);
-			}
-			else if (p.first == "laserrange_l")
-			{
-				laserRanges[0] = 2.0f;
-			}
-			else if (p.first == "laserrange_r")
-			{
-				laserRanges[1] = 2.0f;
-			}
-			else if (p.first == "fx-l") // KSH 1.6
-			{
-				currentButtonEffectTypes[0] = ParseFXAndParameters(p.second, currentButtonEffectParams);
-				splitupHoldNotes[0] = true;
-			}
-			else if (p.first == "fx-r") // KSH 1.6
-			{
-				currentButtonEffectTypes[1] = ParseFXAndParameters(p.second, currentButtonEffectParams + maxEffectParamsPerButtons);
-				splitupHoldNotes[1] = true;
-			}
-			else if (p.first == "fx-l_param1")
-			{
-				currentButtonEffectParams[0] = atoi(*p.second);
-				splitupHoldNotes[0] = true;
-			}
-			else if (p.first == "fx-r_param1")
-			{
-				currentButtonEffectParams[maxEffectParamsPerButtons] = atoi(*p.second);
-				splitupHoldNotes[1] = true;
-			}
-			else if (p.first == "filtertype")
-			{
-				// Inser filter type change event
-				EventObjectState* evt = new EventObjectState();
-				evt->interTickIndex = tickSettingIndex;
-				evt->time = mapTime;
-				evt->key = EventKey::LaserEffectType;
-				evt->data.effectVal = ParseFilterType(p.second);
-				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
-			}
-			else if (p.first == "pfiltergain")
-			{
-				// Inser filter type change event
-				float gain = (float)atol(*p.second) / 100.0f;
-				EventObjectState* evt = new EventObjectState();
-				evt->interTickIndex = tickSettingIndex;
-				evt->time = mapTime;
-				evt->key = EventKey::LaserEffectMix;
-				evt->data.floatVal = gain;
-				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
-			}
-			else if (p.first == "chokkakuvol")
-			{
-				float vol = (float)atol(*p.second) / 100.0f;
-				EventObjectState* evt = new EventObjectState();
-				evt->interTickIndex = tickSettingIndex;
-				evt->time = mapTime;
-				evt->key = EventKey::LaserEffectMix;
-				evt->data.floatVal = vol;
-				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
-			}
-			else if (p.first == "zoom_bottom")
-			{
-				const double value = atol(p.second.data()) / 100.0;
-				m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_BOTTOM, mapTime, value);
-			}
-			else if (p.first == "zoom_top")
-			{
-				const double value = atol(p.second.data()) / 100.0;
-				m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_TOP, mapTime, value);
-			}
-			else if (p.first == "zoom_side")
-			{
-				const double value = atol(p.second.data()) / 100.0;
-				m_effects.InsertGraphValue(EffectTimeline::GraphType::SHIFT_X, mapTime, value);
-			}
-			/* OLD USC MANUAL ROLL, KEPT JUST IN CASE
-			else if (p.first == "roll")
-			{
-				ZoomControlPoint* point = new ZoomControlPoint();
-				point->time = mapTime;
-				point->index = 3;
-				point->zoom = (float)atol(*p.second) / 360.0f;
-				m_zoomControlPoints.Add(point);
-				CHECK_FIRST;
-			}
-			*/
-			else if (p.first == "lane_toggle")
-			{
-				LaneHideTogglePoint point;
-				point.time = mapTime;
-				point.duration = atol(*p.second);
-				m_laneTogglePoints.Add(std::move(point));
-			}
-			else if (p.first == "center_split")
-			{
-				const double value = atol(*p.second) / 100.0;
-				m_centerSplit.Insert(mapTime, value);
-			}
-			else if (p.first == "tilt")
-			{
-				EventObjectState *evt = new EventObjectState();
-				evt->time = mapTime;
-				evt->interTickIndex = tickSettingIndex;
-				evt->key = EventKey::TrackRollBehaviour;
-				evt->data.rollVal = TrackRollBehaviour::Zero;
-
-				String v = p.second;
-				size_t f = v.find("keep_");
-				if (f != -1)
-				{
-					evt->data.rollVal = TrackRollBehaviour::Keep;
-					v = v.substr(f + 5);
-				}
-
-				if (v == "normal")
-					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Normal;
-				else if (v == "bigger")
-					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Bigger;
-				else if (v == "biggest")
-					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Biggest;
-				else if (v == "zero")
-					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Zero;
-				else
-				{
-					evt->data.rollVal = TrackRollBehaviour::Manual;
-
-					const double rotation = atof(p.second.data()) * -(10.0 / 360.0);
-					m_effects.InsertGraphValue(EffectTimeline::GraphType::ROTATION_Z, mapTime, rotation);
-
-					isManualTilt = true;
-					goto after_manual_check;
-				}
-
-				if (isManualTilt)
-				{
-					m_effects.GetGraph(EffectTimeline::GraphType::ROTATION_Z).Extend(mapTime);
-				}
-
-			after_manual_check:
-				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
-			}
-			else if (p.first == "fx-r_se")
-			{
-				String filename, vol;
-				int fxi = 1;
-				useFxSample[fxi] = true;
-				if (p.second.Split(";", &filename, &vol))
-				{
-					fxSampleVolume[fxi] = (float)atoi(*vol) / 100.0f;
-				}
-				else
-				{
-					filename = p.second;
-				}
-
-				auto it = std::find(m_samplePaths.begin(), m_samplePaths.end(), filename);
-				if (it == m_samplePaths.end())
-				{
-					fxSampleIndex[fxi] = static_cast<uint8>(m_samplePaths.size());
-					m_samplePaths.Add(filename);
-				}
-				else
-				{
-					fxSampleIndex[fxi] = static_cast<uint8>(std::distance(m_samplePaths.begin(), it));
-				}
-			}
-			else if (p.first == "fx-l_se")
-			{
-				String filename, vol;
-				int fxi = 0;
-				useFxSample[fxi] = true;
-				if (p.second.Split(";", &filename, &vol))
-				{
-					fxSampleVolume[fxi] = (float)atoi(*vol) / 100.0f;
-				}
-				else
-				{
-					filename = p.second;
-				}
-
-				auto it = std::find(m_samplePaths.begin(), m_samplePaths.end(), filename);
-				if (it == m_samplePaths.end())
-				{
-					fxSampleIndex[fxi] = static_cast<uint8>(m_samplePaths.size());
-					m_samplePaths.Add(filename);
-				}
-				else
-				{
-					fxSampleIndex[fxi] = std::distance(m_samplePaths.begin(), it);
-				}
-			}
-			else if (p.first == "stop")
-			{
-				// Stops will be applied after the scroll speed graph is constructed.
-				const MapTime stopDuration = Math::RoundToInt((atol(*p.second) / 192.0f) * (currTimingPoint->beatDuration) * 4);
-				bool isOverlappingStop = false;
-
-				if (!stops.empty() && mapTime < std::get<1>(*stops.rbegin()))
-				{
-					isOverlappingStop = true;
-					std::get<2>(*stops.rbegin()) = true;
-				}
-
-				stops.Add(std::make_tuple(mapTime, mapTime + stopDuration, isOverlappingStop));
-			}
-			else if (p.first == "scroll_speed")
-			{
-				LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
-				scrollSpeedGraph.Insert(mapTime, atol(p.second.data()) / 100.0);
-			}
-			else
-			{
-				Logf("[KSH]Unkown map parameter at %d:%d: %s", Logger::Severity::Warning, it.GetTime().block, it.GetTime().tick, p.first);
-			}
-			tickSettingIndex++;
-		}
-
-		// Set button states
-		for (uint32 i = 0; i < 6; i++)
-		{
-			char c = i < 4 ? tick.buttons[i] : tick.fx[i - 4];
-			TempButtonState *&state = buttonStates[i];
-			HoldObjectState *lastHoldObject = nullptr;
-
-			auto IsHoldState = [&]() {
-				return state && state->numTicks > 0 && state->fineSnap;
-			};
-			auto CreateButton = [&]() {
-				if (IsHoldState())
-				{
-					HoldObjectState *obj = lastHoldObject = new HoldObjectState();
-					obj->time = TickToMapTime(state->startTick);
-					obj->index = i;
-					obj->duration = TickToMapTime(currentTick) - obj->time;
-					obj->effectType = state->effectType;
-					if (state->lastHoldObject)
-						state->lastHoldObject->next = obj;
-					obj->prev = state->lastHoldObject;
-					memcpy(obj->effectParams, state->effectParams, sizeof(state->effectParams));
-					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*obj));;
-				}
-				else
-				{
-					ButtonObjectState *obj = new ButtonObjectState();
-
-					obj->time = TickToMapTime(state->startTick);
-					obj->index = i;
-					obj->hasSample = state->usingSample;
-					obj->sampleIndex = state->sampleIndex;
-					obj->sampleVolume = state->sampleVolume;
-					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*obj));
-				}
-
-				// Reset
-				delete state;
-				state = nullptr;
-			};
-
-			// Split up multiple hold notes
-			if (i > 3 && IsHoldState() && splitupHoldNotes[i - 4])
-			{
-				CreateButton();
-			}
-
-			if (c == '0')
-			{
-				// Terminate hold button
-				if (state)
-				{
-					CreateButton();
-				}
-
-				if (i >= 4)
-				{
-					// Unset effect parameters
-					currentButtonEffectParams[i - 4] = -1;
-				}
-			}
-			else if (!state)
-			{
-				// Create new hold state
-				state = new TempButtonState(currentTick);
-				uint32 div = (uint32)block.ticks.size();
-
-				if (lastHoldObject)
-					state->lastHoldObject = lastHoldObject;
-
-				if (i < 4)
-				{
-					// Normal '1' notes are always individual
-					state->fineSnap = c != '1';
-				}
-				else
-				{
-					// FX object '2' is always individual
-					state->fineSnap = c != '2';
-
-					// Set effect
-					if (c == 'B')
-					{
-						state->effectType = EffectType::Bitcrush;
-						if (currentButtonEffectParams[i - 4] != -1)
-							state->effectParams[0] = currentButtonEffectParams[i - 4];
-						else
-							state->effectParams[0] = 5;
-					}
-					else if (c >= 'G' && c <= 'L') // Gate 4/8/16/32/12/24
-					{
-						state->effectType = EffectType::Gate;
-						int16 paramMap[] = {
-							4, 8, 16, 32, 12, 24};
-						state->effectParams[0] = paramMap[c - 'G'];
-					}
-					else if (c >= 'S' && c <= 'W') // Retrigger 8/16/32/12/24
-					{
-						state->effectType = EffectType::Retrigger;
-						int16 paramMap[] = {
-							8, 16, 32, 12, 24};
-						state->effectParams[0] = paramMap[c - 'S'];
-					}
-					else if (c == 'Q')
-					{
-						state->effectType = EffectType::Phaser;
-					}
-					else if (c == 'F')
-					{
-						state->effectType = EffectType::Flanger;
-						state->effectParams[0] = 5000;
-					}
-					else if (c == 'X')
-					{
-						state->effectType = EffectType::Wobble;
-						state->effectParams[0] = 12;
-					}
-					else if (c == 'D')
-					{
-						state->effectType = EffectType::SideChain;
-					}
-					else if (c == 'A')
-					{
-						state->effectType = EffectType::TapeStop;
-						if (currentButtonEffectParams[i - 4] != -1)
-							memcpy(state->effectParams, currentButtonEffectParams + (i - 4) * maxEffectParamsPerButtons,
-								   sizeof(state->effectParams));
-						else
-							state->effectParams[0] = 50;
-					}
-					else if (c == '2')
-					{
-						state->sampleIndex = fxSampleIndex[i - 4];
-						state->usingSample = useFxSample[i - 4];
-						state->sampleVolume = fxSampleVolume[i - 4];
-					}
-					else
-					{
-						// Use settings method of setting effects+params (1.60)
-						state->effectType = currentButtonEffectTypes[i - 4];
-						if (currentButtonEffectParams[(i - 4) * maxEffectParamsPerButtons] != -1)
-							memcpy(state->effectParams, currentButtonEffectParams + (i - 4) * maxEffectParamsPerButtons,
-								   sizeof(state->effectParams));
-						else
-						{
-							state->effectParams[0] = defaultEffectParams[state->effectType];
-							state->effectParams[1] = 0;
-						}
-					}
-				}
-			}
-			else
-			{
-				// For buttons not using the 1/32 grid
-				if (!state->fineSnap)
-				{
-					CreateButton();
-
-					// Create new hold state
-					state = new TempButtonState(currentTick);
-					uint32 div = (uint32)block.ticks.size();
-
-					if (i < 4)
-					{
-						// Normal '1' notes are always individual
-						state->fineSnap = c != '1';
-					}
-					else
-					{
-						// Hold are always on a high enough snap to make suere they are seperate when needed
-						if (c == '2')
-						{
-							state->fineSnap = false;
-							state->sampleIndex = fxSampleIndex[i - 4];
-							state->usingSample = useFxSample[i - 4];
-							state->sampleVolume = fxSampleVolume[i - 4];
-						}
-						else
-						{
-							state->fineSnap = true;
-							state->effectType = currentButtonEffectTypes[i - 4];
-							memcpy(state->effectParams, currentButtonEffectParams + (i - 4) * maxEffectParamsPerButtons,
-								   sizeof(state->effectParams));						
-						}
-					}
-				}
-				else
-				{
-					// Update current hold state
-					state->numTicks++;
-				}
-			}
-
-			// Terminate last item
-			if (lastTick && state)
-				CreateButton();
-		}
-
-		// Set laser states
-		for (uint32 i = 0; i < 2; i++)
-		{
-			TempLaserState *&state = laserStates[i];
-			char c = tick.laser[i];
-
-			// Function that creates a new segment out of the current state
-			auto CreateLaserSegment = [&](float endPos) {
-				// Process existing segment
-				//assert(state->numTicks > 0);
-
-				LaserObjectState *obj = new LaserObjectState();
-
-				obj->time = TickToMapTime(state->startTick);
-				obj->tick = state->startTick;
-				obj->duration = TickToMapTime(currentTick) - obj->time;
-				obj->index = i;
-				obj->points[0] = state->startPosition;
-				obj->points[1] = endPos;
-				uint32 tickDuration = currentTick - state->absoluteStartTick;
-
-				if (laserRanges[i] > 1.0f)
-				{
-					obj->flags |= LaserObjectState::flag_Extended;
-				}
-				uint32 laserSlamThreshold = tickResolution / 8;
-				bool lastSlam = (state->last && (state->last->flags & LaserObjectState::flag_Instant) != 0); // Deal with super fast repeat slams
-
-				if (tickDuration <= laserSlamThreshold && (obj->points[1] != obj->points[0]))
-				{
-					obj->flags |= LaserObjectState::flag_Instant;
-					obj->time = TickToMapTime(state->absoluteStartTick);
-					obj->tick = state->absoluteStartTick;
-					if (state->spinType != 0)
-					{
-						obj->spin.duration = state->spinDuration;
-						obj->spin.amplitude = state->spinBounceAmplitude;
-						obj->spin.frequency = state->spinBounceFrequency;
-						obj->spin.decay = state->spinBounceDecay;
-
-						if (state->spinIsBounce)
-							obj->spin.type = SpinStruct::SpinType::Bounce;
-						else
-						{
-							switch (state->spinType)
-							{
-							case '(':
-							case ')':
-								obj->spin.type = SpinStruct::SpinType::Full;
-								break;
-							case '<':
-							case '>':
-								obj->spin.type = SpinStruct::SpinType::Quarter;
-								break;
-							default:
-								break;
-							}
-						}
-
-						switch (state->spinType)
-						{
-						case '<':
-						case '(':
-							obj->spin.direction = -1.0f;
-							break;
-						case ')':
-						case '>':
-							obj->spin.direction = 1.0f;
-							break;
-						default:
-							break;
-						}
-					}
-				}
-
-				// Link segments together
-				if (state->last)
-				{
-					// Always fixup duration so they are connected by duration as well
-					obj->prev = state->last;
-					MapTime actualPrevDuration = obj->time - obj->prev->time;
-					if (obj->prev->duration != actualPrevDuration)
-					{
-						obj->prev->duration = actualPrevDuration;
-					}
-					obj->prev->next = obj;
-				}
-
-				if ((obj->flags & LaserObjectState::flag_Instant) != 0 && lastSlam) //add short straight segment between the slams
-				{
-					auto midobj = new LaserObjectState();
-					midobj->flags = obj->prev->flags & ~LaserObjectState::flag_Instant;
-					midobj->points[0] = obj->points[0];
-					midobj->points[1] = obj->points[0];
-					midobj->time = obj->prev->time;
-					midobj->duration = lastLaserPointTime[i] - midobj->time;
-					midobj->index = obj->index;
-
-					obj->time = lastLaserPointTime[i];
-
-					midobj->prev = obj->prev;
-					obj->prev = midobj;
-					midobj->next = obj;
-					midobj->prev->next = midobj;
-
-					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*midobj));
-				}
-
-				// Add to list of objects
-
-				assert(obj->GetRoot() != nullptr);
-
-				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*obj));
-
-				return obj;
-			};
-
-			if (c == '-')
-			{
-				// Terminate laser
-				if (state)
-				{
-					// Reset state
-					delete state;
-					state = nullptr;
-
-					// Reset range extension
-					laserRanges[i] = 1.0f;
-				}
-			}
-			else if (c == ':')
-			{
-				// Update current laser state
-				if (state)
-				{
-					state->numTicks++;
-				}
-			}
-			else
-			{
-				float pos = kshootMap.TranslateLaserChar(c);
-				LaserObjectState *last = nullptr;
-				if (state)
-				{
-					last = CreateLaserSegment(pos);
-
-					// Reset state
-					delete state;
-					state = nullptr;
-				}
-
-				uint32 startTick = currentTick;
-				if (last && (last->flags & LaserObjectState::flag_Instant) != 0)
-				{
-					// Move offset to be the same as last segment, as in ksh maps there is a 1 tick delay after laser slams
-					startTick = last->tick;
-				}
-				state = new TempLaserState(startTick, currentTick, 0);
-				state->last = last; // Link together
-				state->startPosition = pos;
-
-				//@[Type][Speed] = spin
-				//Types
-				//) or ( = full spin
-				//> or < = quarter spin
-				//Speed is number of 192nd notes
-				if (!tick.add.empty() && (tick.add[0] == '@' || tick.add[0] == 'S'))
-				{
-					state->spinIsBounce = tick.add[0] == 'S';
-					state->spinType = tick.add[1];
-
-					String add = tick.add.substr(2);
-					if (state->spinIsBounce)
-					{
-						String duration, amplitude, frequency, decay;
-
-						add.Split(";", &duration, &amplitude);
-						amplitude.Split(";", &amplitude, &frequency);
-						frequency.Split(";", &frequency, &decay);
-
-						state->spinDuration = std::stoi(duration);
-						state->spinBounceAmplitude = std::stoi(amplitude);
-						state->spinBounceFrequency = std::stoi(frequency);
-						state->spinBounceDecay = std::stoi(decay);
-					}
-					else
-					{
-						state->spinDuration = std::stoi(add);
-						if (state->spinType == '(' || state->spinType == ')')
-							state->spinDuration = state->spinDuration;
-					}
-				}
-
-				lastLaserPointTime[i] = mapTime;
+			else {
+				ButtonObjectState* bos = new ButtonObjectState();
+				bos->index = i;
+				bos->time = TickToMapTime(note.first);
+				lastMapTime = Math::Max(lastMapTime, bos->time);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*bos));
 			}
 		}
-
-		lastMapTime = mapTime;
-		currentTick += static_cast<uint32>((tickResolution * 4 * currTimingPoint->numerator / currTimingPoint->denominator) / block.ticks.size());
 	}
 
-	// Apply stops
-	for (const auto& stop : stops)
+	//FX
+	//TODO: Effects
+	for (size_t i = 0; i < kson::kNumFXLanes; i++)
 	{
-		const MapTime stopBegin = std::get<0>(stop);
-		const MapTime stopEnd = std::get<1>(stop);
-		const bool isOverlapping = std::get<2>(stop);
-
-		LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
-
-		// In older versions of USC there was a bug where overlapping stop regions made notes scrolling backwards.
-		// In other words, stops weren't actually setting the scroll speed to 0, but instead decreased the speed by 1.
-		// This bug was utilized as gimmicks for several charts, so for backwards compatibility this behavior is reimplemented when stops are overlapping.
-		// For individual stops, scroll speed will actually set to 0 to make those behave nicely with manual scroll speed modifiers.
-
-		if (isOverlapping)
-		{
-			scrollSpeedGraph.RangeAdd(stopBegin, stopEnd, -1.0);
+		for (auto& fxnote : kshootMap.note.fx[i]) {
+			if (fxnote.second.length > 0) {
+				HoldObjectState* hos = new HoldObjectState();
+				hos->index = i + 4;
+				hos->time = TickToMapTime(fxnote.first);
+				hos->duration = TickToMapTime(fxnote.first + fxnote.second.length) - hos->time;
+				lastMapTime = Math::Max(lastMapTime, hos->time + hos->duration);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*hos));
+			}
+			else {
+				ButtonObjectState* bos = new ButtonObjectState();
+				bos->index = i + 4;
+				bos->time = TickToMapTime(fxnote.first);
+				lastMapTime = Math::Max(lastMapTime, bos->time);
+				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*bos));
+			}
 		}
-		else
-		{
-			scrollSpeedGraph.RangeSet(stopBegin, stopEnd, 0.0);
+	}
+
+	//Laser
+	for (size_t i = 0; i < kson::kNumLaserLanes; i++)
+	{
+		for (auto& laserSegment : kshootMap.note.laser[i]) {
+			auto&& a = laserSegment.second.v.begin();
+			LaserObjectState* prev = nullptr;
+			do {
+				auto b = a;
+				++b;
+				if (a->second.v != a->second.vf) {
+					LaserObjectState* slam = new LaserObjectState();
+					slam->index = i;
+					slam->flags = 0;
+					slam->flags |= LaserObjectState::flag_Instant;
+					slam->time = TickToMapTime(a->first + laserSegment.first);
+					slam->duration = 0;
+					slam->points[0] = a->second.v;
+					slam->points[1] = a->second.vf;
+
+					if (laserSegment.second.w == 2) {
+						slam->flags |= LaserObjectState::flag_Extended;
+					}
+					if (prev) {
+						prev->next = slam;
+						slam->prev = prev;
+					}
+					prev = slam;
+					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*slam));
+
+				}
+				if (b != laserSegment.second.v.end())
+				{
+					LaserObjectState* los = new LaserObjectState();
+					los->flags = 0;
+					if (laserSegment.second.w == 2) {
+						los->flags |= LaserObjectState::flag_Extended;
+					}
+
+					los->points[0] = a->second.vf;
+					los->points[1] = b->second.v;
+					los->time = TickToMapTime(a->first + laserSegment.first);
+					los->duration = TickToMapTime(b->first + laserSegment.first) - los->time;
+					los->index = i;
+
+					if (prev) {
+						prev->next = los;
+						los->prev = prev;
+					}
+
+					prev = los;
+					m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*los));
+				}
+				a = b;
+			} while (a != laserSegment.second.v.end());
+			if (prev)
+			{
+				lastMapTime = Math::Max(lastMapTime, prev->time + prev->duration);
+			}
 		}
+	}
+
+	//BPM
+	for (auto&& bpm : kshootMap.beat.bpm) {
+		auto sig = kson::TimeSigAt(bpm.first, kshootMap.beat, timingCache);
+		TimingPoint tp;
+		tp.numerator = sig.n;
+		tp.denominator = sig.d;
+		tp.time = TickToMapTime(bpm.first);
+		tp.beatDuration = 60000.0 / bpm.second;
+		m_timingPoints.Add(std::move(tp));
+	}
+
+	//TimeSig
+	for (auto&& ts : kshootMap.beat.timeSig) {
+		TimingPoint tp;
+		tp.time = kson::MeasureIdxToMs(ts.first, kshootMap.beat, timingCache);
+		tp.beatDuration = 60000.0 / kson::TempoAt(kson::MeasureIdxToPulse(ts.first, kshootMap.beat, timingCache), kshootMap.beat);
+		tp.denominator = ts.second.d;
+		tp.numerator = ts.second.n;
+		m_timingPoints.Add(std::move(tp));
 	}
 
 	// Add chart end event
@@ -1403,4 +656,32 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	ObjectState::SortArray(m_objectStates);
 
 	return true;
+}
+using kson::MetaInfo;
+void Beatmap::m_SetMetadata(MetaInfo* data)
+{
+	/*
+	* std::string title;
+		std::string titleImgFilename; // UTF-8 guaranteed
+		std::string artist;
+		std::string artistImgFilename; // UTF-8 guaranteed
+		std::string chartAuthor;
+		DifficultyInfo difficulty;
+		std::int32_t level = 1;
+		std::string dispBPM;
+		double stdBPM = 0.0;
+		std::string jacketFilename; // UTF-8 guaranteed
+		std::string jacketAuthor;
+		std::string iconFilename; // UTF-8 guaranteed
+		std::string information;
+	*/
+	m_settings.artist = data->artist;
+	m_settings.title = data->title;
+	m_settings.effector = data->chartAuthor;
+	m_settings.difficulty = data->difficulty.idx;
+	m_settings.level = data->level;
+	m_settings.bpm = data->dispBPM;
+	m_settings.speedBpm = data->stdBPM;
+	m_settings.illustrator = data->jacketAuthor;
+	m_settings.jacketPath = data->jacketFilename;
 }

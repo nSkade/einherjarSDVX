@@ -1977,12 +1977,10 @@ private:
 				m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Discovered Chart [%s]", f.first));
 				// Try to read map metadata
 				bool mapValid = false;
-				File fileStream;
 				Beatmap map;
-				if(fileStream.OpenRead(f.first))
+				std::ifstream reader(f.first);
+				if(reader.good())
 				{
-					FileReader reader(fileStream);
-
 					if(map.Load(reader, true))
 					{
 						mapValid = true;
@@ -1991,7 +1989,7 @@ private:
 
 				if(mapValid)
 				{
-					fileStream.Seek(0);
+					reader.seekg(0);
 					evt.mapData = new BeatmapSettings(map.GetMapSettings());
 
 					ProfilerScope $("Chart Database - Hash Chart");
@@ -2003,7 +2001,8 @@ private:
 					size_t read_size;
 					do
 					{
-						read_size = fileStream.Read(data_buffer, sizeof(data_buffer));
+						reader.read(data_buffer, sizeof(data_buffer));
+						read_size = reader.gcount();
 						amount_read += read_size;
 						s.processBytes(data_buffer, read_size);
 					}

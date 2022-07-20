@@ -1,37 +1,38 @@
 # All third party libraries
 add_subdirectory(lua-5.3.5)
 
-#cpr test programs
+# cpr test programs
 option(CPR_BUILD_TESTS "Set to ON to build cpr tests." OFF)
 set(CPR_ENABLE_SSL ON)
-#TODO: Don't have two curl builds in the game build
-#if(MSVC)
-#    set(CPR_FORCE_USE_SYSTEM_CURL ON) #curl should be available through vcpkg
-#endif(MSVC)
+
+# TODO: Don't have two curl builds in the game build
+# if(MSVC)
+# set(CPR_FORCE_USE_SYSTEM_CURL ON) #curl should be available through vcpkg
+# endif(MSVC)
 add_subdirectory(cpr)
 target_include_directories(cpr PUBLIC ${CPR_INCLUDE_DIRS})
 
-#discord example program
+# discord example program
 option(BUILD_EXAMPLES "Build example apps" OFF)
 add_subdirectory(discord-rpc)
 target_include_directories(discord-rpc PUBLIC discord-rpc/include)
 
-#nanovg
+# nanovg
 add_library(nanovg nanovg/src/nanovg.c)
 target_include_directories(nanovg PUBLIC nanovg/src)
 target_link_libraries(nanovg ${FREETYPE_LIBRARIES})
 target_include_directories(nanovg PRIVATE ${FREETYPE_INCLUDE_DIRS})
 target_compile_definitions(nanovg PRIVATE -DFONS_USE_FREETYPE)
 
-#miniaudio
+# miniaudio
 add_library(miniaudio INTERFACE)
 target_include_directories(miniaudio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/miniaudio)
 
-#json for modern c++
+# json for modern c++
 add_library(nlohmann_json INTERFACE)
 target_include_directories(nlohmann_json INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json)
 
-#sqlite
+# sqlite
 add_library(sqlite3
     sqlite3/sqlite3.c
     sqlite3/sqlite3.h
@@ -39,7 +40,7 @@ add_library(sqlite3
 )
 target_include_directories(sqlite3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
 
-#minimp3
+# minimp3
 add_library(minimp3
     minimp3/minimp3.c
     minimp3/minimp3.h
@@ -47,7 +48,7 @@ add_library(minimp3
 )
 target_include_directories(minimp3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minimp3)
 
-#soundtouch
+# soundtouch
 add_library(soundtouch
     soundtouch/src/AAFilter.cpp
     soundtouch/src/AAFilter.h
@@ -82,16 +83,22 @@ add_library(soundtouch
 target_include_directories(soundtouch PUBLIC soundtouch/include)
 target_include_directories(soundtouch PRIVATE soundtouch/src)
 
-#GLEW
+# GLEW
 add_library(GLEW
     glew/include/GL/glew.h
     glew/include/GL/glxew.h
     glew/include/GL/wglew.h
     glew/src/glew.c
 )
+
 # GLEW is included statically and also doesn't need GLU(Which doesn't even exist on linux)
 target_compile_definitions(GLEW PUBLIC -DGLEW_NO_GLU -DGLEW_STATIC)
 target_include_directories(GLEW PUBLIC glew/include)
+
+# libkson
+option(kson_build_ksh2kson "build ksh2kson tool" OFF)
+add_subdirectory(libkson)
+target_include_directories(kson PUBLIC libkson/include)
 
 # Enable multiprocess compiling
 if(MSVC)
@@ -103,4 +110,6 @@ if(MSVC)
     target_compile_options(nanovg PRIVATE /MP)
     target_compile_options(soundtouch PRIVATE /MP)
     target_compile_options(sqlite3 PRIVATE /MP)
+    target_compile_options(kson PRIVATE /MP)
+    target_compile_options(kson PRIVATE /MT)
 endif(MSVC)

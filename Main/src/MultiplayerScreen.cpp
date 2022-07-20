@@ -593,15 +593,7 @@ void MultiplayerScreen::GetMapBPMForSpeed(String path, struct MultiplayerBPMInfo
 
 	// Load map
 	Beatmap newMap;
-	File mapFile;
-	if (!mapFile.OpenRead(path))
-	{
-		Logf("Could not read path for beatmap: %s", Logger::Severity::Error, path);
-		info = { 0, 0, 0, 0 };
-		return;
-	}
-
-	FileReader reader(mapFile);
+	std::ifstream reader(path);
 	if (!newMap.Load(reader))
 	{
 		info = { 0, 0, 0, 0 };

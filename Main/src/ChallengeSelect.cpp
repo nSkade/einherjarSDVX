@@ -1712,7 +1712,7 @@ bool ChallengeManager::m_setupNextChart()
 
 	if (m_currentOptions.gauge_carry_over.Get(false) && m_lastGauges.size() > 0)
 	{
-		auto setGauge = [=](void *screen) {
+		auto setGauge = [&](void *screen) {
 			if (screen == nullptr)
 				return;
 			game->SetAllGaugeValues(this->m_lastGauges);

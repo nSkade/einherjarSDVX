@@ -280,7 +280,7 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 			MultiParamRange pr = {ParseParam(a), ParseParam(b)};
 			if (pr.params[0].type != pr.params[1].type)
 			{
-				Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Severity::Warning, s.first, param, s.first);
+				//Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Severity::Warning, s.first, param, s.first);
 				continue;
 			}
 			params.Add(s.first, pr);

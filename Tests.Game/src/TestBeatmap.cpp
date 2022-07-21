@@ -3,6 +3,7 @@
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <Audio/DSP.hpp>
 #include "TestMusicPlayer.hpp"
+#include <fstream>
 
 // Normal test map
 static String testBeatmapPath = Path::Normalize("songs/love is insecurable/love_is_insecurable.ksh");
@@ -12,9 +13,8 @@ static String testBeatmapPath1 = Path::Normalize("songs/soflan/Konran shoujo Sof
 
 static inline void LoadTestBeatmap(Beatmap& beatmap, const String& mapPath = testBeatmapPath)
 {
-	File file;
-	TestEnsure(file.OpenRead(mapPath));
-	FileReader reader(file);
+	std::ifstream reader(mapPath);
+	TestEnsure(reader.good());
 	TestEnsure(beatmap.Load(reader));
 }
 

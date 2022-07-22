@@ -30,7 +30,7 @@ Test("Beatmap.v160")
 		MultiObjectState* mobj = *(it.get());
 		if(mobj->type == ObjectType::Hold)
 		{
-			if(mobj->hold.effectType == EffectType::Bitcrush)
+			if(map.GetEffect(mobj->hold.effectType).type == kson::AudioEffectType::Bitcrusher)
 			{
 				haveBitc = true;
 			}

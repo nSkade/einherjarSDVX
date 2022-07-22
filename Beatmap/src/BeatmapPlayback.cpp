@@ -246,7 +246,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 		ObjectState* objState = it.second;
 		MultiObjectState* obj = *(objState);
 
-		if (obj->type != ObjectType::Hold || obj->hold.effectType == EffectType::None)
+		if (obj->type != ObjectType::Hold || obj->hold.effectType.empty())
 		{
 			continue;
 		}

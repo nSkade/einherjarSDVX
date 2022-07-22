@@ -158,8 +158,6 @@ bool MultiObjectState::StaticSerialize(BinaryStream& stream, MultiObjectState*& 
 		stream << obj->hold.index;
 		stream << obj->hold.duration;
 		stream << (uint16&)obj->hold.effectType;
-		stream << (int16&)obj->hold.effectParams[0];
-		stream << (int16&)obj->hold.effectParams[1];
 		break;
 	case ObjectType::Laser:
 		stream << obj->laser.index;

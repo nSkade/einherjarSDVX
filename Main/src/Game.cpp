@@ -2330,7 +2330,7 @@ public:
 		if(object->type == ObjectType::Hold)
 		{
 			HoldObjectState* hold = (HoldObjectState*)object;
-			if(hold->effectType != EffectType::None)
+			if(!hold->effectType.empty())
 			{
                 m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
             }
@@ -2342,7 +2342,7 @@ public:
 		if(object->type == ObjectType::Hold)
 		{
 			HoldObjectState* hold = (HoldObjectState*)object;
-			if(hold->effectType != EffectType::None)
+			if(!hold->effectType.empty())
 			{
 				m_audioPlayback.SetEffectEnabled(hold->index - 4, false);
 			}

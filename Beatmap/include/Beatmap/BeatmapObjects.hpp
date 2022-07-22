@@ -145,10 +145,9 @@ struct ObjectTypeData_Hold : public ObjectTypeData_Button
 	// Used for hold notes, 0 is a normal note
 	MapTime duration = 0;
 	// The sound effect on the note
-	EffectType effectType = EffectType::None;
+	String effectType = "";
 	// The parameter for effects that have it
 	// the maximum number of parameters is 2 (only echo uses this)
-	int16 effectParams[2] = {0};
 
 	// Set for hold notes that are a continuation of the previous one, but with a different effect
 	TObjectState<ObjectTypeData_Hold> *next = nullptr;
@@ -240,7 +239,7 @@ struct EventData
 		uint32 uintVal;
 		int32 intVal;
 		uint8 byteVal;
-		EffectType effectVal;
+		char effectVal[128];
 		TrackRollBehaviour rollVal;
 	};
 
@@ -270,6 +269,7 @@ struct ObjectTypeData_Event
 struct MultiObjectState
 {
 	static bool StaticSerialize(BinaryStream &stream, MultiObjectState *&out);
+	~MultiObjectState() = default;
 
 	// Position in ms when this object appears
 	MapTime time;

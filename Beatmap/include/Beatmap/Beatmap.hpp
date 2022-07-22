@@ -49,7 +49,7 @@ struct BeatmapSettings
 	// BPM Override for mmod calculation
 	float speedBpm = -1.0f;
 
-	EffectType laserEffectType = EffectType::PeakingFilter;
+	kson::AudioEffectType laserEffectType = kson::AudioEffectType::PeakingFilter;
 };
 
 /*
@@ -84,9 +84,9 @@ public:
 	const Vector<String>& GetSwitchablePaths() const { return m_switchablePaths; }
 
 	/// Retrieves audio effect settings for a given button id
-	AudioEffect GetEffect(EffectType type) const;
+	AudioEffect GetEffect(String type) const;
 	/// Retrieves audio effect settings for a given filter effect id
-	AudioEffect GetFilter(EffectType type) const;
+	AudioEffect GetFilter(String type) const;
 
 	/// Get the timing of the first (non-event) object
 	MapTime GetFirstObjectTime(MapTime lowerBound) const;
@@ -163,8 +163,8 @@ private:
 	bool m_ProcessKShootMap(std::istream& input, bool metadataOnly);
 	void m_SetMetadata(kson::MetaInfo* data);
 
-	Map<EffectType, AudioEffect> m_customAudioEffects;
-	Map<EffectType, AudioEffect> m_customAudioFilters;
+	Map<String, AudioEffect> m_customAudioEffects;
+	Map<String, AudioEffect> m_customAudioFilters;
 
 	Objects m_objectStates;
 	TimingPoints m_timingPoints;

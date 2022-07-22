@@ -30,7 +30,7 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 	assert(m_beatmap != nullptr);
 
 	// Set default effect type
-	SetLaserEffect(EffectType::PeakingFilter);
+	SetLaserEffect(kson::AudioEffectTypeToStr(kson::AudioEffectType::PeakingFilter).data());
 
 	const BeatmapSettings &mapSettings = m_beatmap->GetMapSettings();
 	String audioPath = Path::Normalize(m_beatmapRootPath + Path::sep + mapSettings.audioNoFX);
@@ -193,7 +193,7 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState *object, class Beatm
 	m_buttonEffects[index] = m_beatmap->GetEffect(object->effectType);
 
 	// Do not create DSP for SwitchAudio effect
-	if (m_buttonEffects[index].type == EffectType::SwitchAudio)
+	if (m_buttonEffects[index].type == kson::AudioEffectType::SwitchAudio)
 		return;
 
 	Ref<AudioStream> audioTrack = m_GetDSPTrack();
@@ -223,7 +223,7 @@ void AudioPlayback::SetEffectEnabled(uint32 index, bool enabled)
 	assert(index <= 1);
 	m_effectMix[index] = enabled ? m_buttonEffects[index].mix.Sample() : 0.0f;
 
-	if (m_buttonEffects[index].type == EffectType::SwitchAudio)
+	if (m_buttonEffects[index].type == kson::AudioEffectType::SwitchAudio)
 	{
 		SetSwitchableTrackEnabled(m_buttonEffects[index].switchaudio.index.Sample(), enabled);
 		return;
@@ -243,7 +243,7 @@ void AudioPlayback::ClearEffect(uint32 index, HoldObjectState *object)
 		m_currentHoldEffects[index] = nullptr;
 	}
 }
-void AudioPlayback::SetLaserEffect(EffectType type)
+void AudioPlayback::SetLaserEffect(String type)
 {
 	if (type != m_laserEffectType)
 	{
@@ -254,15 +254,15 @@ void AudioPlayback::SetLaserEffect(EffectType type)
 }
 bool AudioPlayback::m_SkipEffectIfInputIsZero()
 {
-	return m_laserEffect.type == EffectType::PeakingFilter || m_laserEffect.type == EffectType::HighPassFilter
-		|| m_laserEffect.type == EffectType::LowPassFilter || m_laserEffect.type == EffectType::PitchShift
-		|| m_laserEffect.type == EffectType::Bitcrush;
+	return m_laserEffect.type == kson::AudioEffectType::PeakingFilter || m_laserEffect.type == kson::AudioEffectType::HighPassFilter
+		|| m_laserEffect.type == kson::AudioEffectType::LowPassFilter || m_laserEffect.type == kson::AudioEffectType::PitchShift
+		|| m_laserEffect.type == kson::AudioEffectType::Bitcrusher;
 }
 void AudioPlayback::SetLaserFilterInput(float input, bool active)
 {
-	if (m_laserEffect.type != EffectType::None && (active && (input != 0.0f || !m_SkipEffectIfInputIsZero())))
+	if (m_laserEffect.type != kson::AudioEffectType::Unspecified && (active && (input != 0.0f || !m_SkipEffectIfInputIsZero())))
 	{
-		if (m_laserEffect.type == EffectType::SwitchAudio)
+		if (m_laserEffect.type == kson::AudioEffectType::SwitchAudio)
 		{
 			m_laserSwitchable = m_laserEffect.switchaudio.index.Sample();
 			SetSwitchableTrackEnabled(m_laserSwitchable, true);
@@ -280,7 +280,7 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 		if (!m_laserDSP)
 		{
 			// Don't use Bitcrush effects over FX track
-			if (m_fxtrack && m_laserEffectType == EffectType::Bitcrush)
+			if (m_fxtrack && m_laserEffect.type == kson::AudioEffectType::Bitcrusher)
 				return;
 
 			Ref<AudioStream> audioTrack = m_GetDSPTrack();
@@ -457,21 +457,21 @@ void AudioPlayback::m_SetLaserEffectParameter(float input)
 
 	switch (m_laserEffect.type)
 	{
-	case EffectType::Bitcrush:
+	case kson::AudioEffectType::Bitcrusher:
 	{
 		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
 		auto *bcDSP = (BitCrusherDSP *)m_laserDSP;
 		bcDSP->SetPeriod((float)m_laserEffect.bitcrusher.reduction.Sample(input));
 		break;
 	}
-	case EffectType::Echo:
+	case kson::AudioEffectType::Echo:
 	{
 		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
 		auto *echoDSP = (EchoDSP *)m_laserDSP;
 		echoDSP->feedback = m_laserEffect.echo.feedback.Sample(input);
 		break;
 	}
-	case EffectType::PeakingFilter:
+	case kson::AudioEffectType::PeakingFilter:
 	{
 		m_laserDSP->mix = m_laserEffectMix;
 		if (input > 0.8f)
@@ -481,33 +481,33 @@ void AudioPlayback::m_SetLaserEffectParameter(float input)
 		bqfDSP->SetPeaking(m_laserEffect.peaking.q.Sample(input), m_laserEffect.peaking.freq.Sample(input), m_laserEffect.peaking.gain.Sample(input) * mix);
 		break;
 	}
-	case EffectType::LowPassFilter:
+	case kson::AudioEffectType::LowPassFilter:
 	{
 		m_laserDSP->mix = m_laserEffectMix;
 		auto *bqfDSP = (BQFDSP *)m_laserDSP;
 		bqfDSP->SetLowPass(m_laserEffect.lpf.q.Sample(input) * mix + 0.1f, m_laserEffect.lpf.freq.Sample(input));
 		break;
 	}
-	case EffectType::HighPassFilter:
+	case kson::AudioEffectType::HighPassFilter:
 	{
 		m_laserDSP->mix = m_laserEffectMix;
 		auto *bqfDSP = (BQFDSP *)m_laserDSP;
 		bqfDSP->SetHighPass(m_laserEffect.hpf.q.Sample(input) * mix + 0.1f, m_laserEffect.hpf.freq.Sample(input));
 		break;
 	}
-	case EffectType::PitchShift:
+	case kson::AudioEffectType::PitchShift:
 	{
 		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
 		auto *ps = (PitchShiftDSP *)m_laserDSP;
 		ps->amount = m_laserEffect.pitchshift.amount.Sample(input);
 		break;
 	}
-	case EffectType::Gate:
+	case kson::AudioEffectType::Gate:
 	{
 		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
 		break;
 	}
-	case EffectType::Retrigger:
+	case kson::AudioEffectType::Retrigger:
 	{
 		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
 		auto *rt = (RetriggerDSP *)m_laserDSP;
@@ -528,7 +528,7 @@ void AudioPlayback::m_PreRenderDSPTrack()
 		if (chartObj->type == ObjectType::Hold)
 		{
 			HoldObjectState *holdObj = (HoldObjectState *) chartObj.get();
-			if (holdObj->effectType != EffectType::None)
+			if (!holdObj->effectType.empty())
 			{
 				//Add DSP
 				GameAudioEffect effect = m_beatmap->GetEffect(holdObj->effectType);

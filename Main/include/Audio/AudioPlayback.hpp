@@ -61,7 +61,7 @@ public:
 	void ClearEffect(uint32 index, HoldObjectState *object);
 
 	// Sets the effect to be used for lasers
-	void SetLaserEffect(EffectType type);
+	void SetLaserEffect(String type);
 
 	// The input which controls the laser filter amount
 	void SetLaserFilterInput(float input, bool active = false);
@@ -112,7 +112,7 @@ private:
 	bool m_paused = false;
 	bool m_fxtrackEnabled = true;
 
-	EffectType m_laserEffectType = EffectType::None;
+	String m_laserEffectType = "";
 	GameAudioEffect m_laserEffect;
 	class DSP *m_laserDSP = nullptr;
 	float m_laserEffectMix = 1.0f;

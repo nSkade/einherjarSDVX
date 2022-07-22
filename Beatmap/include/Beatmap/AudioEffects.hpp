@@ -4,36 +4,7 @@
 #pragma once
 #include <Shared/Enum.hpp>
 #include <Shared/Interpolation.hpp>
-
-// The types of effects that can be used on the effect buttons and on lasers
-DefineEnum(EffectType,
-		   None = 0,
-		   Retrigger,
-		   Flanger,
-		   Phaser,
-		   Gate,
-		   TapeStop,
-		   Bitcrush,
-		   Wobble,
-		   SideChain,
-		   Echo,
-		   Panning,
-		   PitchShift,
-		   LowPassFilter,
-		   HighPassFilter,
-		   PeakingFilter,
-		   SwitchAudio,			// Not a real effect
-		   UserDefined0 = 0x40, // This ID or higher is user for user defined effects inside map objects
-		   UserDefined1,		// Keep this ID at least a few ID's away from the normal effect so more native effects can be added later
-		   UserDefined2,
-		   UserDefined3,
-		   UserDefined4,
-		   UserDefined5,
-		   UserDefined6,
-		   UserDefined7,
-		   UserDefined8,
-		   UserDefined9 // etc...
-		   )
+#include <kson/audio/audio_effect.hpp>
 
 	/*
 	Effect parameter that is used to define a certain time range/period/speed
@@ -118,13 +89,31 @@ public:
 struct AudioEffect
 {
 	// Use this to get default effect settings
-	static const AudioEffect &GetDefault(EffectType type);
-	static int GetDefaultEffectPriority(EffectType type);
+	static const AudioEffect &GetDefault(kson::AudioEffectType type);
+	static int GetDefaultEffectPriority(kson::AudioEffectType type);
+	static Map<const std::string, kson::AudioEffectType> strToAudioEffectType() {
+		return {
+			{ "retrigger", kson::AudioEffectType::Retrigger },
+			{ "gate", kson::AudioEffectType::Gate },
+			{ "flanger", kson::AudioEffectType::Flanger },
+			{ "pitch_shift", kson::AudioEffectType::PitchShift },
+			{ "bitcrusher", kson::AudioEffectType::Bitcrusher },
+			{ "phaser", kson::AudioEffectType::Phaser },
+			{ "wobble", kson::AudioEffectType::Wobble },
+			{ "tapestop", kson::AudioEffectType::Tapestop },
+			{ "echo", kson::AudioEffectType::Echo },
+			{ "sidechain", kson::AudioEffectType::Sidechain },
+			{ "audio_swap", kson::AudioEffectType::SwitchAudio },
+			{ "high_pass_filter", kson::AudioEffectType::HighPassFilter },
+			{ "low_pass_filter", kson::AudioEffectType::LowPassFilter },
+			{ "peaking_filter", kson::AudioEffectType::PeakingFilter },
+		};
+	}
 
 	void SetDefaultEffectParams(int16 *params);
 
 	// The effect type
-	EffectType type = EffectType::None;
+	kson::AudioEffectType type = kson::AudioEffectType::Unspecified;
 
 	// Timing division for time based effects
 	// Wobble:		length of single cycle

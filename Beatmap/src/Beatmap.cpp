@@ -19,26 +19,20 @@ const BeatmapSettings& Beatmap::GetMapSettings() const
 	return m_settings;
 }
 
-AudioEffect Beatmap::GetEffect(EffectType type) const
+AudioEffect Beatmap::GetEffect(String type) const
 {
-	if(type >= EffectType::UserDefined0)
-	{
-		const AudioEffect* fx = m_customAudioEffects.Find(type);
-		assert(fx);
-		return *fx;
-	}
-	return AudioEffect::GetDefault(type);
+	const AudioEffect* fx = m_customAudioEffects.Find(type);
+	assert(fx);
+	return *fx;
 }
 
-AudioEffect Beatmap::GetFilter(EffectType type) const
+AudioEffect Beatmap::GetFilter(String type) const
 {
-	if(type >= EffectType::UserDefined0)
-	{
-		const AudioEffect* fx = m_customAudioFilters.Find(type);
-		assert(fx);
+	const AudioEffect* fx = m_customAudioFilters.Find(type);
+	if (fx) {
 		return *fx;
 	}
-	return AudioEffect::GetDefault(type);
+	return AudioEffect();
 }
 
 MapTime Beatmap::GetFirstObjectTime(MapTime lowerBound) const

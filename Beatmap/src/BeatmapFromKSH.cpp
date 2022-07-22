@@ -4,91 +4,6 @@
 #include "kson/kson.hpp"
 #include "kson/util/timing_utils.hpp"
 
-// Temporary object to keep track if a button is a hold button
-struct TempButtonState
-{
-	TempButtonState(uint32 startTick)
-		: startTick(startTick)
-	{
-	}
-	uint32 startTick;
-	uint32 numTicks = 0;
-	EffectType effectType = EffectType::None;
-	uint16 effectParams[2] = {0};
-	// If using the smalles grid to indicate hold note duration
-	bool fineSnap = false;
-	// Set for hold continuations, this is where there is a hold right after an existing one but with different effects
-	HoldObjectState *lastHoldObject = nullptr;
-
-	uint8 sampleIndex = 0xFF;
-	bool usingSample = false;
-	float sampleVolume = 1.0f;
-};
-struct TempLaserState
-{
-	TempLaserState(uint32 startTick, uint32 absoluteStartTick, uint32 effectType)
-		: startTick(startTick), effectType(effectType), absoluteStartTick(absoluteStartTick)
-	{
-	}
-	uint32 startTick;
-	uint32 absoluteStartTick;
-	uint32 numTicks = 0;
-	uint32 effectType = 0;
-	bool spinIsBounce = false;
-	char spinType = 0;
-	uint32 spinDuration = 0;
-	uint32 spinBounceAmplitude = 0;
-	uint32 spinBounceFrequency = 0;
-	uint32 spinBounceDecay = 0;
-	uint8 effectParams = 0;
-	float startPosition; // Entry position
-	// Previous segment
-	LaserObjectState *last = nullptr;
-};
-
-class EffectTypeMap
-{
-	// Custom effect types (1.60)
-	uint16 m_customEffectTypeID = (uint16)EffectType::UserDefined0;
-
-public:
-	EffectTypeMap()
-	{
-		// Add common effect types
-		effectTypes[kson::AudioEffectType::Unspecified] = EffectType::None;
-		effectTypes[kson::AudioEffectType::Retrigger] = EffectType::Retrigger;
-		effectTypes[kson::AudioEffectType::Flanger] = EffectType::Flanger;
-		effectTypes[kson::AudioEffectType::Phaser] = EffectType::Phaser;
-		effectTypes[kson::AudioEffectType::Gate] = EffectType::Gate;
-		effectTypes[kson::AudioEffectType::Tapestop] = EffectType::TapeStop;
-		effectTypes[kson::AudioEffectType::Bitcrusher] = EffectType::Bitcrush;
-		effectTypes[kson::AudioEffectType::Wobble] = EffectType::Wobble;
-		effectTypes[kson::AudioEffectType::Sidechain] = EffectType::SideChain;
-		effectTypes[kson::AudioEffectType::Echo] = EffectType::Echo;
-		effectTypes[kson::AudioEffectType::PitchShift] = EffectType::PitchShift;
-		effectTypes[kson::AudioEffectType::LowPassFilter] = EffectType::LowPassFilter;
-		effectTypes[kson::AudioEffectType::HighPassFilter] = EffectType::HighPassFilter;
-		effectTypes[kson::AudioEffectType::PeakingFilter] = EffectType::PeakingFilter;
-		effectTypes[kson::AudioEffectType::SwitchAudio] = EffectType::SwitchAudio;
-	}
-
-	// Only checks if a mapping exists and returns this, or None
-	const EffectType *FindEffectType(const kson::AudioEffectType &name) const
-	{
-		return effectTypes.Find(name);
-	}
-
-	// Adds or returns the enum value mapping to this effect
-	EffectType FindOrAddEffectType(const kson::AudioEffectType &name)
-	{
-		EffectType *id = effectTypes.Find(name);
-		if (!id)
-			return effectTypes.Add(name, (EffectType)m_customEffectTypeID++);
-		return *id;
-	};
-
-	Map<kson::AudioEffectType, EffectType> effectTypes;
-};
 
 template <typename T>
 void AssignAudioEffectParameter(EffectParam<T> &param, const String &paramName, Map<String, float> &floatParams, Map<String, int> &intParams)
@@ -220,20 +135,13 @@ static MultiParam ParseParam(const String &in)
 }
 AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &switchablePaths)
 {
-	static EffectTypeMap defaultEffects;
 	AudioEffect effect;
 	bool typeSet = false;
 
 	// Get the default effect for this name
-	const EffectType* type = defaultEffects.FindEffectType(def.type);
 	
-	if (!type)
-	{
-		Logf("Unknown base effect type for custom effect type: %s", Logger::Severity::Warning, kson::AudioEffectTypeToStr(def.type));
-		return effect;
-	}
 
-	effect = AudioEffect::GetDefault(*type);
+	effect = AudioEffect::GetDefault(def.type);
 	typeSet = true;
 
 	Map<String, MultiParamRange> params;
@@ -333,17 +241,17 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 	// if they are not set the defaults will be kept (as aquired above)
 	switch (effect.type)
 	{
-	case EffectType::PitchShift:
+	case kson::AudioEffectType::PitchShift:
 		AssignFloatIfSet(effect.pitchshift.amount, "pitch");
 		break;
-	case EffectType::Bitcrush:
+	case kson::AudioEffectType::Bitcrusher:
 		AssignSamplesIfSet(effect.bitcrusher.reduction, "amount");
 		break;
-	case EffectType::Echo:
+	case kson::AudioEffectType::Echo:
 		AssignDurationIfSet(effect.duration, "waveLength");
 		AssignFloatIfSet(effect.echo.feedback, "feedbackLevel");
 		break;
-	case EffectType::Phaser:
+	case kson::AudioEffectType::Phaser:
 		AssignDurationIfSet(effect.duration, "period");
 		AssignIntIfSet(effect.phaser.stage, "stage");
 		AssignFloatIfSet(effect.phaser.min, "loFreq");
@@ -353,7 +261,7 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 		AssignFloatIfSet(effect.phaser.stereoWidth, "stereoWidth");
 		AssignFloatIfSet(effect.phaser.hiCutGain, "hiCutGain");
 		break;
-	case EffectType::Flanger:
+	case kson::AudioEffectType::Flanger:
 		AssignDurationIfSet(effect.duration, "period");
 		AssignIntIfSet(effect.flanger.depth, "depth");
 		AssignIntIfSet(effect.flanger.offset, "delay");
@@ -361,32 +269,32 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 		AssignFloatIfSet(effect.flanger.stereoWidth, "stereoWidth");
 		AssignFloatIfSet(effect.flanger.volume, "volume");
 		break;
-	case EffectType::Gate:
+	case kson::AudioEffectType::Gate:
 		AssignDurationIfSet(effect.duration, "waveLength");
 		AssignFloatIfSet(effect.gate.gate, "rate");
 		break;
-	case EffectType::Retrigger:
+	case kson::AudioEffectType::Retrigger:
 		AssignDurationIfSet(effect.duration, "waveLength");
 		AssignFloatIfSet(effect.retrigger.gate, "rate");
 		AssignDurationIfSet(effect.retrigger.reset, "updatePeriod");
 		break;
-	case EffectType::Wobble:
+	case kson::AudioEffectType::Wobble:
 		AssignDurationIfSet(effect.duration, "waveLength");
 		AssignFloatIfSet(effect.wobble.min, "loFreq");
 		AssignFloatIfSet(effect.wobble.max, "hiFreq");
 		AssignFloatIfSet(effect.wobble.q, "Q");
 		break;
-	case EffectType::SideChain:
+	case kson::AudioEffectType::Sidechain:
 		AssignDurationIfSet(effect.duration, "period");
 		AssignDurationIfSet(effect.sidechain.attackTime, "attackTime");
 		AssignDurationIfSet(effect.sidechain.holdTime, "holdTime");
 		AssignDurationIfSet(effect.sidechain.releaseTime, "releaseTime");
 		AssignFloatIfSet(effect.sidechain.ratio, "ratio");
 		break;
-	case EffectType::TapeStop:
+	case kson::AudioEffectType::Tapestop:
 		AssignDurationIfSet(effect.duration, "speed");
 		break;
-	case EffectType::SwitchAudio:
+	case kson::AudioEffectType::SwitchAudio:
 		AssignIntIfSet(effect.switchaudio.index, "index");
 		break;
 	}
@@ -412,69 +320,30 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 	}
 
 
-	EffectTypeMap effectTypeMap;
-	EffectTypeMap filterTypeMap;
-	Map<EffectType, int16> defaultEffectParams;
 	auto kshootMap = kson::LoadKSHChartData(input);
-	// Set defaults
-	{
-		defaultEffectParams[EffectType::Bitcrush] = 4;
-		defaultEffectParams[EffectType::Gate] = 8;
-		defaultEffectParams[EffectType::Retrigger] = 8;
-		defaultEffectParams[EffectType::Phaser] = 2000;
-		defaultEffectParams[EffectType::Flanger] = 2000;
-		defaultEffectParams[EffectType::Wobble] = 12;
-		defaultEffectParams[EffectType::SideChain] = 8;
-		defaultEffectParams[EffectType::TapeStop] = 50;
-	}
 
 	m_SetMetadata(&kshootMap.meta);
 
-	// Add all the custom effect types
-	for (auto it = kshootMap.audio.audioEffect.fx.def.begin(); it != kshootMap.audio.audioEffect.fx.def.end(); it++)
-	{
-		EffectType type = effectTypeMap.FindOrAddEffectType(it->second.type);
-		if (m_customAudioEffects.Contains(type))
-			continue;
-		m_customAudioEffects.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
-	}
-	for (auto it = kshootMap.audio.audioEffect.laser.def.begin(); it != kshootMap.audio.audioEffect.laser.def.end(); it++)
-	{
-		EffectType type = filterTypeMap.FindOrAddEffectType(it->second.type);
-		if (m_customAudioFilters.Contains(type))
-			continue;
-		m_customAudioFilters.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
+	//Copied from libkson, ask masaka to make public instead?
+	
+
+	for (auto&& defaultEffect : AudioEffect::strToAudioEffectType()) {
+		
+		m_customAudioEffects.Add(defaultEffect.first.data(), AudioEffect::GetDefault(defaultEffect.second));
+		m_customAudioFilters.Add(defaultEffect.first.data(), AudioEffect::GetDefault(defaultEffect.second));
 	}
 
-	auto ParseFilterType = [&](const String &str) {
-		EffectType type = EffectType::None;
-		if (str == "hpf1")
-		{
-			type = EffectType::HighPassFilter;
-		}
-		else if (str == "lpf1")
-		{
-			type = EffectType::LowPassFilter;
-		}
-		else if (str == "fx;bitc" || str == "bitc")
-		{
-			type = EffectType::Bitcrush;
-		}
-		else if (str == "peak")
-		{
-			type = EffectType::PeakingFilter;
-		}
-		else
-		{
-			//TODO
-			/*const EffectType *foundType = filterTypeMap.FindEffectType(str);
-			if (foundType)
-				type = *foundType;
-			else
-				Logf("[KSH]Unknown filter type: %s", Logger::Severity::Warning, str);*/
-		}
-		return type;
-	};
+
+
+	for (auto&& effectDef : kshootMap.audio.audioEffect.fx.def) {
+		auto effect = ParseCustomEffect(effectDef.second, m_switchablePaths);
+		m_customAudioEffects.Add(effectDef.first, effect);
+	}
+
+	for (auto&& effectDef : kshootMap.audio.audioEffect.laser.def) {
+		auto effect = ParseCustomEffect(effectDef.second, m_switchablePaths);
+		m_customAudioFilters.Add(effectDef.first, effect);
+	}
 
 	// Process map settings
 	m_settings.previewOffset = kshootMap.audio.bgm.preview.offset;
@@ -551,6 +420,13 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 				hos->index = i + 4;
 				hos->time = TickToMapTime(fxnote.first);
 				hos->duration = TickToMapTime(fxnote.first + fxnote.second.length) - hos->time;
+				for (auto&& effect : kshootMap.audio.audioEffect.fx.longEvent) {
+					if (effect.second[i].find(fxnote.first) != effect.second[i].end()) {
+						hos->effectType = effect.first;
+						break;
+					}
+				}
+
 				lastMapTime = Math::Max(lastMapTime, hos->time + hos->duration);
 				m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*hos));
 			}
@@ -622,6 +498,14 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 			{
 				lastMapTime = Math::Max(lastMapTime, prev->time + prev->duration);
 			}
+		}
+	}
+
+	for (auto&& laserEffect : kshootMap.audio.audioEffect.laser.pulseEvent) {
+		for (auto&& pulse : laserEffect.second) {
+			EventObjectState* evt = new EventObjectState();
+			evt->key = EventKey::LaserEffectType;
+			strcpy_s(evt->data.effectVal, laserEffect.first.c_str());
 		}
 	}
 

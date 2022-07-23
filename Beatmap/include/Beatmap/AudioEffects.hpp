@@ -86,8 +86,46 @@ public:
 	bool isRange;
 };
 
+
+struct MultiParam
+{
+	enum Type
+	{
+		Float,
+		Samples,
+		Milliseconds,
+		Int,
+	};
+	Type type;
+	union {
+		float fval;
+		int32 ival;
+	};
+};
+struct MultiParamRange
+{
+	MultiParamRange() = default;
+	MultiParamRange(const MultiParam& a)
+	{
+		params[0] = a;
+	}
+	MultiParamRange(const MultiParam& a, const MultiParam& b)
+	{
+		params[0] = a;
+		params[1] = b;
+		isRange = true;
+	}
+	EffectParam<float> ToFloatParam();
+	EffectParam<EffectDuration> ToDurationParam();
+	EffectParam<int32> ToSamplesParam();
+	MultiParam params[2];
+	bool isRange = false;
+};
+
+
 struct AudioEffect
 {
+	static MultiParam ParseParam(const String& in);
 	// Use this to get default effect settings
 	static const AudioEffect &GetDefault(kson::AudioEffectType type);
 	static int GetDefaultEffectPriority(kson::AudioEffectType type);
@@ -124,6 +162,7 @@ struct AudioEffect
 	// Sidechain:	duration before reset
 	// Echo:		delay
 	EffectParam<EffectDuration> duration = EffectDuration(0.25f); // 1/4
+	Map<String, MultiParamRange> defParams;
 
 	// How much of the effect is mixed in with the source audio
 	EffectParam<float> mix = 0.0f;

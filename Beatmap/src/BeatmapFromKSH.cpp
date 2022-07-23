@@ -22,117 +22,6 @@ void AssignAudioEffectParameter(EffectParam<T> &param, const String &paramName, 
 	}
 }
 
-struct MultiParam
-{
-	enum Type
-	{
-		Float,
-		Samples,
-		Milliseconds,
-		Int,
-	};
-	Type type;
-	union {
-		float fval;
-		int32 ival;
-	};
-};
-struct MultiParamRange
-{
-	MultiParamRange() = default;
-	MultiParamRange(const MultiParam &a)
-	{
-		params[0] = a;
-	}
-	MultiParamRange(const MultiParam &a, const MultiParam &b)
-	{
-		params[0] = a;
-		params[1] = b;
-		isRange = true;
-	}
-	EffectParam<float> ToFloatParam()
-	{
-		auto r = params[0].type == MultiParam::Float ? EffectParam<float>(params[0].fval, params[1].fval) : EffectParam<float>((float)params[0].ival, (float)params[1].ival);
-		r.isRange = isRange;
-		return r;
-	}
-	EffectParam<EffectDuration> ToDurationParam()
-	{
-		EffectParam<EffectDuration> r;
-		if (params[0].type == MultiParam::Milliseconds)
-		{
-			r = EffectParam<EffectDuration>(params[0].ival, params[1].ival);
-		}
-		else if (params[0].type == MultiParam::Float)
-		{
-			r = EffectParam<EffectDuration>(params[0].fval, params[1].fval);
-		}
-		else
-		{
-			r = EffectParam<EffectDuration>((float)params[0].ival, (float)params[1].ival);
-		}
-		r.isRange = isRange;
-		return r;
-	}
-	EffectParam<int32> ToSamplesParam()
-	{
-		EffectParam<int32> r;
-		if (params[0].type == MultiParam::Int || params[0].type == MultiParam::Samples)
-			r = EffectParam<int32>(params[0].ival, params[1].ival);
-		r.isRange = isRange;
-		return r;
-	}
-	MultiParam params[2];
-	bool isRange = false;
-};
-static MultiParam ParseParam(const String &in)
-{
-	MultiParam ret;
-	if (in.find('/') != -1)
-	{
-		ret.type = MultiParam::Float;
-		String a, b;
-		in.Split("/", &a, &b);
-		ret.fval = (float)(atof(*a) / atof(*b));
-	}
-	else if (in.find("samples") != -1)
-	{
-		ret.type = MultiParam::Samples;
-		sscanf(*in, "%i", &ret.ival);
-	}
-	else if (in.find("ms") != -1)
-	{
-		ret.type = MultiParam::Milliseconds;
-		float milliseconds = 0;
-		sscanf(*in, "%f", &milliseconds);
-		ret.ival = (int)(milliseconds);
-	}
-	else if (in.find("s") != -1)
-	{
-		ret.type = MultiParam::Milliseconds;
-		float seconds = 0;
-		sscanf(*in, "%f", &seconds);
-		ret.ival = (int)(seconds * 1000.0);
-	}
-	else if (in.find("%") != -1)
-	{
-		ret.type = MultiParam::Float;
-		int percentage = 0;
-		sscanf(*in, "%i", &percentage);
-		ret.fval = percentage / 100.0f;
-	}
-	else if (in.find('.') != -1)
-	{
-		ret.type = MultiParam::Float;
-		sscanf(*in, "%f", &ret.fval);
-	}
-	else
-	{
-		ret.type = MultiParam::Int;
-		sscanf(*in, "%i", &ret.ival);
-	}
-	return ret;
-}
 AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &switchablePaths)
 {
 	AudioEffect effect;
@@ -185,7 +74,7 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 			a = param.substr(0, split);
 			b = param.substr(split + 1);
 
-			MultiParamRange pr = {ParseParam(a), ParseParam(b)};
+			MultiParamRange pr = { AudioEffect::ParseParam(a), AudioEffect::ParseParam(b)};
 			if (pr.params[0].type != pr.params[1].type)
 			{
 				//Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Severity::Warning, s.first, param, s.first);
@@ -195,7 +84,7 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 		}
 		else
 		{
-			params.Add(s.first, ParseParam(param));
+			params.Add(s.first, AudioEffect::ParseParam(param));
 		}
 	}
 	
@@ -298,7 +187,7 @@ AudioEffect ParseCustomEffect(const kson::AudioEffectDef &def, Vector<String> &s
 		AssignIntIfSet(effect.switchaudio.index, "index");
 		break;
 	}
-
+	effect.defParams = params;
 	return effect;
 };
 
@@ -325,15 +214,11 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 	m_SetMetadata(&kshootMap.meta);
 
 	//Copied from libkson, ask masaka to make public instead?
-	
-
 	for (auto&& defaultEffect : AudioEffect::strToAudioEffectType()) {
 		
 		m_customAudioEffects.Add(defaultEffect.first.data(), AudioEffect::GetDefault(defaultEffect.second));
 		m_customAudioFilters.Add(defaultEffect.first.data(), AudioEffect::GetDefault(defaultEffect.second));
 	}
-
-
 
 	for (auto&& effectDef : kshootMap.audio.audioEffect.fx.def) {
 		auto effect = ParseCustomEffect(effectDef.second, m_switchablePaths);
@@ -369,7 +254,7 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 	Vector<uint32> timingPointTicks = {0};
 
 	auto TickToMapTime = [&](uint32 tick) {
-		return Math::RoundToInt(kson::PulseToMs(tick, kshootMap.beat, timingCache));
+		return Math::RoundToInt(kson::PulseToMs(tick, kshootMap.beat, timingCache)) + m_settings.offset;
 	};
 
 	// Add First Lane Toggle Point
@@ -411,7 +296,6 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 	}
 
 	//FX
-	//TODO: Effects
 	for (size_t i = 0; i < kson::kNumFXLanes; i++)
 	{
 		for (auto& fxnote : kshootMap.note.fx[i]) {
@@ -423,8 +307,20 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 				for (auto&& effect : kshootMap.audio.audioEffect.fx.longEvent) {
 					if (effect.second[i].find(fxnote.first) != effect.second[i].end()) {
 						hos->effectType = effect.first;
+						hos->effectParams = m_customAudioEffects.at(effect.first).defParams;
 						break;
 					}
+				}
+				if (kshootMap.audio.audioEffect.fx.paramChange.find(hos->effectType) != kshootMap.audio.audioEffect.fx.paramChange.end()) {
+					for (auto&& effectParams : kshootMap.audio.audioEffect.fx.paramChange.at(hos->effectType)) {
+						for (auto&& paramChanges : effectParams.second) {
+							if (paramChanges.first > fxnote.first)
+								break;
+
+							hos->effectParams[effectParams.first] = AudioEffect::ParseParam(paramChanges.second);
+						}
+					}
+
 				}
 
 				lastMapTime = Math::Max(lastMapTime, hos->time + hos->duration);
@@ -523,7 +419,7 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 	//TimeSig
 	for (auto&& ts : kshootMap.beat.timeSig) {
 		TimingPoint tp;
-		tp.time = kson::MeasureIdxToMs(ts.first, kshootMap.beat, timingCache);
+		tp.time = kson::MeasureIdxToMs(ts.first, kshootMap.beat, timingCache) + m_settings.offset;
 		tp.beatDuration = 60000.0 / kson::TempoAt(kson::MeasureIdxToPulse(ts.first, kshootMap.beat, timingCache), kshootMap.beat);
 		tp.denominator = ts.second.d;
 		tp.numerator = ts.second.n;

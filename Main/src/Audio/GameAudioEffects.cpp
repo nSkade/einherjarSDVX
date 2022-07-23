@@ -136,44 +136,51 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 {
 	const TimingPoint &tp = *playback.GetBeatmapPlayback().GetTimingPointAt(object->time);
 	double noteDuration = tp.GetWholeNoteLength();
+
+	auto paramOrDefault = [&](String param, float defaultValue) {
+		return object->effectParams.Contains(param) ? object->effectParams[param].ToFloatParam().Sample(1) : defaultValue;
+	};
+
+
 	//TODO: Params
 	switch (type)
 	{
 	case kson::AudioEffectType::Bitcrusher:
 	{
 		BitCrusherDSP *bcDSP = (BitCrusherDSP *)dsp;
-		//bcDSP->SetPeriod((float)object->effectParams[0]);
+		bcDSP->SetPeriod(paramOrDefault("reduction", 10));
 		break;
 	}
 	case kson::AudioEffectType::Gate:
 	{
 		GateDSP *gateDSP = (GateDSP *)dsp;
-		//gateDSP->SetLength(noteDuration / object->effectParams[0]);
+		gateDSP->SetGating(paramOrDefault("rate", 0.6));
+		gateDSP->SetLength(noteDuration / paramOrDefault("wave_length", 2));
 		break;
 	}
 	case kson::AudioEffectType::Tapestop:
 	{
 		TapeStopDSP *tapestopDSP = (TapeStopDSP *)dsp;
-		//tapestopDSP->SetLength((1000 * ((double)16 / Math::Max(object->effectParams[0], (int16)1))));
+		tapestopDSP->SetLength((1000 * ((double)16 / Math::Max(paramOrDefault("speed", 1), 1.0f))));
 		break;
 	}
 	case kson::AudioEffectType::Retrigger:
 	{
 		RetriggerDSP *retriggerDSP = (RetriggerDSP *)dsp;
-		//retriggerDSP->SetLength(noteDuration / object->effectParams[0]);
+		retriggerDSP->SetLength(noteDuration / paramOrDefault("wave_length", 2));
 		break;
 	}
 	case kson::AudioEffectType::Echo:
 	{
 		EchoDSP *echoDSP = (EchoDSP *)dsp;
-		//echoDSP->SetLength(noteDuration / object->effectParams[0]);
-		//echoDSP->feedback = object->effectParams[1] / 100.0f;
+		echoDSP->SetLength(noteDuration / paramOrDefault("wave_length", 2));
+		echoDSP->feedback = paramOrDefault("feedback", 0.6);
 		break;
 	}
 	case kson::AudioEffectType::Wobble:
 	{
 		WobbleDSP *wb = (WobbleDSP *)dsp;
-		//wb->SetLength(noteDuration / object->effectParams[0]);
+		wb->SetLength(noteDuration / paramOrDefault("wave_length", 12));
 		break;
 	}
 	case kson::AudioEffectType::Phaser:
@@ -189,7 +196,7 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	case kson::AudioEffectType::PitchShift:
 	{
 		PitchShiftDSP *ps = (PitchShiftDSP *)dsp;
-		//ps->amount = (float)object->effectParams[0];
+		ps->amount = paramOrDefault("pitch", 0);
 		break;
 	}
 	default:

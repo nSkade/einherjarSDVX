@@ -146,6 +146,7 @@ struct ObjectTypeData_Hold : public ObjectTypeData_Button
 	MapTime duration = 0;
 	// The sound effect on the note
 	String effectType = "";
+	Map<String, MultiParamRange> effectParams;
 	// The parameter for effects that have it
 	// the maximum number of parameters is 2 (only echo uses this)
 

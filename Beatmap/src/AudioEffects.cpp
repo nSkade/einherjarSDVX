@@ -33,6 +33,55 @@ EffectDuration InterpolateEffectParamValue(EffectDuration a, EffectDuration b, f
 	return EffectDuration::Lerp(a, b, t);
 }
 
+MultiParam AudioEffect::ParseParam(const String& in)
+{
+	MultiParam ret;
+	if (in.find('/') != -1)
+	{
+		ret.type = MultiParam::Float;
+		String a, b;
+		in.Split("/", &a, &b);
+		ret.fval = (float)(atof(*a) / atof(*b));
+	}
+	else if (in.find("samples") != -1)
+	{
+		ret.type = MultiParam::Samples;
+		sscanf(*in, "%i", &ret.ival);
+	}
+	else if (in.find("ms") != -1)
+	{
+		ret.type = MultiParam::Milliseconds;
+		float milliseconds = 0;
+		sscanf(*in, "%f", &milliseconds);
+		ret.ival = (int)(milliseconds);
+	}
+	else if (in.find("s") != -1)
+	{
+		ret.type = MultiParam::Milliseconds;
+		float seconds = 0;
+		sscanf(*in, "%f", &seconds);
+		ret.ival = (int)(seconds * 1000.0);
+	}
+	else if (in.find("%") != -1)
+	{
+		ret.type = MultiParam::Float;
+		int percentage = 0;
+		sscanf(*in, "%i", &percentage);
+		ret.fval = percentage / 100.0f;
+	}
+	else if (in.find('.') != -1)
+	{
+		ret.type = MultiParam::Float;
+		sscanf(*in, "%f", &ret.fval);
+	}
+	else
+	{
+		ret.type = MultiParam::Int;
+		sscanf(*in, "%i", &ret.ival);
+	}
+	return ret;
+}
+
 static AudioEffect CreateDefault(kson::AudioEffectType type)
 {
 	AudioEffect ret;
@@ -182,4 +231,39 @@ void AudioEffect::SetDefaultEffectParams(int16 *params)
 	default:
 		break;
 	}
+}
+
+EffectParam<float> MultiParamRange::ToFloatParam()
+{
+	auto r = params[0].type == MultiParam::Float ? EffectParam<float>(params[0].fval, params[1].fval) : EffectParam<float>((float)params[0].ival, (float)params[1].ival);
+	r.isRange = isRange;
+	return r;
+}
+
+EffectParam<EffectDuration> MultiParamRange::ToDurationParam()
+{
+	EffectParam<EffectDuration> r;
+	if (params[0].type == MultiParam::Milliseconds)
+	{
+		r = EffectParam<EffectDuration>(params[0].ival, params[1].ival);
+	}
+	else if (params[0].type == MultiParam::Float)
+	{
+		r = EffectParam<EffectDuration>(params[0].fval, params[1].fval);
+	}
+	else
+	{
+		r = EffectParam<EffectDuration>((float)params[0].ival, (float)params[1].ival);
+	}
+	r.isRange = isRange;
+	return r;
+}
+
+EffectParam<int32> MultiParamRange::ToSamplesParam()
+{
+	EffectParam<int32> r;
+	if (params[0].type == MultiParam::Int || params[0].type == MultiParam::Samples)
+		r = EffectParam<int32>(params[0].ival, params[1].ival);
+	r.isRange = isRange;
+	return r;
 }

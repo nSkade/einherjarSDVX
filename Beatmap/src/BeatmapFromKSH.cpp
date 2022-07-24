@@ -304,23 +304,34 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 				hos->index = i + 4;
 				hos->time = TickToMapTime(fxnote.first);
 				hos->duration = TickToMapTime(fxnote.first + fxnote.second.length) - hos->time;
+				Map<String, MultiParamRange> noteParams;
+				
 				for (auto&& effect : kshootMap.audio.audioEffect.fx.longEvent) {
-					if (effect.second[i].find(fxnote.first) != effect.second[i].end()) {
+					auto effectEvent = effect.second[i].find(fxnote.first);
+					if (effectEvent != effect.second[i].end()) {
 						hos->effectType = effect.first;
-						hos->effectParams = m_customAudioEffects.at(effect.first).defParams;
+						hos->effectParams = m_customAudioEffects.at(effect.first).defParams; //start with def params
+						for (auto&& effectParam : effectEvent->second)
+						{
+							noteParams[effectParam.first] = AudioEffect::ParseParam(effectParam.second); //save note params to apply after paramChange events
+						}
 						break;
 					}
 				}
+
 				if (kshootMap.audio.audioEffect.fx.paramChange.find(hos->effectType) != kshootMap.audio.audioEffect.fx.paramChange.end()) {
 					for (auto&& effectParams : kshootMap.audio.audioEffect.fx.paramChange.at(hos->effectType)) {
 						for (auto&& paramChanges : effectParams.second) {
 							if (paramChanges.first > fxnote.first)
 								break;
 
-							hos->effectParams[effectParams.first] = AudioEffect::ParseParam(paramChanges.second);
+							hos->effectParams[effectParams.first] = AudioEffect::ParseParam(paramChanges.second); // Apply paramChange events
 						}
 					}
+				}
 
+				for (auto&& p : noteParams) {
+					hos->effectParams[p.first] = p.second; // Apply stored note params
 				}
 
 				lastMapTime = Math::Max(lastMapTime, hos->time + hos->duration);
@@ -401,7 +412,7 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 		for (auto&& pulse : laserEffect.second) {
 			EventObjectState* evt = new EventObjectState();
 			evt->key = EventKey::LaserEffectType;
-			strcpy_s(evt->data.effectVal, laserEffect.first.c_str());
+			strcpy_s(evt->data.effectVal, sizeof(evt->data.effectVal), laserEffect.first.c_str());
 		}
 	}
 

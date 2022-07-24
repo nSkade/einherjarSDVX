@@ -155,7 +155,7 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	{
 		GateDSP *gateDSP = (GateDSP *)dsp;
 		gateDSP->SetGating(paramOrDefault("rate", 0.6));
-		gateDSP->SetLength(noteDuration / paramOrDefault("wave_length", 2));
+		gateDSP->SetLength(noteDuration * paramOrDefault("wave_length", 0.5));
 		break;
 	}
 	case kson::AudioEffectType::Tapestop:
@@ -167,20 +167,20 @@ void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectSta
 	case kson::AudioEffectType::Retrigger:
 	{
 		RetriggerDSP *retriggerDSP = (RetriggerDSP *)dsp;
-		retriggerDSP->SetLength(noteDuration / paramOrDefault("wave_length", 2));
+		retriggerDSP->SetLength(noteDuration * paramOrDefault("wave_length", 0.5));
 		break;
 	}
 	case kson::AudioEffectType::Echo:
 	{
 		EchoDSP *echoDSP = (EchoDSP *)dsp;
-		echoDSP->SetLength(noteDuration / paramOrDefault("wave_length", 2));
+		echoDSP->SetLength(noteDuration * paramOrDefault("wave_length", 0.5));
 		echoDSP->feedback = paramOrDefault("feedback", 0.6);
 		break;
 	}
 	case kson::AudioEffectType::Wobble:
 	{
 		WobbleDSP *wb = (WobbleDSP *)dsp;
-		wb->SetLength(noteDuration / paramOrDefault("wave_length", 12));
+		wb->SetLength(noteDuration * paramOrDefault("wave_length", 1.0 / 12.0));
 		break;
 	}
 	case kson::AudioEffectType::Phaser:

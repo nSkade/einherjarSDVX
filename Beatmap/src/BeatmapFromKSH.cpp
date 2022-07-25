@@ -296,6 +296,7 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 	}
 
 	//FX
+	//TODO: Split notes that have multiple effects
 	for (size_t i = 0; i < kson::kNumFXLanes; i++)
 	{
 		for (auto& fxnote : kshootMap.note.fx[i]) {
@@ -408,11 +409,13 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 		}
 	}
 
+	//Laser effects
 	for (auto&& laserEffect : kshootMap.audio.audioEffect.laser.pulseEvent) {
 		for (auto&& pulse : laserEffect.second) {
 			EventObjectState* evt = new EventObjectState();
 			evt->key = EventKey::LaserEffectType;
 			strcpy_s(evt->data.effectVal, sizeof(evt->data.effectVal), laserEffect.first.c_str());
+			m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 		}
 	}
 
@@ -436,6 +439,39 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 		tp.numerator = ts.second.n;
 		m_timingPoints.Add(std::move(tp));
 	}
+
+	for (auto&& graphPoint : kshootMap.camera.cam.body.centerSplit) {
+		m_centerSplit.Insert(TickToMapTime(graphPoint.first), graphPoint.second.v);
+		if (graphPoint.second.vf != graphPoint.second.v)
+			m_centerSplit.Insert(TickToMapTime(graphPoint.first), graphPoint.second.vf);
+	}
+
+	for (auto&& graphPoint : kshootMap.camera.cam.body.zoom) {
+		m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_BOTTOM, TickToMapTime(graphPoint.first), graphPoint.second.v);
+		if (graphPoint.second.vf != graphPoint.second.v)
+			m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_BOTTOM, TickToMapTime(graphPoint.first), graphPoint.second.vf);
+	}
+
+	for (auto&& graphPoint : kshootMap.camera.cam.body.rotationX) {
+		m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_TOP, TickToMapTime(graphPoint.first), graphPoint.second.v);
+		if (graphPoint.second.vf != graphPoint.second.v)
+			m_effects.InsertGraphValue(EffectTimeline::GraphType::ZOOM_TOP, TickToMapTime(graphPoint.first), graphPoint.second.vf);
+	}
+
+	for (auto&& graphPoint : kshootMap.camera.cam.body.shiftX) {
+		m_effects.InsertGraphValue(EffectTimeline::GraphType::SHIFT_X, TickToMapTime(graphPoint.first), graphPoint.second.v);
+		if (graphPoint.second.vf != graphPoint.second.v)
+			m_effects.InsertGraphValue(EffectTimeline::GraphType::SHIFT_X, TickToMapTime(graphPoint.first), graphPoint.second.vf);
+	}
+
+	for (auto&& graphPoint : kshootMap.camera.cam.body.rotationZ) {
+		m_effects.InsertGraphValue(EffectTimeline::GraphType::ROTATION_Z, TickToMapTime(graphPoint.first), graphPoint.second.v);
+		if (graphPoint.second.vf != graphPoint.second.v)
+			m_effects.InsertGraphValue(EffectTimeline::GraphType::ROTATION_Z, TickToMapTime(graphPoint.first), graphPoint.second.vf);
+	}
+
+
+	//TODO: Camera keep/manual/magnitude
 
 	// Add chart end event
 	EventObjectState *evt = new EventObjectState();

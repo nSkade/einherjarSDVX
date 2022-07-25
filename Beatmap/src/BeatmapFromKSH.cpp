@@ -443,6 +443,18 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 		m_timingPoints.Add(std::move(tp));
 	}
 
+	auto&& laneToggles = kshootMap.compat.kshUnknown.option.find("lane_toggle");
+
+	if (laneToggles != kshootMap.compat.kshUnknown.option.end()) {
+		for (auto&& laneToggle : laneToggles->second) {
+			LaneHideTogglePoint p;
+			p.duration = atol(laneToggle.second.c_str());
+			p.time = TickToMapTime(laneToggle.first);
+			m_laneTogglePoints.Add(p);
+		}
+	}
+
+
 	m_timingPoints.Sort([](TimingPoint& a, TimingPoint& b) {
 		return a.time < b.time;
 	});

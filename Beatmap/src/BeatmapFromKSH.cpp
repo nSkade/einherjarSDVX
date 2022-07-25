@@ -417,7 +417,7 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 		for (auto&& pulse : laserEffect.second) {
 			EventObjectState* evt = new EventObjectState();
 			evt->key = EventKey::LaserEffectType;
-			strcpy_s(evt->data.effectVal, sizeof(evt->data.effectVal), laserEffect.first.c_str());
+			strncpy(evt->data.effectVal, laserEffect.first.c_str(), sizeof(evt->data.effectVal));
 			m_objectStates.emplace_back(std::unique_ptr<ObjectState>(*evt));
 		}
 	}

@@ -25,6 +25,7 @@ bool GaugeNormal::Init(MapTotals mapTotals, uint16 total, MapTime length)
 	}
 	ftotal *= s_gainRate;
 
+	//TODO: BUG: charts without short notes will cause slams to do bad stuff.
 	if (mapTotals.numTicks == 0 && mapTotals.numSingles != 0)
 	{
 		m_shortGaugeGain = ftotal / (float)mapTotals.numSingles;

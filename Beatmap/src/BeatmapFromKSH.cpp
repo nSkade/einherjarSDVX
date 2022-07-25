@@ -371,6 +371,7 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 						slam->flags |= LaserObjectState::flag_Extended;
 					}
 					if (prev) {
+						assert(prev->time < slam->time);
 						prev->next = slam;
 						slam->prev = prev;
 					}
@@ -390,9 +391,11 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 					los->points[1] = b->second.v;
 					los->time = TickToMapTime(a->first + laserSegment.first);
 					los->duration = TickToMapTime(b->first + laserSegment.first) - los->time;
+					assert(los->duration > 0);
 					los->index = i;
 
 					if (prev) {
+						assert((prev->flags & LaserObjectState::flag_Instant != 0 && prev->time <= los->time) || (prev->time < los->time));
 						prev->next = los;
 						los->prev = prev;
 					}
@@ -439,6 +442,10 @@ bool Beatmap::m_ProcessKShootMap(std::istream &input, bool metadataOnly)
 		tp.numerator = ts.second.n;
 		m_timingPoints.Add(std::move(tp));
 	}
+
+	m_timingPoints.Sort([](TimingPoint& a, TimingPoint& b) {
+		return a.time < b.time;
+	});
 
 	for (auto&& graphPoint : kshootMap.camera.cam.body.centerSplit) {
 		m_centerSplit.Insert(TickToMapTime(graphPoint.first), graphPoint.second.v);

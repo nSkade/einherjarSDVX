@@ -66,6 +66,8 @@ A score contains the following fields:
     int misses
     int badge
     int timestamp //timestamp in POSIX time (seconds since Jan 1 1970 00:00:00 UTC)
+    string playerName
+    bool isLocal // Whether this score was set locally
     
 Badge
 *****

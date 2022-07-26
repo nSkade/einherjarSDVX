@@ -36,7 +36,7 @@ Note that, for multiplayer play every fields other than ``isSelf`` and ``uid`` m
     float gaugeSamples[256] // gauge values sampled throughout the song
     string grade // "S", "AAA+", "AAA", etc.
     score[] highScores // Same as song wheel scores
-    string playerName // Only on multiplayer
+    string playerName 
     int displayIndex // Only on multiplayer; which player's score (not necessarily the viewer's) is being shown right not
     string uid // Only on multiplayer; the UID of the viewer
     HitWindow hitWindow // Same as gameplay HitWindow
@@ -51,6 +51,7 @@ Note that, for multiplayer play every fields other than ``isSelf`` and ``uid`` m
     HitStat[] noteHitStats // Only when isSelf is true; contains HitStat for notes (excluding hold notes and lasers) 
     HitStat[] holdHitStats // Only when isSelf is true; contains HitStat for holds
     HitStat[] laserHitStats // Only when isSelf is true; contains HitStat for lasers
+    bool isLocal // Whether this score was set locally
 
 HitStat
 *******

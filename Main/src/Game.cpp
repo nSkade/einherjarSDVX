@@ -320,6 +320,9 @@ public:
 				),
 				m_challengeManager->GetCurrentOptions().hold_judge.Get(
 					g_gameConfig.GetInt(GameConfigKeys::HitWindowHold)
+				),
+				m_challengeManager->GetCurrentOptions().slam_judge.Get(
+					g_gameConfig.GetInt(GameConfigKeys::HitWindowSlam)
 				)
 			);
 		}
@@ -368,10 +371,6 @@ public:
 					)
 					{
 						replay = m_replayForPlayback;
-						replayReader.Serialize(&(replay.hitWindow.perfect), 4);
-						replayReader.Serialize(&(replay.hitWindow.good), 4);
-						replayReader.Serialize(&(replay.hitWindow.hold), 4);
-						replayReader.Serialize(&(replay.hitWindow.miss), 4);
 					}
 				}
 				if (!replay)
@@ -1575,9 +1574,10 @@ public:
 				g_application->SetButtonLights(g_input.GetButtonBits() & 0b111111);
 			}
 
-			float brightness = 1.2 - (m_playback.GetBeatTime() * m_currentTiming->beatDuration) / 700.0;
-			brightness = Math::Clamp(brightness, 0.2f, 1.0f);
-
+			float brightness = 1.0 - (m_playback.GetBeatTime() * 0.8);
+			brightness = Math::Clamp(brightness, 0.0f, 1.0f);
+			
+			
 			Color rgbColor = Color::FromHSV(180, 1.0, brightness);
 			for (size_t i = 0; i < 2; i++)
 			{

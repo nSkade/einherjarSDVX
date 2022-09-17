@@ -153,7 +153,7 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	// Get input offset
 	m_inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
-	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset) + m_offsetLaserConstant;
+	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset);
 
 	if (m_replay)
 		SetReplayForPlayback(m_replay);

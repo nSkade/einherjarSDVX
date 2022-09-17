@@ -21,8 +21,7 @@ HitWindow HitWindow::FromConfig()
 	HitWindow hitWindow = HitWindow(
 		g_gameConfig.GetInt(GameConfigKeys::HitWindowPerfect),
 		g_gameConfig.GetInt(GameConfigKeys::HitWindowGood),
-		g_gameConfig.GetInt(GameConfigKeys::HitWindowHold),
-		g_gameConfig.GetInt(GameConfigKeys::HitWindowSlam)
+		g_gameConfig.GetInt(GameConfigKeys::HitWindowHold)
 	);
 
 	if (!(hitWindow <= HitWindow::NORMAL))
@@ -40,7 +39,6 @@ void HitWindow::SaveConfig() const
 	g_gameConfig.Set(GameConfigKeys::HitWindowPerfect, perfect);
 	g_gameConfig.Set(GameConfigKeys::HitWindowGood, good);
 	g_gameConfig.Set(GameConfigKeys::HitWindowHold, hold);
-	g_gameConfig.Set(GameConfigKeys::HitWindowSlam, slam);
 }
 
 void HitWindow::ToLuaTable(lua_State* L) const
@@ -58,5 +56,4 @@ void HitWindow::ToLuaTable(lua_State* L) const
 	pushIntToTable("good", good);
 	pushIntToTable("hold", hold);
 	pushIntToTable("miss", miss);
-	pushIntToTable("slam", slam);
 }

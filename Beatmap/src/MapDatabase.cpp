@@ -1575,7 +1575,6 @@ private:
 			"window_good INTEGER,"
 			"window_hold INTEGER,"
 			"window_miss INTEGER,"
-			"window_slam INTEGER,"
 			"chart_hash TEXT)");
 
 		m_database.Exec("CREATE TABLE Collections"

@@ -342,7 +342,6 @@ private:
 		newScore->hitWindowGood = m_hitWindow.good;
 		newScore->hitWindowHold = m_hitWindow.hold;
 		newScore->hitWindowMiss = m_hitWindow.miss;
-		newScore->hitWindowSlam = m_hitWindow.slam;
 
 		m_mapDatabase.AddScore(newScore);
 
@@ -917,7 +916,7 @@ public:
 				m_PushStringToTable("playerName", *score->userName);
 				m_PushIntToTable("isLocal", score->localScore);
 				lua_pushstring(m_lua, "hitWindow");
-				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(m_lua);
+				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold).ToLuaTable(m_lua);
 				lua_settable(m_lua, -3);
 				lua_settable(m_lua, -3);
 			}

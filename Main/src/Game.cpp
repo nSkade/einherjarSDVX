@@ -320,9 +320,6 @@ public:
 				),
 				m_challengeManager->GetCurrentOptions().hold_judge.Get(
 					g_gameConfig.GetInt(GameConfigKeys::HitWindowHold)
-				),
-				m_challengeManager->GetCurrentOptions().slam_judge.Get(
-					g_gameConfig.GetInt(GameConfigKeys::HitWindowSlam)
 				)
 			);
 		}
@@ -371,6 +368,10 @@ public:
 					)
 					{
 						replay = m_replayForPlayback;
+						replayReader.Serialize(&(replay.hitWindow.perfect), 4);
+						replayReader.Serialize(&(replay.hitWindow.good), 4);
+						replayReader.Serialize(&(replay.hitWindow.hold), 4);
+						replayReader.Serialize(&(replay.hitWindow.miss), 4);
 					}
 				}
 				if (!replay)

@@ -161,11 +161,12 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	// Get bounce guard duration
 	m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
-	// Get laser assist level
-	m_assistLevel = g_gameConfig.GetFloat(GameConfigKeys::LaserAssistLevel);
-	m_assistPunish = g_gameConfig.GetFloat(GameConfigKeys::LaserPunish);
-	m_assistChangeExponent = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeExponent);
-	m_assistChangePeriod = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeTime);
+	// Set laser assist level
+	// TODO: Move to more obvious location as constants
+	m_assistLevel = 1.05f;
+	m_assistPunish = 1.7f;
+	m_assistChangeExponent = 1.5f; 
+	m_assistChangePeriod = 100.0f; 
 
 	// Recalculate maximum score
 	mapTotals = CalculateMapTotals();

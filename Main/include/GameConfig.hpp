@@ -230,6 +230,9 @@ DefineEnum(GameConfigKeys,
 		   OldSlamShake,
 			  
 		   BackupGauge,
+		   MissVocalFX,
+		   OldSlamShake,
+
 		   UpdateChannel)
 
 // List of settings overriden by profiles

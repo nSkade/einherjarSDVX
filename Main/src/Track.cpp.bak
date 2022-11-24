@@ -24,7 +24,7 @@ Track::Track()
 
 Track::~Track()
 {
-	g_input.OnButtonReleased.Remove(this, &Track::OnButtonReleasedDelta);
+	g_input.OnButtonReleased.Remove(this, &Track::OnButtonReleased);
 
 	delete loader;
 	for (auto & i : m_laserTrackBuilder)
@@ -36,7 +36,7 @@ Track::~Track()
 
 bool Track::AsyncLoad()
 {
-	g_input.OnButtonReleased.Add(this, &Track::OnButtonReleasedDelta);
+	g_input.OnButtonReleased.Add(this, &Track::OnButtonReleased);
 
 	loader = new AsyncAssetLoader();
 	String skin = g_application->GetCurrentSkin();
@@ -211,7 +211,7 @@ bool Track::AsyncFinalize()
 
 		//tick meshes
 		pos = Vector2(-buttonTrackWidth * 0.5f * i, 0.0f);
-		size = Vector2(buttonTrackWidth * 1.357f / 2.0f, trackTickLength); // Skade-code buttonTrackWidth ->
+		ssize = Vector2(buttonTrackWidth * 1.357f / 2.0f, trackTickLength); // Skade-code buttonTrackWidth ->
 		rect = Rect(pos, size);
 		splitTrackTickMesh[i] = MeshRes::Create(g_gl);
 		splitTrackTickMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
@@ -219,11 +219,11 @@ bool Track::AsyncFinalize()
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackTickMesh[i]->SetData(splitMeshData);
 	}
-
+	
 	calibrationCritMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -0.02f), Vector2(trackWidth, 0.02f));
 	calibrationDarkMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1.0f), Vector2(trackWidth, 0.99f));
 	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
-	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 1.357f * 0.5f, 0.0f), Vector2(buttonTrackWidth * 1.357f, trackTickLength)); //Skade-code buttonTrackWidth -> buttonTrackWidth*1.357f
+	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth * 1.357f, trackTickLength)); //Skade-code buttonTrackWidth -> buttonTrackWidth*1.357f
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
 	uint8 whiteData[4] = { 255, 255, 255, 255 };
 	whiteTexture = TextureRes::Create(g_gl);
@@ -268,10 +268,8 @@ bool Track::AsyncFinalize()
 void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 {
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-
 	if (m_initBPM == 0.0f) m_initBPM = currentTimingPoint.GetBPM();
-
-	if(&currentTimingPoint != m_lastTimingPoint)
+	if (&currentTimingPoint != m_lastTimingPoint)
 	{
 		m_lastTimingPoint = &currentTimingPoint;
 	}
@@ -300,8 +298,41 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 	trackViewRange = Vector2((float)currentTime, 0.0f);
 	trackViewRange.y = trackViewRange.x + GetViewRange();
 
+	// Update ticks separating bars to draw
+	double tickTime = (double)currentTime;
+	MapTime rangeEnd = currentTime + playback.ViewDistanceToDuration(m_viewRange);
+	const TimingPoint* tp = playback.GetTimingPointAt((MapTime)tickTime);
+	double stepTime = tp->GetBarDuration(); // Every xth note based on signature
+
+	// Overflow on first tick
+	double firstOverflow = fmod((double)tickTime - tp->time, stepTime);
+	if(fabs(firstOverflow) > 1)
+		tickTime -= firstOverflow;
+
 	m_barTicks.clear();
-	playback.GetBarPositionsInViewRange(m_viewRange, m_barTicks);
+
+	// Add first tick
+	m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
+
+	while (tickTime < rangeEnd)
+	{
+		double next = tickTime + stepTime;
+
+		const TimingPoint* tpNext = playback.GetTimingPointAt((MapTime)tickTime);
+		if(tpNext != tp)
+		{
+			tp = tpNext;
+			tickTime = tp->time;
+			stepTime = tp->GetBarDuration(); // Every xth note based on signature
+		}
+		else
+		{
+			tickTime = next;
+		}
+
+		// Add tick
+		m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
+	}
 
 	// Update track hide status
 	m_trackHide += m_trackHideSpeed * deltaTime;
@@ -400,12 +431,12 @@ void Track::DrawBase(class RenderQueue& rq)
 	for (float f : m_barTicks)
 	{
 		float fLocal = f / m_viewRange;
-		Vector3 tickPosition = Vector3(-buttonTrackWidth / 5.6, trackLength * fLocal - trackTickLength * 0.5f, 0.01f); // Skade-code 0.0f -> -buttonTrackWidth / 5.6
+		Vector3 tickPosition = Vector3(0.0f, trackLength * fLocal - trackTickLength * 0.5f, 0.01f);
 		Transform tickTransform = trackOrigin;
 		tickTransform *= Transform::Translation(tickPosition);
 		if (centerSplit != 0.0f)
 		{
-			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 1.075f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params); // Skade-code * 0.5f ->  
+			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params);
 			rq.Draw(tickTransform * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
 		}
 		else
@@ -413,23 +444,14 @@ void Track::DrawBase(class RenderQueue& rq)
 			rq.Draw(tickTransform, trackTickMesh, buttonMaterial, params);
 		}
 	}
-
-	// Draw lane light
 	
 }
 void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active, const std::unordered_set<MapTime> chipFXTimes[2])
 {
 	// Calculate height based on time on current track
 	float viewRange = GetViewRange();
+	float position = playback.TimeToViewDistance(obj->time) / viewRange;
 	float glow = 0.0f;
-
-	const bool dontUseScrollSpeedForPos =
-		obj->type == ObjectType::Hold ? ((MultiObjectState*)obj)->hold.GetRoot()->time <= playback.GetLastTime()
-		: obj->type == ObjectType::Laser ? obj->time <= playback.GetLastTime()
-		: false;
-
-	float position = dontUseScrollSpeedForPos ? playback.TimeToViewDistanceIgnoringScrollSpeed(obj->time) : playback.TimeToViewDistance(obj->time);
-	position /= viewRange;
 
 	if(obj->type == ObjectType::Single || obj->type == ObjectType::Hold)
 	{
@@ -503,28 +525,10 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		Transform buttonTransform = trackOrigin;
 		buttonTransform *= Transform::Translation(buttonPos);
-		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
+		float scale;
 		if(isHold) // Hold Note?
 		{
-			float trackScale = 0.0f;
-			if (dontUseScrollSpeedForPos)
-			{
-				if (mobj->time + mobj->hold.duration <= playback.GetLastTime())
-				{
-					trackScale = playback.ToViewDistanceIgnoringScrollSpeed(mobj->time, mobj->hold.duration);
-				}
-				else
-				{
-					const float remainingDistance = playback.TimeToViewDistance(mobj->time + mobj->hold.duration);
-					trackScale = Math::Max(0.0f, remainingDistance) - playback.TimeToViewDistanceIgnoringScrollSpeed(mobj->time);
-				}
-			}
-			else
-			{
-				trackScale = playback.ToViewDistance(mobj->time, mobj->hold.duration);
-			}
-
-			trackScale /= viewRange * length;
+			float trackScale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length;
 			scale = trackScale * trackLength;
 
 			params.SetParameter("trackScale", trackScale);
@@ -850,9 +854,4 @@ void Track::OnButtonReleased(Input::Button buttonCode)
 	if (buttonIndex >= 6)
 		return;
 	m_buttonHitEffects[buttonIndex].held = false;
-}
-
-void Track::OnButtonReleasedDelta(Input::Button buttonCode, int32 delta)
-{
-	OnButtonReleased(buttonCode);
 }

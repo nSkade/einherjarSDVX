@@ -7,34 +7,34 @@
 
 // The types of effects that can be used on the effect buttons and on lasers
 DefineEnum(EffectType,
-	None = 0,
-	Retrigger,
-	Flanger,
-	Phaser,
-	Gate,
-	TapeStop,
-	Bitcrush,
-	Wobble,
-	SideChain,
-	Echo,
-	Panning,
-	PitchShift,
-	LowPassFilter,
-	HighPassFilter,
-	PeakingFilter,
-	SwitchAudio, // Not a real effect
-	VocalFilter,
-	UserDefined0 = 0x40, // This ID or higher is user for user defined effects inside map objects
-	UserDefined1,	// Keep this ID at least a few ID's away from the normal effect so more native effects can be added later
-	UserDefined2,
-	UserDefined3,
-	UserDefined4,
-	UserDefined5,
-	UserDefined6,
-	UserDefined7,
-	UserDefined8,
-	UserDefined9 // etc...
-	)
+		   None = 0,
+		   Retrigger,
+		   Flanger,
+		   Phaser,
+		   Gate,
+		   TapeStop,
+		   Bitcrush,
+		   Wobble,
+		   SideChain,
+		   Echo,
+		   Panning,
+		   PitchShift,
+		   LowPassFilter,
+		   HighPassFilter,
+		   PeakingFilter,
+		   SwitchAudio,			// Not a real effect
+		   VocalFilter,
+		   UserDefined0 = 0x40, // This ID or higher is user for user defined effects inside map objects
+		   UserDefined1,		// Keep this ID at least a few ID's away from the normal effect so more native effects can be added later
+		   UserDefined2,
+		   UserDefined3,
+		   UserDefined4,
+		   UserDefined5,
+		   UserDefined6,
+		   UserDefined7,
+		   UserDefined8,
+		   UserDefined9 // etc...
+		   )
 
 /*
 	Effect parameter that is used to define a certain time range/period/speed

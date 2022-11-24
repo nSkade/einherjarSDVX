@@ -772,6 +772,9 @@ protected:
 			}
 		}
 
+		ToggleSetting(GameConfigKeys::MissVocalFX, "MissVocalFX");
+		
+		SectionHeader("Render");
 
 		SectionHeader("Render");
 		SetApply(EnumSetting<Enum_QualityLevel>(GameConfigKeys::ResponsiveInputs, "Responsive Inputs (CPU intensive)"));
@@ -786,6 +789,7 @@ protected:
 		SetApply(ToggleSetting(GameConfigKeys::VSync, "VSync"));
 		SetApply(ToggleSetting(GameConfigKeys::ShowFps, "Show FPS"));
 		SetApply(ToggleSetting(GameConfigKeys::KeepFontTexture, "Save font texture (settings load faster but uses more memory)"));
+		ToggleSetting(GameConfigKeys::OldSlamShake, "use SDVX4 slam shake");
 
 		SectionHeader("Replays");
 #ifdef ZLIB_FOUND

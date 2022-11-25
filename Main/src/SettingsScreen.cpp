@@ -686,22 +686,6 @@ private:
 	}
 };
 
-//TODO skade re-add settings
-//	// System (audio/visual) settings
-//	void RenderSettingsSystem()
-//	{
-//		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
-//		if (nk_tree_push(m_nctx, NK_TREE_NODE, "System", (treesOpen & 8) ? NK_MAXIMIZED : NK_MINIMIZED))
-//		{
-//			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 8);
-//			nk_layout_row_dynamic(m_nctx, 30, 1);
-//			PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
-//			ToggleSetting(GameConfigKeys::MissVocalFX, "MissVocalFX");
-//			ToggleSetting(GameConfigKeys::OldSlamShake, "use SDVX4 slam shake");
-//			ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
-//			ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait rendering (don't use if already in portrait)");
-//			ToggleSetting(GameConfigKeys::VSync, "VSync");
-//			ToggleSetting(GameConfigKeys::ShowFps, "Show FPS");
 class SettingsPage_System : public SettingsPage
 {
 public:

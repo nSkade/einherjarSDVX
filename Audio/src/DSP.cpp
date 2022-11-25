@@ -795,12 +795,15 @@ VocalFilterDSP::VocalFilterDSP(uint32 sampleRate) : DSP()
 }
 void VocalFilterDSP::Process(float* out, uint32 numSamples)
 {
-	for (uint32 i = 0; i < numSamples; i++)
+	if (mix == 1.0f)
 	{
-		invertedOut = out[i*2] - out[i*2 + 1];
+		for (uint32 i = 0; i < numSamples; i++)
+		{
+			invertedOut = out[i*2] - out[i*2 + 1];
 
-		out[i*2] = invertedOut*0.75f;
-		out[i*2+1] = invertedOut*0.75f;
+			out[i*2] = invertedOut*0.75f;
+			out[i*2+1] = invertedOut*0.75f;
+		}
 	}
 }
 

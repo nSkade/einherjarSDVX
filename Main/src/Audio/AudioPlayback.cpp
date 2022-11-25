@@ -78,8 +78,6 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 	// TODO opt cleanup maybe in another function
 	m_missVocalEffect = m_beatmap->GetEffect(EffectType::VocalFilter);
 	Ref<AudioStream> audioTrack = m_GetDSPTrack();
-	//TODO fix
-	//m_missVocalDSP = m_missVocalEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
 	m_missVocalDSP = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);
 	if (!m_missVocalDSP) return false;
 	Logf("SetMissVocalEffect: %s", Logger::Severity::Debug, m_missVocalDSP->GetName());
@@ -90,8 +88,6 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 	if (m_fxtrack)
 	{
 		Ref<AudioStream> audioTrackfx = m_music;
-		//TODO fix
-		//m_missVocalDSPfx = m_missVocalEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
 		m_missVocalDSPfx = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);
 		if (!m_missVocalDSPfx) return false;
 		Logf("SetMissVocalEffect: %s", Logger::Severity::Debug, m_missVocalDSPfx->GetName());

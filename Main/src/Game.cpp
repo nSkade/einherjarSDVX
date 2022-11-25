@@ -887,12 +887,12 @@ public:
 		if (m_speedMod == SpeedMods::CMod)
 		{
 			m_track->SetViewRange(hiSpeedAdjustFactor / m_playback.cModSpeed);
-            m_track->scrollSpeed = m_playback.cModSpeed;
+			m_track->scrollSpeed = m_playback.cModSpeed;
 		}
 		else
 		{
 			m_track->SetViewRange(8.0f / m_hispeed);
-            m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
+			m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
 		}
 
 		float rollL, rollR;
@@ -1037,7 +1037,7 @@ public:
 		hitEffectsRq.Process();
 		hitObjectsTrackCoverRq.Process();
 		scoringRq.Process();
-		glFlush();
+		//glFlush();
 
 		// Set laser follow particle visiblity
 		if (particleMaterial && basicParticleTexture)
@@ -1103,10 +1103,10 @@ public:
 			if (particleMaterial && basicParticleTexture)
 			{
 				RenderParticles(rs, deltaTime);
-				glFlush();
+				//glFlush();
 			}
 		}
-		else if (m_renderFastGui)		
+		else if (m_renderFastGui)
 		{
 			m_introCompleted = true;
 			if (m_ended)
@@ -1122,7 +1122,7 @@ public:
 			if (particleMaterial && basicParticleTexture)
 			{
 				RenderParticles(rs, deltaTime);
-				glFlush();
+				//glFlush();
 			}
 		}
 		else
@@ -1161,7 +1161,7 @@ public:
 			if (particleMaterial && basicParticleTexture) 
 			{
 				RenderParticles(rs, deltaTime);
-				glFlush();
+				//glFlush();
 			}
 
 			// Render Critical Line Overlay
@@ -1175,7 +1175,7 @@ public:
 			if (m_foreground)
 			{
 				m_foreground->Render(deltaTime);
-				glFlush();
+				//glFlush();
 			}
 
 			// Render Lua HUD

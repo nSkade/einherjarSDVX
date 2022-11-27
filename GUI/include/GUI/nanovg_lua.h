@@ -432,6 +432,13 @@ static int lSetImageTint(lua_State* L /*int r, int g, int b*/)
 
 static int lImageRect(lua_State* L /*float x, float y, float w, float h, int image, float alpha, float angle*/)
 {
+	//TODO skew
+	//TODO make variables changable
+// with custom imageRect function? // when global enabled ?
+	// ehj mod scale stuff
+	float scale = 0.5f;
+	Vector2 center = Vector2(g_guiState.resolution)*0.5f;
+	
 	float x = 0.f;
 	float y = 0.f;
 	float w = 0.f;
@@ -446,17 +453,29 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	image = luaL_checkinteger(L, 5);
 	alpha = luaL_checknumber(L, 6);
 	angle = luaL_checknumber(L, 7);
-
+	
 	int imgH = -1, imgW = -1;
 	nvgImageSize(g_guiState.vg, image, &imgW, &imgH);
 	float scaleX = 1.f, scaleY = 1.f;
 	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
 	nvgCurrentTransform(g_guiState.vg, tr);
+	
+	// ehj scale
+	nvgResetTransform(g_guiState.vg);
+	nvgTransform(g_guiState.vg, tr[0]*scale, tr[1]*scale, tr[2]*scale, tr[3]*scale,tr[4]*scale,tr[5]*scale);
+	
 	scaleX = w / imgW;
 	scaleY = h / imgH;
 	nvgTranslate(g_guiState.vg, x, y);
 	nvgRotate(g_guiState.vg, angle);
 	nvgScale(g_guiState.vg, scaleX, scaleY);
+	
+	// why easy?
+	float tr2[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	nvgCurrentTransform(g_guiState.vg, tr2);
+	nvgResetTransform(g_guiState.vg);
+	nvgTransform(g_guiState.vg, tr2[0], tr2[1], tr2[2], tr2[3], tr2[4]+center.x*scale,tr2[5]+center.y*scale);
+	
 	NVGpaint paint = nvgImagePattern(g_guiState.vg, 0, 0, imgW, imgH, 0, image, alpha);
 	paint.innerColor = g_guiState.imageTint;
 	paint.innerColor.a = alpha;

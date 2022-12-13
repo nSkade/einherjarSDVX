@@ -1,10 +1,14 @@
 #include "stdafx.h"
 #include "Application.hpp"
+#include "Extras/guicon.hpp"
 
 #ifdef _WIN32
 // Windows entry point
 int32 __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+#ifdef _DEBUG
+	RedirectIOToConsole();
+#endif
 	new Application();
 
 	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());

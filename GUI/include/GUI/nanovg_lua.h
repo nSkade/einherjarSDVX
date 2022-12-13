@@ -77,6 +77,9 @@ struct GUIState
 
 GUIState g_guiState;
 
+// extension for more flexible rendering
+#include "nanovg_ehj.h"
+
 static int LoadFont(const char* name, const char* filename, lua_State* L)
 {
 	{
@@ -310,8 +313,15 @@ static int lText(lua_State* L /*const char* s, float x, float y*/)
 	s = luaL_checkstring(L, 1);
 	x = luaL_checknumber(L, 2);
 	y = luaL_checknumber(L, 3);
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	nvgCurrentTransform(g_guiState.vg, tr);
+	ehj_applyScale(tr);
+	ehj_apllyCenter();
+	
 	nvgText(g_guiState.vg, x, y, s, NULL);
-
+	
+	nvgResetTransform(g_guiState.vg);
+	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
 	//{ //Fast text
 	//	WString text = Utility::Convert	ToWString(s);
 	//	Text te = (*g_guiState.currentFont)->CreateText(text, g_guiState.fontSize);
@@ -432,13 +442,6 @@ static int lSetImageTint(lua_State* L /*int r, int g, int b*/)
 
 static int lImageRect(lua_State* L /*float x, float y, float w, float h, int image, float alpha, float angle*/)
 {
-	//TODO skew
-	//TODO make variables changable
-// with custom imageRect function? // when global enabled ?
-	// ehj mod scale stuff
-	float scale = 0.5f;
-	Vector2 center = Vector2(g_guiState.resolution)*0.5f;
-	
 	float x = 0.f;
 	float y = 0.f;
 	float w = 0.f;
@@ -460,9 +463,7 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
 	nvgCurrentTransform(g_guiState.vg, tr);
 	
-	// ehj scale
-	nvgResetTransform(g_guiState.vg);
-	nvgTransform(g_guiState.vg, tr[0]*scale, tr[1]*scale, tr[2]*scale, tr[3]*scale,tr[4]*scale,tr[5]*scale);
+	ehj_applyScale(tr);
 	
 	scaleX = w / imgW;
 	scaleY = h / imgH;
@@ -470,11 +471,7 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	nvgRotate(g_guiState.vg, angle);
 	nvgScale(g_guiState.vg, scaleX, scaleY);
 	
-	// why easy?
-	float tr2[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
-	nvgCurrentTransform(g_guiState.vg, tr2);
-	nvgResetTransform(g_guiState.vg);
-	nvgTransform(g_guiState.vg, tr2[0], tr2[1], tr2[2], tr2[3], tr2[4]+center.x*scale,tr2[5]+center.y*scale);
+	ehj_apllyCenter();
 	
 	NVGpaint paint = nvgImagePattern(g_guiState.vg, 0, 0, imgW, imgH, 0, image, alpha);
 	paint.innerColor = g_guiState.imageTint;
@@ -568,10 +565,14 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	{
 		maxWidth = luaL_checknumber(L, 4);
 	}
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	nvgCurrentTransform(g_guiState.vg, tr);
+	ehj_applyScale(tr);
 	Vector2 scale = g_guiState.t.GetScale().xy();
 	if (scale.x == 0 || scale.y == 0)
 		return 0;
 
+	
 	Transform textTransform = g_guiState.t;
 	textTransform *= Transform::Translation(Vector2(x, y));
 	textTransform *= Transform::Scale(Vector2(1.0) / scale);
@@ -608,11 +609,14 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	{
 		textTransform *= Transform::Translation(Vector2(-te.text->size.x, 0));
 	}
-
+	textTransform *= Transform::Translation(Vector2(g_center.x*g_scale,g_center.y*g_scale));
 
 	MaterialParameterSet params;
 	params.SetParameter("color", g_guiState.fillColor);
 	g_guiState.rq->DrawScissored(g_guiState.scissor ,textTransform, te.text, *g_guiState.fontMaterial, params);
+
+	nvgResetTransform(g_guiState.vg);
+	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
 	return 0;
 }
 
@@ -983,15 +987,22 @@ static int lScissor(lua_State* L /* float x, float y, float w, float h */)
 	float w = luaL_checknumber(L, 3);
 	float h = luaL_checknumber(L, 4);
 	
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	nvgCurrentTransform(g_guiState.vg, tr);
+	ehj_applyScale(tr);
+	
 	Vector3 scale = g_guiState.t.GetScale();
 	Vector3 pos = g_guiState.t.GetPosition();
 	Vector2 topLeft = pos.xy() + Vector2(x + g_guiState.scissorOffset, y);
 	Vector2 size = Vector2(w, h) * scale.xy();
-
+	
+	ehj_apllyCenter();
 
 	g_guiState.scissor = Rect(topLeft, size);
 	
 	nvgScissor(g_guiState.vg, x, y, w, h);
+	nvgResetTransform(g_guiState.vg);
+	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
 	return 0;
 }
 

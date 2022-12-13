@@ -1217,9 +1217,10 @@ void Application::m_MainLoop()
 	while (true)
 	{
 		m_appTime = appTimer.SecondsAsFloat();
+		g_scale = 1.0f + sinf(m_appTime)*0.5f;
 		m_frameTimer.Restart();
 		//run discord callbacks
-		Discord_RunCallbacks();
+		//Discord_RunCallbacks(); //TODO for the weebs
 
 		// Process changes in the list of items
 		bool restoreTop = false;
@@ -1314,8 +1315,6 @@ void Application::m_MainLoop()
 		// Tick job sheduler
 		// processed callbacks for finished tasks
 		g_jobSheduler->Update();
-
-
 
 		m_deltaTime = m_frameTimer.SecondsAsFloat();
 	}

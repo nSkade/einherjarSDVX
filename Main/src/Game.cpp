@@ -153,9 +153,9 @@ private:
 	lua_State* m_lua = nullptr;
 
 	// spektrum vector
-	float m_spektrum[16];
+	float m_spectrum[16];
 	// spektrum vector without modifications
-	float m_spektrumN[16];
+	float m_spectrumN[16];
 	
 	// Currently active timing point
 	const TimingPoint* m_currentTiming;
@@ -1142,6 +1142,9 @@ public:
 		} \
 		lua_pop(m_lua, 1); \
 		} while (0)
+			
+			//TODO make optional
+			//TODO render pre crit base foreground layer
 
 			// Render Critical Line Base
 			lua_getglobal(m_lua, "render_crit_base");
@@ -1249,6 +1252,15 @@ public:
 				}
 				lua_settop(m_lua, 0);
 			}
+			
+		//TODO another foreground layer
+		//	NVG_FLUSH();
+		//	// Render foreground
+		//	if (m_foreground)
+		//	{
+		//		m_foreground->Render(deltaTime);
+		//		//glFlush();
+		//	}
 		}
 
 
@@ -1522,7 +1534,7 @@ public:
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
 		// assign spektrum buckets
-		g_audio->ProcessFFT(m_spektrum, m_spektrumN, 16);
+		g_audio->ProcessFFT(m_spectrum, m_spectrumN, 16);
 
 		// Stop playing if last gauge has reached its failstate
 		if (m_scoring.IsFailOut())
@@ -3303,7 +3315,7 @@ public:
 		for (size_t i = 0; i < 16; i++)
 		{
 			lua_pushnumber(L, i + 1);
-			lua_pushnumber(L, m_spektrum[i]);
+			lua_pushnumber(L, m_spectrum[i]);
 			lua_settable(L, -3);
 		}
 		lua_settable(L, -3);
@@ -3313,7 +3325,7 @@ public:
 		for (size_t i = 0; i < 16; i++)
 		{
 			lua_pushnumber(L, i + 1);
-			lua_pushnumber(L, m_spektrumN[i]);
+			lua_pushnumber(L, m_spectrumN[i]);
 			lua_settable(L, -3);
 		}
 		lua_settable(L, -3);

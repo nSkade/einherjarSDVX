@@ -2078,6 +2078,10 @@ Transform Application::GetCurrentGUITransform() const
 {
 	return g_guiState.t;
 }
+Vector2 Application::GetCurrentGUIResolution() const
+{
+	return g_guiState.resolution;
+}
 Rect Application::GetCurrentGUIScissor() const
 {
 	return g_guiState.scissor;

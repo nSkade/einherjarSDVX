@@ -34,9 +34,12 @@ ShadedMesh::ShadedMesh(const String& name, const String& path) {
 void ShadedMesh::Draw() {
 	auto rq = g_application->GetRenderQueueBase();
 	Transform t = g_application->GetCurrentGUITransform();
+	t = Transform::Scale(Vector2(g_scale)) * t;
 	t *= Transform::Translation(m_pos);
 	t *= Transform::Scale(m_scale);
 	t *= Transform::Rotation(m_rotation);
+	Vector2 center = g_application->GetCurrentGUIResolution()*g_center*(1.0-g_scale);
+	t = Transform::Translation(center) * t;
 	rq->DrawScissored(g_application->GetCurrentGUIScissor() , t, m_mesh, m_material, m_params);
 }
 

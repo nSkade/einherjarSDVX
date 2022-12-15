@@ -316,12 +316,13 @@ static int lText(lua_State* L /*const char* s, float x, float y*/)
 	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
 	nvgCurrentTransform(g_guiState.vg, tr);
 	ehj_applyScale(tr);
-	ehj_apllyCenter();
+	ehj_applyCenter();
 	
 	nvgText(g_guiState.vg, x, y, s, NULL);
 	
-	nvgResetTransform(g_guiState.vg);
-	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	//nvgResetTransform(g_guiState.vg);
+	//nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	ehj_reset(tr);
 	//{ //Fast text
 	//	WString text = Utility::Convert	ToWString(s);
 	//	Text te = (*g_guiState.currentFont)->CreateText(text, g_guiState.fontSize);
@@ -393,7 +394,13 @@ static int lRect(lua_State* L /*float x, float y, float w, float h*/)
 	y = luaL_checknumber(L, 2);
 	w = luaL_checknumber(L, 3);
 	h = luaL_checknumber(L, 4);
+	
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	nvgCurrentTransform(g_guiState.vg, tr);
+	ehj_applyScale(tr);
+	ehj_applyCenter();
 	nvgRect(g_guiState.vg, x, y, w, h);
+	ehj_reset(tr);
 	return 0;
 }
 static int lFill(lua_State* L)
@@ -471,7 +478,7 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	nvgRotate(g_guiState.vg, angle);
 	nvgScale(g_guiState.vg, scaleX, scaleY);
 	
-	ehj_apllyCenter();
+	ehj_applyCenter();
 	
 	NVGpaint paint = nvgImagePattern(g_guiState.vg, 0, 0, imgW, imgH, 0, image, alpha);
 	paint.innerColor = g_guiState.imageTint;
@@ -479,8 +486,9 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	nvgFillPaint(g_guiState.vg, paint);
 	nvgRect(g_guiState.vg, 0, 0, imgW, imgH);
 	nvgFill(g_guiState.vg);
-	nvgResetTransform(g_guiState.vg);
-	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	//nvgResetTransform(g_guiState.vg);
+	//nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	ehj_reset(tr);
 	return 0;
 }
 static int lScale(lua_State* L /*float x, float y*/)
@@ -565,21 +573,26 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	{
 		maxWidth = luaL_checknumber(L, 4);
 	}
-	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
-	nvgCurrentTransform(g_guiState.vg, tr);
-	ehj_applyScale(tr);
 	Vector2 scale = g_guiState.t.GetScale().xy();
 	if (scale.x == 0 || scale.y == 0)
 		return 0;
 
-	
+	//TODO tr into ehj class
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	nvgCurrentTransform(g_guiState.vg, tr);
+	g_ot = g_guiState.t;
 	Transform textTransform = g_guiState.t;
 	textTransform *= Transform::Translation(Vector2(x, y));
 	textTransform *= Transform::Scale(Vector2(1.0) / scale);
+	Vector3 pos = textTransform.GetPosition();
+	Vector3 scl = textTransform.GetScale();
+	textTransform = Transform::Scale(scl)*Transform::Scale(Vector2(g_scale));
+	textTransform = textTransform * Transform::Translation(pos);
+	
 	Label te = g_guiState.textCache[L][labelId];
 	if (fabsf(te.scale - g_guiState.t.GetScale().y) > 0.001)
 	{
-		te.scale = g_guiState.t.GetScale().y;
+		te.scale = g_ot.GetScale().y;
 		te.text = te.font->CreateText(Utility::ConvertToWString(te.content), Math::Round((float)te.size * te.scale));
 		g_guiState.textCache[L][labelId] = te;
 	}
@@ -609,14 +622,14 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	{
 		textTransform *= Transform::Translation(Vector2(-te.text->size.x, 0));
 	}
-	textTransform *= Transform::Translation(Vector2(g_center.x*g_scale,g_center.y*g_scale));
+	Vector2 center = Vector2(g_guiState.resolution)*g_center*(1.0-g_scale);
+	textTransform = Transform::Translation(center) * textTransform;
 
 	MaterialParameterSet params;
 	params.SetParameter("color", g_guiState.fillColor);
 	g_guiState.rq->DrawScissored(g_guiState.scissor ,textTransform, te.text, *g_guiState.fontMaterial, params);
 
-	nvgResetTransform(g_guiState.vg);
-	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	ehj_reset(tr);
 	return 0;
 }
 
@@ -996,13 +1009,14 @@ static int lScissor(lua_State* L /* float x, float y, float w, float h */)
 	Vector2 topLeft = pos.xy() + Vector2(x + g_guiState.scissorOffset, y);
 	Vector2 size = Vector2(w, h) * scale.xy();
 	
-	ehj_apllyCenter();
+	ehj_applyCenter();
 
 	g_guiState.scissor = Rect(topLeft, size);
 	
 	nvgScissor(g_guiState.vg, x, y, w, h);
-	nvgResetTransform(g_guiState.vg);
-	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	//nvgResetTransform(g_guiState.vg);
+	//nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+	ehj_reset(tr);
 	return 0;
 }
 

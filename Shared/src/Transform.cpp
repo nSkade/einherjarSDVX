@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Transform.hpp"
 #include <cmath>
-
+//TODO wrap with glm simd for performance
 Transform ProjectionMatrix::CreatePerspective(float field_of_view, float aspect_ratio, float z_near, float z_far)
 {
 	assert(z_near > 0.0f);

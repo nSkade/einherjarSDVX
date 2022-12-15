@@ -16,6 +16,7 @@ extern class Input g_input;
 extern class SkinConfig *g_skinConfig;
 extern class TransitionScreen *g_transition;
 extern float g_scale;
+extern Vector2 g_center;
 
 class SharedTexture;
 
@@ -91,6 +92,7 @@ public:
 	Material GetGuiFillMaterial() const;
 	Transform GetGUIProjection() const;
 	Transform GetCurrentGUITransform() const;
+	Vector2 GetCurrentGUIResolution() const;
 	Rect GetCurrentGUIScissor() const;
 	void StoreNamedSample(String name, Sample sample);
 	void PlayNamedSample(String name, bool loop);

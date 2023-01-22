@@ -58,6 +58,8 @@ jobs:
               run: |
                 sudo apt-get update
                 sudo apt-get install g++ libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev
+                sudo add-apt-repository universe
+                sudo apt install libfuse2
             - name: cmake
               run: cmake -DCMAKE_BUILD_TYPE=Release -DUSC_GNU_WERROR=Off .
             - name: make

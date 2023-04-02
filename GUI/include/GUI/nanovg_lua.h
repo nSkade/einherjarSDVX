@@ -64,6 +64,7 @@ struct GUIState
 	NVGcolor otrColor; //outer color
 	NVGcolor inrColor; //inner color
 	NVGcolor imageTint;
+	float hueShift;
 	Rect scissor;
 	Vector2i resolution;
 	Map<int, Ref<ImageAnimation>> animations;
@@ -483,6 +484,7 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	NVGpaint paint = nvgImagePattern(g_guiState.vg, 0, 0, imgW, imgH, 0, image, alpha);
 	paint.innerColor = g_guiState.imageTint;
 	paint.innerColor.a = alpha;
+	paint.hueShift = g_guiState.hueShift;
 	nvgFillPaint(g_guiState.vg, paint);
 	nvgRect(g_guiState.vg, 0, 0, imgW, imgH);
 	nvgFill(g_guiState.vg);
@@ -1088,10 +1090,11 @@ static int DisposeGUI(lua_State* state)
 	g_guiState.paintCache[state].clear();
 	g_guiState.paintCache.erase(state);
 
-	
+	//TODO script does not reinitialize images, so deleting them causes a memory access violation.
+	// Still, not deleting them causes in some instances memory leaks
 	for(auto&& i : g_guiState.vgImages[state])
 	{
-		nvgDeleteImage(g_guiState.vg, i);
+		//nvgDeleteImage(g_guiState.vg, i);
 	}
 
 
@@ -1159,5 +1162,11 @@ static int lGlobalCompositeBlendFuncSeparate(lua_State* L /* int srcRGB, int dst
 static int lGlobalAlpha(lua_State* L /*float alpha*/)
 {
 	nvgGlobalAlpha(g_guiState.vg, luaL_checknumber(L, 1));
+	return 0;
+}
+
+static int lHueShift(lua_State* L /*float hueShift*/) {
+	float hueShift = luaL_checknumber(L, 1);
+	g_guiState.hueShift = hueShift;
 	return 0;
 }

@@ -3,7 +3,6 @@
 
 #include "Shared/Log.hpp"
 #include "HitStat.hpp"
-#include "Input.hpp"
 
 // When this should change, the UpdateVersion MUST be updated to update the old config files.
 // If there's no need to update the UpdateVersion, there's no need to touch this too.
@@ -349,7 +348,6 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(HitWindowPerfect),
 	Key(HitWindowGood),
 	Key(HitWindowHold),
-	Key(HitWindowSlam),
 	Key(GlobalOffset),
 	Key(InputOffset),
 	Key(LaserOffset),

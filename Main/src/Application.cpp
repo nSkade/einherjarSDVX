@@ -1217,7 +1217,11 @@ void Application::m_MainLoop()
 	while (true)
 	{
 		m_appTime = appTimer.SecondsAsFloat();
-		g_scale = 1.0f + sinf(m_appTime)*0.5f;
+		//TODO skade nvg scale
+		g_scale = 1.0f;//1.0f + sinf(m_appTime)*0.5f;
+		//g_center;
+		//g_centerOffset;
+		
 		m_frameTimer.Restart();
 		//run discord callbacks
 		//Discord_RunCallbacks(); //TODO for the weebs
@@ -1407,6 +1411,7 @@ void Application::RenderTickables()
 
 	g_guiState.scissor = Rect(0, 0, -1, -1);
 	g_guiState.imageTint = nvgRGB(255, 255, 255);
+	g_guiState.hueShift = 0.0f;
 
 	CheckGLErrors("before rendering tickables");
 
@@ -1709,6 +1714,7 @@ Material Application::LoadMaterial(const String &name, const String &path)
 	assert(ret);
 	return ret;
 }
+//TODO skade make it possible to load materials from currents song background folder
 Material Application::LoadMaterial(const String &name)
 {
 	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));
@@ -2354,6 +2360,14 @@ static int lLog(lua_State *L)
 	return 0;
 }
 
+static int lPrint(lua_State *L)
+{
+	String msg = luaL_checkstring(L, 1);
+	printf(msg.c_str());
+	printf("\n");
+	return 0;
+}
+
 static int lGetButton(lua_State *L /* int button */)
 {
     int button = luaL_checkinteger(L, 1);
@@ -2722,6 +2736,7 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("FastRect", lFastRect);
 		pushFuncToTable("Fill", lFill);
 		pushFuncToTable("FillColor", lFillColor);
+		pushFuncToTable("HueShift", lHueShift);
 		pushFuncToTable("CreateImage", lCreateImage);
 		pushFuncToTable("CreateSkinImage", lCreateSkinImage);
 		pushFuncToTable("ImagePatternFill", lImagePatternFill);
@@ -2852,6 +2867,7 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("GetMousePos", lGetMousePos);
 		pushFuncToTable("GetResolution", lGetResolution);
 		pushFuncToTable("Log", lLog);
+		pushFuncToTable("Print", lPrint);
 		pushFuncToTable("LoadSkinSample", lLoadSkinSample);
 		pushFuncToTable("PlaySample", lPlaySample);
 		pushFuncToTable("StopSample", lStopSample);

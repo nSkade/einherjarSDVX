@@ -1613,9 +1613,10 @@ public:
 				g_application->SetButtonLights(g_input.GetButtonBits() & 0b111111);
 			}
 
-			float brightness = 1.2 - (m_playback.GetBeatTime() * m_currentTiming->beatDuration) / 700.0;
-			brightness = Math::Clamp(brightness, 0.2f, 1.0f);
-
+			float brightness = 1.0 - (m_playback.GetBeatTime() * 0.8);
+			brightness = Math::Clamp(brightness, 0.0f, 1.0f);
+			
+			
 			Color rgbColor = Color::FromHSV(180, 1.0, brightness);
 			for (size_t i = 0; i < 2; i++)
 			{
@@ -2245,7 +2246,6 @@ public:
 		lua_settop(m_lua, 0);
 	}
 
-	// push true to indicate direction change of lasers
 	void OnLaserDirChange(int index)
 	{
 		lua_getglobal(m_lua, "laser_dir_change");
@@ -2604,6 +2604,7 @@ public:
 		{
 			//g_gameWindow->SetCursorVisible(!m_settingsBar->IsShown());
 			//m_settingsBar->SetShow(!m_settingsBar->IsShown());
+			g_gameWindow->SetCursorVisible(true);
 		}
 		else if(code == SDL_SCANCODE_F9)
 		{
@@ -2616,6 +2617,9 @@ public:
 				m_background->Init(false);
 			if (m_foreground)
 				m_foreground->Init(true);
+			Restart();
+		}
+		else if (code == SDL_SCANCODE_F11) {
 			Restart();
 		}
 	}

@@ -253,6 +253,9 @@ public:
 				lua_pcall(m_songlua, 0, 0, 0);
 				lua_settop(m_songlua, 0);
 			}
+			
+			//TODO skade load custom transition from song folder if available (or at least jacket)
+			//chart->path();
 		}
 		else
 		{
@@ -319,7 +322,9 @@ public:
 
 			rq->Draw(t, m_bgMesh, g_application->GetGuiTexMaterial(), params);
 			g_application->ForceRender();
-
+			
+			//TODO skade load custom 
+			
 			//draw lua
 			lua_getglobal(lua, "render");
 			lua_pushnumber(lua, deltaTime);

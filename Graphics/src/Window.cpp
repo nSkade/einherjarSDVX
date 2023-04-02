@@ -62,9 +62,9 @@ namespace Graphics
 			m_clntSize = size;
 
 #ifdef _DEBUG
-			m_caption = L"USC-Game Debug";
+			m_caption = L"einherjarSDVX Debug";
 #else
-			m_caption = L"USC-Game";
+			m_caption = L"einherjarSDVX";
 #endif
 			String titleUtf8 = Utility::ConvertToUTF8(m_caption);
 

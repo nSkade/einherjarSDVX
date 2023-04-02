@@ -272,6 +272,14 @@ void Audio::ProcessFFT(float* out_buckets, float* out_bucketsN, uint32 in_bucket
 		out_buckets[i] = (base + lin + mag + exp)*0.75;
 		out_bucketsN[i] = bins[i];
 	}
+
+	//TODO find a way to increase volume of quieter songs
+	// normalize volume so that louder songs and quieter songs cancel
+	//float nrmzd = 0.0;
+	//for (int i=0;i<in_bucketAmount;++i)
+	//	nrmzd += out_buckets[i];
+	//for (int i=0;i<in_bucketAmount;++i)
+	//	out_buckets[i] = out_buckets[i]/nrmzd*5.0;
 }
 
 std::vector<std::complex<double>> Audio::FFT(std::vector<std::complex<double>>& samples)

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Application.hpp"
 #include "Extras/guicon.hpp"
+#include <iostream>
 
 #ifdef _WIN32
 // Windows entry point
@@ -10,6 +11,9 @@ int32 __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCm
 	RedirectIOToConsole();
 #endif
 	new Application();
+
+	printf("printfTest\n");
+	std::cout << "std::cout Test\n";
 
 	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
 	g_application->SetCommandLine(*commandLine);

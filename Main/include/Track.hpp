@@ -70,12 +70,13 @@ public:
 	static const float laserWidth;
 	static const float fxbuttonWidth;
 	static const float buttonTrackWidth;
+	static const float opaqueTrackWidth;
 
 	float trackLength;
 	float trackTickLength;
 	float buttonLength;
 	float fxbuttonLength;
-	float distantButtonScale = 6.0f; // Skade-code 2.0f -> 4.0f
+	float distantButtonScale = 6.0f; // Skade-code 2.0f -> 6.0f
 
 	// Laser color setting
 	Color laserColors[2] = {};
@@ -129,7 +130,7 @@ public:
 	// Normal/FX button X-axis placement
 	float GetButtonPlacement(uint32 buttonIdx);
 
-    void OnHoldEnter(Input::Button buttonCode);
+	void OnHoldEnter(Input::Button buttonCode);
 	void OnButtonReleased(Input::Button buttonCode);
 	void OnButtonReleasedDelta(Input::Button buttonCode, int32 delta);
 
@@ -154,11 +155,11 @@ public:
 
 	/* Track base graphics */
 	Mesh trackMesh;
-	Mesh splitTrackMesh[2];
+	Mesh splitTrackMesh[6];
 	Mesh trackTickMesh;
-	Mesh splitTrackTickMesh[2];
+	Mesh splitTrackTickMesh[6];
 	Mesh trackCoverMesh;
-	Mesh splitTrackCoverMesh[2];
+	Mesh splitTrackCoverMesh[6];
 	Mesh calibrationCritMesh;
 	Mesh calibrationDarkMesh;
 	Material trackMaterial; // Also used for buttons
@@ -210,8 +211,8 @@ public:
 	// Track Origin position
 	Transform trackOrigin;
 
-    bool hitEffectAutoplay = false;
-    float scrollSpeed = 0;
+	bool hitEffectAutoplay = false;
+	float scrollSpeed = 0;
 
 private:
 	// Laser track generators

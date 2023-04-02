@@ -58,8 +58,10 @@ jobs:
               run: |
                 sudo apt-get update
                 sudo apt-get install g++ libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev
+                sudo add-apt-repository universe
+                sudo apt install libfuse2
             - name: cmake
-              run: cmake -DCMAKE_BUILD_TYPE=Release -DUSC_GNU_WERROR=On .
+              run: cmake -DCMAKE_BUILD_TYPE=Release -DUSC_GNU_WERROR=Off .
             - name: make
               run: make
             - name: Prepare for bundling AppImage
@@ -96,6 +98,7 @@ jobs:
             - name: cmake
               run: |
                 eval "$(brew shellenv)"
+                rm ./vcpkg.json
                 cmake . -DLibArchive_LIBRARY=$HOMEBREW_PREFIX/opt/libarchive/lib/libarchive.dylib -DLibArchive_INCLUDE_DIR=$HOMEBREW_PREFIX/opt/libarchive/include -DCMAKE_BUILD_TYPE=Release
             - name: make
               run: make

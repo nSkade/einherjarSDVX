@@ -505,7 +505,7 @@ protected:
 private:
 	inline void RenderTimingWindowSettings()
 	{
-		LayoutRowDynamic(4);
+		LayoutRowDynamic(3);
 
 		const int hitWindowPerfect = IntInput(m_hitWindow.perfect, "Crit", 0, HitWindow::NORMAL.perfect);
 		if (hitWindowPerfect != m_hitWindow.perfect)
@@ -536,10 +536,6 @@ private:
 			if (m_hitWindow.hold < m_hitWindow.good)
 				m_hitWindow.good = m_hitWindow.hold;
 		}
-
-		const int hitWindowSlam = IntInput(m_hitWindow.slam, "Slam", 0, HitWindow::NORMAL.slam);
-		if (hitWindowSlam != m_hitWindow.slam)
-			m_hitWindow.slam = hitWindowSlam;
 
 		LayoutRowDynamic(2);
 

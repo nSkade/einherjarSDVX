@@ -1559,13 +1559,19 @@ public:
 			}
 			else if (code == SDL_SCANCODE_F12 && m_shiftDown)
 			{
-				String& hash = m_selectionWheel->GetSelectedChart()->hash;
-				String replayPath = Path::Normalize(Path::Absolute("replays/" + hash + "/"));
-				Path::ShowInFileBrowser(replayPath);
+				ChartIndex* sel = m_selectionWheel->GetSelectedChart();
+				if (sel) {
+					String& hash = sel->hash;
+					String replayPath = Path::Normalize(Path::Absolute("replays/" + hash + "/"));
+					Path::ShowInFileBrowser(replayPath);
+				}
 			}
 			else if (code == SDL_SCANCODE_F12)
 			{
-				Path::ShowInFileBrowser(m_selectionWheel->GetSelection()->path);
+				FolderIndex* sel = m_selectionWheel->GetSelection();
+				if (sel) {
+					Path::ShowInFileBrowser(sel->path);
+				}
 			}
 			else if (code == SDL_SCANCODE_TAB)
 			{

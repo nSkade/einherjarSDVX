@@ -12,9 +12,11 @@ const float Track::buttonWidth = 1.0f / 6;
 const float Track::laserWidth = buttonWidth;
 const float Track::fxbuttonWidth = buttonWidth * 2;
 const float Track::buttonTrackWidth = buttonWidth * 4;
+const float Track::opaqueTrackWidth = buttonTrackWidth * 1.357;
 
 Track::Track()
 {
+	// skade TODO
 	m_viewRange = 2.0f;
 	if (g_aspectRatio < 1.0f)
 		trackLength = 12.0f;
@@ -186,19 +188,21 @@ bool Track::AsyncFinalize()
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
 	
-	for (size_t i = 0; i < 2; i++)
+	for (size_t i = 0; i < 6; i++)
 	{
 		//track base
-		Vector2 pos = Vector2(-trackWidth * 0.5f * i, -1);
-		Vector2 size = Vector2(trackWidth / 2.0f, trackLength + 1);
+		Vector2 pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -1);
+		Vector2 size = Vector2(trackWidth / 6.0f, trackLength + 1);
 		Rect rect = Rect(pos, size);
-		Rect uv = Rect(0.5 - 0.5 * i, 0.0f, 1.0 - 0.5 * i, 1.0f);
+		//Rect uv = Rect(0.5 - 0.5 * i, 0.0f, 1.0 - 0.5 * i, 1.0f);
+		Rect uv = Rect(float(i)/6.0f, 0.0f, float(i+1)/6.0f, 1.0f);
 		splitTrackMesh[i] = MeshRes::Create(g_gl);
 		splitTrackMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
 		Vector<MeshGenerators::SimpleVertex> splitMeshData;
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackMesh[i]->SetData(splitMeshData);
-
+	
+		//TODO
 		//track cover
 		pos = Vector2(-trackWidth * 0.5f * i, -trackLength);
 		size = Vector2(trackWidth / 2.0f, trackLength * 2.0);
@@ -209,9 +213,10 @@ bool Track::AsyncFinalize()
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackCoverMesh[i]->SetData(splitMeshData);
 
+		//TODO
 		//tick meshes
-		pos = Vector2(-buttonTrackWidth * 0.5f * i, 0.0f);
-		size = Vector2(buttonTrackWidth * 1.357f / 2.0f, trackTickLength); // Skade-code buttonTrackWidth ->
+		pos = Vector2(-opaqueTrackWidth * 0.37f * i, 0.0f);
+		size = Vector2(opaqueTrackWidth / 2.0f, trackTickLength); // Skade-code buttonTrackWidth ->
 		rect = Rect(pos, size);
 		splitTrackTickMesh[i] = MeshRes::Create(g_gl);
 		splitTrackTickMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
@@ -223,7 +228,7 @@ bool Track::AsyncFinalize()
 	calibrationCritMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -0.02f), Vector2(trackWidth, 0.02f));
 	calibrationDarkMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1.0f), Vector2(trackWidth, 0.99f));
 	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
-	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 1.357f * 0.5f, 0.0f), Vector2(buttonTrackWidth * 1.357f, trackTickLength)); //Skade-code buttonTrackWidth -> buttonTrackWidth*1.357f
+	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-opaqueTrackWidth * 0.37f, 0.0f), Vector2(opaqueTrackWidth, trackTickLength)); //Skade-code buttonTrackWidth -> buttonTrackWidth*1.357f
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
 	uint8 whiteData[4] = { 255, 255, 255, 255 };
 	whiteTexture = TextureRes::Create(g_gl);
@@ -384,13 +389,16 @@ void Track::DrawBase(class RenderQueue& rq)
 	params.SetParameter("rCol", laserColors[1]);
 	params.SetParameter("hidden", m_trackHide);
 
-	if (centerSplit != 0.0f)
-	{
-		rq.Draw(transform * Transform::Translation({centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
+	bool mode_seven = true; //TODO make configurable
+	
+	if (centerSplit != 0.0f || mode_seven) {
+		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
-	}
-	else
-	{
+		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[2], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[3], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[4], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[5], trackMaterial, params);
+	} else {
 		rq.Draw(transform, trackMesh, trackMaterial, params);
 	}
 
@@ -403,13 +411,14 @@ void Track::DrawBase(class RenderQueue& rq)
 		Vector3 tickPosition = Vector3(-buttonTrackWidth / 5.6, trackLength * fLocal - trackTickLength * 0.5f, 0.01f); // Skade-code 0.0f -> -buttonTrackWidth / 5.6
 		Transform tickTransform = trackOrigin;
 		tickTransform *= Transform::Translation(tickPosition);
-		if (centerSplit != 0.0f)
-		{
-			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 1.075f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params); // Skade-code * 0.5f ->  
-			rq.Draw(tickTransform * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
+		if (centerSplit != 0.0f) {
+			//TODO
+			//rq.Draw(tickTransform * Transform::Translation({ centerSplit * 1.075f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params); // Skade-code * 0.5f ->  
+			//rq.Draw(tickTransform * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
 		}
-		else
-		{
+		else if (true) {
+			
+		} else {
 			rq.Draw(tickTransform, trackTickMesh, buttonMaterial, params);
 		}
 	}
@@ -696,8 +705,9 @@ void Track::DrawTrackCover(RenderQueue& rq)
 
 		if (centerSplit != 0.0f)
 		{
-			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], trackCoverMaterial, p);
-			rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], trackCoverMaterial, p);
+			//TODO
+			//rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], trackCoverMaterial, p);
+			//rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], trackCoverMaterial, p);
 		}
 		else
 		{
@@ -718,8 +728,9 @@ void Track::DrawLaneLight(RenderQueue& rq)
 
 		if (centerSplit != 0.0f)
 		{
-			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], laneLightMaterial, p);
-			rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], laneLightMaterial, p);
+			//TODO
+			//rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], laneLightMaterial, p);
+			//rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], laneLightMaterial, p);
 		}
 		else
 		{

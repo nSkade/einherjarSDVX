@@ -42,7 +42,7 @@ public:
 	void SetCommandLine(int32 argc, char** argv);
 	void SetCommandLine(const char* cmdLine);
 
-	class Game* LaunchMap(const String& mapPath);
+	class Game* LaunchMap(const String& mapPath, bool isPractice);
 	class Game* LaunchReplay(const String& replayPath, MapDatabase** database = nullptr);
 	void Shutdown();
 

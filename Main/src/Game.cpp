@@ -2617,7 +2617,7 @@ public:
 				m_background->Init(false);
 			if (m_foreground)
 				m_foreground->Init(true);
-			Restart();
+			//Restart();
 		}
 		else if (code == SDL_SCANCODE_F11) {
 			Restart();
@@ -3742,6 +3742,13 @@ Game* Game::Create(ChallengeManager* challenge, ChartIndex* chart, PlayOptions&&
 Game* Game::Create(const String& mapPath, PlayOptions&& options)
 {
 	Game_Impl* impl = new Game_Impl(mapPath, std::move(options));
+	return impl;
+}
+
+Game* Game::CreatePractice(const String& mapPath, PlayOptions&& options)
+{
+	Game_Impl* impl = new Game_Impl(mapPath, std::move(options));
+	impl->MakePracticeSetup();
 	return impl;
 }
 

@@ -1307,7 +1307,13 @@ public:
 
 		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
 		{
+			bool practice = (g_gameWindow->GetModifierKeys() & ModifierKeys::Shift) == ModifierKeys::Shift;
+			if (practice) {
+				m_settDiag.onPressPractice.Call();
+				return;
+			}
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
+
 			FolderIndex *folder = m_selectionWheel->GetSelection();
 			if (folder)
 			{

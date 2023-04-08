@@ -3,7 +3,7 @@
 
 //TODO make a class
 //TODO interface for modificatable variables
-float g_scale = 0.5f;
+float g_scale = 1.0f;
 Vector2 g_center = Vector2(0.5f,0.5f);
 Vector2 g_centerOffset = Vector2(0.0f,0.5f);
 Transform g_ot;

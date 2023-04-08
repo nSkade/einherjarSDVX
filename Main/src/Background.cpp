@@ -213,6 +213,14 @@ public:
 		}
 
 		String path = Path::Normalize(folderPath + fname);
+		bool suc = m_init(path);
+		//TODO make option to enable skin dev mode
+		while (!suc) {
+			g_gameWindow->ShowMessageBox("Loading BGA error\n", lua_tostring(lua, -1), 0);
+			bool reload = g_gameWindow->ShowYesNoMessage("Loading BGA error\n", "Reload BG?\n");
+			suc = m_init(path) | !reload;
+		}
+		
 		if (m_init(path))
 			return true;
 

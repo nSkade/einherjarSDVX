@@ -46,6 +46,7 @@ public:
 	static Game* Create(MultiplayerScreen*, ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(ChallengeManager*, ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(const String& mapPath, PlayOptions&& options);
+	static Game* CreatePractice(const String& mapPath, PlayOptions&& options);
 	static Game* CreatePractice(ChartIndex* chart, PlayOptions&& options);
 	static PlaybackOptions PlaybackOptionsFromSettings();
 

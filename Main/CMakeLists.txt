@@ -49,12 +49,12 @@ enable_precompiled_headers("${MAIN_SRC}" ${PCH_SRC})
 include_directories(Audio GUI .)
 add_executable(usc-game ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_FILES})
 target_include_directories(usc-game PRIVATE
-    ${SRCROOT}
-    ${SRCROOT}/GUI
-    ${SRCROOT}/Audio
-    ${INCROOT}
-    ${INCROOT}/GUI
-    ${INCROOT}/Audio
+	${SRCROOT}
+	${SRCROOT}/GUI
+	${SRCROOT}/Audio
+	${INCROOT}
+	${INCROOT}/GUI
+	${INCROOT}/Audio
 )
 target_compile_features(usc-game PUBLIC cxx_std_17)
 target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
@@ -62,17 +62,17 @@ target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJO
 target_compile_definitions(usc-game PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})
 find_package (Git)
 if(GIT_FOUND)
-    target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
-    execute_process(
-      COMMAND git rev-parse --abbrev-ref HEAD
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      OUTPUT_VARIABLE GIT_BRANCH
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    target_compile_definitions(usc-game PRIVATE GIT_BRANCH="${GIT_BRANCH}")
+	target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
+	execute_process(
+	  COMMAND git rev-parse --abbrev-ref HEAD
+	  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	  OUTPUT_VARIABLE GIT_BRANCH
+	  OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	target_compile_definitions(usc-game PRIVATE GIT_BRANCH="${GIT_BRANCH}")
 else(GIT_FOUND)
-    target_compile_definitions(usc-game PRIVATE GIT_COMMIT="")
-    target_compile_definitions(usc-game PRIVATE GIT_BRANCH="master")
+	target_compile_definitions(usc-game PRIVATE GIT_COMMIT="")
+	target_compile_definitions(usc-game PRIVATE GIT_BRANCH="master")
 endif(GIT_FOUND)
 
 set_output_postfixes(usc-game)
@@ -80,8 +80,8 @@ set_werror(usc-game)
 
 if(MSVC)
 	# Set debugging folder
-    set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-    target_compile_options(usc-game PRIVATE /EHsc /MP)
+	set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+	target_compile_options(usc-game PRIVATE /EHsc /MP)
 	# Target subsystem on windows, enable multiprocess build and faster PDB gen
 	set_target_properties(usc-game PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
 	set_target_properties(usc-game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
@@ -104,22 +104,22 @@ target_link_libraries(usc-game ${LibArchive_LIBRARIES})
 target_include_directories(usc-game SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
 
 if(WIN32)
-    target_link_libraries(usc-game
-        optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Release.lib
+	target_link_libraries(usc-game
+		optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Release.lib
 		optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client_Release.lib
 		optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Release.lib
-    )
-    target_link_libraries(usc-game
-        debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Debug.lib
+	)
+	target_link_libraries(usc-game
+		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Debug.lib
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client_Debug.lib
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Debug.lib
-    )
-    target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
+	)
+	target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
 endif()
 
 find_package(ZLIB REQUIRED)
 if(ZLIB_FOUND)
-    target_compile_definitions(usc-game PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
+	target_compile_definitions(usc-game PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
 endif()
 
 target_link_libraries(usc-game cc-common)

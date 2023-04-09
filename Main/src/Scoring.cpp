@@ -7,12 +7,12 @@
 
 Scoring::Scoring()
 {
-    g_application->autoplayInfo = &autoplayInfo;
+	g_application->autoplayInfo = &autoplayInfo;
 }
 
 Scoring::~Scoring()
 {
-    g_application->autoplayInfo = nullptr;
+	g_application->autoplayInfo = nullptr;
 	m_CleanupInput();
 	m_CleanupHitStats();
 	m_CleanupTicks();
@@ -224,6 +224,8 @@ void Scoring::Reset(const MapTimeRange& range)
 	m_CleanupHitStats();
 	m_CleanupTicks();
 
+	m_laserSegmentQueue.clear();
+
 	OnScoreChanged.Call();
 	OnComboChanged.Call(0);
 }
@@ -301,11 +303,11 @@ void Scoring::Tick(float deltaTime)
 	m_UpdateTicks();
 	m_UpdateGaugeSamples();
 
-    for (size_t i = 0; i < 6; i++)
-    {
-        if (!m_ticks[i].empty())
-        {
-            auto tick = m_ticks[i].front();
+	for (size_t i = 0; i < 6; i++)
+	{
+		if (!m_ticks[i].empty())
+		{
+			auto tick = m_ticks[i].front();
 			if (tick->HasFlag(TickFlags::Hold))
 			{
 				if (m_replay || autoplayInfo.IsAutoplayButtons())
@@ -747,7 +749,7 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 	}
 	else if (obj->type == ObjectType::Hold)
 	{
-        HoldObjectState* hold = (HoldObjectState*)obj;
+		HoldObjectState* hold = (HoldObjectState*)obj;
 
 		// Add all hold ticks
 		Vector<MapTime> holdTicks;
@@ -1039,7 +1041,7 @@ void Scoring::m_UpdateTicks()
 						}
 					}
 					else if (tick->HasFlag(TickFlags::End))
-					    OnHoldLeave.Call(button);
+						OnHoldLeave.Call(button);
 
 					processed = true;
 				}
@@ -1243,7 +1245,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 
 		}
 		m_AddScore((uint32)stat->rating);
-        autoplayInfo.buttonAnimationTimer[index] = AUTOPLAY_BUTTON_HIT_DURATION;
+		autoplayInfo.buttonAnimationTimer[index] = AUTOPLAY_BUTTON_HIT_DURATION;
 	}
 	else if (tick->HasFlag(TickFlags::Hold))
 	{
@@ -1431,7 +1433,7 @@ void Scoring::m_SetHoldObject(ObjectState* obj, uint32 index)
 		m_holdObjects[index] = obj;
 		OnObjectHold.Call((Input::Button)index, obj);
 		if (index < 6)
-            autoplayInfo.buttonAnimationTimer[index] = ((HoldObjectState*)obj)->duration / 1000.f;
+			autoplayInfo.buttonAnimationTimer[index] = ((HoldObjectState*)obj)->duration / 1000.f;
 	}
 }
 
@@ -1530,7 +1532,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			{
 				auto current = m_currentLaserSegments[(*it)->index];
 				auto& currentTicks = m_ticks[6 + (*it)->index];
-				if (!currentTicks.empty() && current != nullptr)
+				if (!currentTicks.empty() && current)
 				{
 					auto tick = currentTicks.front();
 					if ((current->flags & LaserObjectState::flag_Instant) != 0)
@@ -1860,22 +1862,22 @@ uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) 
 
 bool Scoring::HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine)
 {
-    if (m_ticks[index].empty())
-        return false;
-
-    auto currentTime = m_playback->GetLastTime() + m_inputOffset;
-    auto tick = m_ticks[index].front();
-    auto obj = (HoldObjectState*)tick->object;
-    if (obj->type != ObjectType::Hold)
+	if (m_ticks[index].empty())
 		return false;
-    // When a hold passes the crit line and we're eligible to hit the starting tick,
-    // change the idle hit effect to the crit hit effect
-    bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHeld(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
-    // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
-    // including when the final scorable tick has been processed
-    bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] + m_inputOffset > obj->time;
 
-    return withinHoldStartWindow || holdObjectHittable;
+	auto currentTime = m_playback->GetLastTime() + m_inputOffset;
+	auto tick = m_ticks[index].front();
+	auto obj = (HoldObjectState*)tick->object;
+	if (obj->type != ObjectType::Hold)
+		return false;
+	// When a hold passes the crit line and we're eligible to hit the starting tick,
+	// change the idle hit effect to the crit hit effect
+	bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHeld(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
+	// This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
+	// including when the final scorable tick has been processed
+	bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] + m_inputOffset > obj->time;
+
+	return withinHoldStartWindow || holdObjectHittable;
 }
 
 MapTime ScoreTick::GetHitWindow(const HitWindow& hitWindow) const

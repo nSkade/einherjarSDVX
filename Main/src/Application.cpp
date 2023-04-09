@@ -166,7 +166,7 @@ int32 Application::Run()
 			else
 			{
 				auto &cmdLine = g_application->GetAppCommandLine();
-				game = LaunchMap(p,cmdLine.Contains("-practice"));
+				game = LaunchMap(p,cmdLine.Contains("-practice") || cmdLine.Contains("-dev") || cmdLine.Contains("-mod"));
 			}
 			if (!game)
 			{
@@ -2329,7 +2329,7 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 }
 
 #include "Lua/luaBindings.hpp"
-#include "luaMods.hpp"
+#include "Lua/luaMods.hpp"
 
 void Application::SetLuaBindings(lua_State *state)
 {

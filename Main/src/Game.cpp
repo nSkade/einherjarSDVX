@@ -241,7 +241,7 @@ public:
 			delete r;
 		m_scoreReplays.clear();
 
-        delete m_track;
+		delete m_track;
 		delete m_background;
 		delete m_foreground;
 		if (m_lua)
@@ -268,10 +268,10 @@ public:
 		// Save practice indices
 		// TODO: this crashes when the window is closed during gaming
 		// because m_db is freed (which is owned by SongSelect) before this destructor is called.
-		if (m_db && m_isPracticeMode)
-		{
-			StorePracticeSetupIndex();
-		}
+		//if (m_db && m_isPracticeMode)
+		//{
+		//	StorePracticeSetupIndex();
+		//}
 
 		// In case the cursor was still hidden
 		g_gameWindow->SetCursorVisible(true); 
@@ -310,7 +310,7 @@ public:
 		{
 			m_renderDebugHUD = true;
 		}
-				
+		
 		m_endTime = m_beatmap->GetLastObjectTime();
 
 		if (IsMultiplayerGame())
@@ -443,7 +443,7 @@ public:
 				replay->AttachChartInfo(m_chartIndex);
 		}
 
-        m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
+		m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
 
 		// Initialize input/scoring
 		if(!InitGameplay())
@@ -644,6 +644,57 @@ public:
 
 	bool Init() override
 	{
+		return true;
+	}
+
+	bool ReloadChart() {
+		if(!Path::FileExists(m_chartPath))
+		{
+			Logf("Couldn't find chart at %s", Logger::Severity::Error, m_chartPath);
+			return false;
+		}
+	
+		m_beatmap = TryLoadMap(m_chartPath);
+	
+		// Check failure of above loading attempts
+		if(!m_beatmap)
+		{
+			Log("Failed to load map", Logger::Severity::Warning);
+			return false;
+		}
+	
+		m_endTime = m_beatmap->GetLastObjectTime();
+		//const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
+		
+		MapTime cmt = m_lastMapTime;
+		
+		m_scoring.OnButtonMiss.Clear();
+		m_scoring.OnLaserSlamHit.Clear();
+		m_scoring.OnButtonHit.Clear();
+		m_scoring.OnComboChanged.Clear();
+		m_scoring.OnComboChanged.Clear();
+		m_scoring.OnObjectHold.Clear();
+		m_scoring.OnObjectReleased.Clear();
+		m_scoring.OnScoreChanged.Clear();
+		m_scoring.OnGaugeChanged.Clear();
+		m_scoring.OnLaserSlam.Clear();
+		m_scoring.OnLaserExit.Clear();
+		m_scoring.OnLaserDirChange.Clear();
+
+		InitGameplay();
+		InitPlaybacks(0);
+		
+		if (!InitSFX())
+			return false;
+		
+		JumpTo(cmt);
+		
+		m_scoring.SetOptions(GetPlaybackOptions());
+		m_scoring.SetPlayback(m_playback);
+		m_scoring.SetEndTime(m_endTime);
+		m_scoring.SetInput(&g_input);
+		m_scoring.Reset(m_playOptions.range);
+
 		return true;
 	}
 
@@ -2613,14 +2664,21 @@ public:
 		}
 		else if (code == SDL_SCANCODE_F10)
 		{
+			Restart();
+		}
+		else if (code == SDL_SCANCODE_F11 && m_isPracticeMode) {
 			if (m_background)
 				m_background->Init(false);
 			if (m_foreground)
 				m_foreground->Init(true);
-			//Restart();
+			if (!ReloadChart())
+				Log("F11 Error reloading chart");
 		}
-		else if (code == SDL_SCANCODE_F11) {
-			Restart();
+		else if (code == SDL_SCANCODE_F12) {
+			if (m_background)
+				m_background->Init(false);
+			if (m_foreground)
+				m_foreground->Init(true);
 		}
 	}
 

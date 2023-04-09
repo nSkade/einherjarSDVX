@@ -14,8 +14,8 @@ public:
 	void Render(float deltaTime) override;
 	void NKRender();
 	void UpdateNuklearInput(SDL_Event evt);
-    void ShutdownNuklear();
-    void InitNuklearIfNeeded();
+	void ShutdownNuklear();
+	void InitNuklearIfNeeded();
 	virtual bool OnKeyPressedConsume(SDL_Scancode code) { return m_isOpen; };
 
 	static void StartFontInit();

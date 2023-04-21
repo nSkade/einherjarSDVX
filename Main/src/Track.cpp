@@ -448,6 +448,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 	float position = dontUseScrollSpeedForPos ? playback.TimeToViewDistanceIgnoringScrollSpeed(obj->time) : playback.TimeToViewDistance(obj->time);
 	position /= viewRange;
 
+	//TODO provide std::vector<float> of intersections at height from 0.0 to 1.0
+
 	if(obj->type == ObjectType::Single || obj->type == ObjectType::Hold)
 	{
 		bool isHold = obj->type == ObjectType::Hold;
@@ -461,22 +463,18 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		float length;
 		float currentObjectGlow = active ? objectGlow : 0.3f;
 		int currentObjectGlowState = active ? 2 + objectGlowState : 0;
-		if(mobj->button.index < 4) // Normal button
-		{
+
+		if(mobj->button.index < 4) { // Normal button
 			width = buttonWidth;
 			xposition = buttonTrackWidth * -0.5f + width * mobj->button.index;
 			int fxIdx = 0;
-			if (mobj->button.index < 2)
-			{
+			if (mobj->button.index < 2) {
 				xposition -= 0.5 * centerSplit * buttonWidth;
-			}
-			else 
-			{
+			} else {
 				xposition += 0.5 * centerSplit * buttonWidth;
 				fxIdx = 1;
 			}
-			if (!isHold && chipFXTimes[fxIdx].count(mobj->time))
-			{
+			if (!isHold && chipFXTimes[fxIdx].count(mobj->time)) {
 				xscale = m_btOverFxScale;
 				xposition += width * ((1.0 - xscale) / 2.0);
 			}
@@ -484,17 +482,13 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			params.SetParameter("hasSample", mobj->button.hasSample);
 			params.SetParameter("mainTex", isHold ? buttonHoldTexture : buttonTexture);
 			mesh = buttonMesh;
-		}
-		else // FX Button
-		{
+		
+		} else { // FX Button
 			width = fxbuttonWidth;
 			xposition = buttonTrackWidth * -0.5f + fxbuttonWidth *(mobj->button.index - 4);
-			if (mobj->button.index < 5)
-			{
+			if (mobj->button.index < 5) {
 				xposition -= 0.5f * centerSplit * buttonWidth;
-			}
-			else
-			{
+			} else {
 				xposition += 0.5f * centerSplit * buttonWidth;
 			}
 			length = fxbuttonLength;
@@ -505,8 +499,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		params.SetParameter("trackPos", position);
 
-		if(isHold)
-		{
+		if(isHold) {
 			if(!active && mobj->hold.GetRoot()->time > playback.GetLastTime())
 				params.SetParameter("hitState", 1);
 			else
@@ -521,23 +514,16 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		Transform buttonTransform = trackOrigin;
 		buttonTransform *= Transform::Translation(buttonPos);
 		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
-		if(isHold) // Hold Note?
-		{
+		if (isHold) { // Hold Note?
 			float trackScale = 0.0f;
-			if (dontUseScrollSpeedForPos)
-			{
-				if (mobj->time + mobj->hold.duration <= playback.GetLastTime())
-				{
+			if (dontUseScrollSpeedForPos) {
+				if (mobj->time + mobj->hold.duration <= playback.GetLastTime()) {
 					trackScale = playback.ToViewDistanceIgnoringScrollSpeed(mobj->time, mobj->hold.duration);
-				}
-				else
-				{
+				} else {
 					const float remainingDistance = playback.TimeToViewDistance(mobj->time + mobj->hold.duration);
 					trackScale = Math::Max(0.0f, remainingDistance) - playback.TimeToViewDistanceIgnoringScrollSpeed(mobj->time);
 				}
-			}
-			else
-			{
+			} else {
 				trackScale = playback.ToViewDistance(mobj->time, mobj->hold.duration);
 			}
 
@@ -545,11 +531,12 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			scale = trackScale * trackLength;
 
 			params.SetParameter("trackScale", trackScale);
-		}
-		else {
-			//Use actual distance from camera instead of position on the track?
-			//scale = 1.0f + (Math::Max(1.0f, distantButtonScale) - 1.0f) * position;
-			scale = 0.4f + (1.4f) * position;
+		} else {
+			//TODO rewrite
+			if (mobj->button.index < 4) // bt button scale
+				scale = 0.2f + (1.5f) * position;
+			else //fx button scale
+				scale = 0.35f + (1.5f) * position;
 			params.SetParameter("trackScale", 1.0f / trackLength);
 		}
 

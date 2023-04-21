@@ -31,6 +31,8 @@
 #include "Audio/OffsetComputer.hpp"
 #include <ShadedMesh.hpp>
 
+//#include "Lua/luaMods.hpp"
+
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
 {
@@ -202,6 +204,7 @@ private:
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
 	LuaBindable* m_trackBindable = nullptr;
+	LuaBindable* m_modsBindable = nullptr;
 	FastGuiGame m_fastGui;
 	uint32 m_releaseTimes[static_cast<size_t>(Input::Button::Length)] = { 0 };
 	uint32 m_pressTimes[static_cast<size_t>(Input::Button::Length)] = { 0 };
@@ -257,6 +260,10 @@ public:
 		{
 			delete m_trackBindable;
 			m_trackBindable = nullptr;
+		}
+		if (m_modsBindable) {
+			delete m_modsBindable;
+			m_modsBindable = nullptr;
 		}
 		
 		// Save hispeed
@@ -524,7 +531,11 @@ public:
 		m_trackBindable = MakeTrackLuaBindable(m_lua);
 		m_trackBindable->Push();
 		lua_settop(m_lua, 0);
-
+		
+		m_modsBindable = MakeModsLuaBindable(m_lua);
+		m_modsBindable->Push();
+		lua_settop(m_lua, 0);
+		//SetInitialModsLua(m_lua);
 
 		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
 			m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
@@ -581,6 +592,7 @@ public:
 		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
 		// Set gameplay table
 		SetInitialGameplayLua(m_lua);
+		//SetInitialModsLua(m_lua);
 
 		// For multiplayer we also bind the TCP in
 		if (m_multiplayer != nullptr)
@@ -1630,6 +1642,7 @@ public:
 
 
 		SetGameplayLua(m_lua);
+		SetModsLua(m_lua);
 		
 		if(m_triggerEnd || m_audioPlayback.HasEnded())
 		{
@@ -2487,7 +2500,7 @@ public:
 
 	void OnTimingPointChanged(Beatmap::TimingPointsIterator tp)
 	{
-	   m_hispeed = m_modSpeed / tp->GetBPM(); 
+		m_hispeed = m_modSpeed / tp->GetBPM(); 
 	}
 	void OnTimingPointChangedChallenge(Beatmap::TimingPointsIterator tp)
 	{
@@ -2653,33 +2666,33 @@ public:
 		}
 		else if(code == SDL_SCANCODE_TAB)
 		{
-			//g_gameWindow->SetCursorVisible(!m_settingsBar->IsShown());
-			//m_settingsBar->SetShow(!m_settingsBar->IsShown());
 			g_gameWindow->SetCursorVisible(true);
 		}
 		else if(code == SDL_SCANCODE_F9)
 		{
-			g_application->ReloadScript("gameplay", m_lua);
 			Restart();
 		}
-		else if (code == SDL_SCANCODE_F10)
-		{
-			Restart();
+		else if (code == SDL_SCANCODE_F10 && m_isPracticeMode) {
+			g_application->ReloadScript("gameplay", m_lua);
+			if (!ReloadChart())
+				Log("F11 Error reloading chart");
 		}
 		else if (code == SDL_SCANCODE_F11 && m_isPracticeMode) {
-			if (m_background)
-				m_background->Init(false);
-			if (m_foreground)
-				m_foreground->Init(true);
+			ReloadBackground();
 			if (!ReloadChart())
 				Log("F11 Error reloading chart");
 		}
 		else if (code == SDL_SCANCODE_F12) {
-			if (m_background)
-				m_background->Init(false);
-			if (m_foreground)
-				m_foreground->Init(true);
+			ReloadBackground();
 		}
+	}
+
+	void ReloadBackground()
+	{
+		if (m_background)
+			m_background->Init(false);
+		if (m_foreground)
+			m_foreground->Init(true);
 	}
 
 	void OnKeyReleased(SDL_Scancode code, int32 delta) override
@@ -3176,6 +3189,23 @@ public:
 		return bind;
 	}
 
+	virtual LuaBindable* MakeModsLuaBindable(struct lua_State* L) {
+		auto* bind = new LuaBindable(L, "mods");
+		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
+		bind->AddFunction("GScale",this,&Game_Impl::lehjGScale);
+		return bind;
+	}
+	
+	//TODO move to better place
+	int lSetHispeed(struct lua_State* L) {
+		m_hispeed = luaL_checknumber(L,2);
+		return 0;
+	}
+	int lehjGScale(struct lua_State* L) {
+		g_scale = luaL_checknumber(L,2);
+		return 0;
+	}
+
 	int lCreateShadedMeshOnTrack(struct lua_State* L)
 	{
 		lua_remove(L, 1); // remove the scriptable arg
@@ -3338,6 +3368,10 @@ public:
 	{
 		return m_multiplayer != nullptr;
 	}
+	bool IsPracticeMode() const override
+	{
+		return m_isPracticeMode;
+	}
 	virtual bool IsChallenge() const
 	{
 		return m_challengeManager != nullptr;
@@ -3367,30 +3401,28 @@ public:
 		if (gauge == nullptr) //if gauge is null, assume something is wrong
 			return;
 
-
 		//set lua
 		lua_getglobal(L, "gameplay");
 
+		//TODO move into mods table?
 		// audio vis spektrum, pushes 16 buckets
-		lua_pushstring(L, "spectrum");
-		lua_newtable(L);
+		lua_getfield(L,-1,"spectrum");
 		for (size_t i = 0; i < 16; i++)
 		{
 			lua_pushnumber(L, i + 1);
 			lua_pushnumber(L, m_spectrum[i]);
 			lua_settable(L, -3);
 		}
-		lua_settable(L, -3);
+		lua_setfield(L, -1, "scoreReplays");
 
-		lua_pushstring(L, "spectrumN");
-		lua_newtable(L);
+		lua_getfield(L,-1,"spectrumN");
 		for (size_t i = 0; i < 16; i++)
 		{
 			lua_pushnumber(L, i + 1);
 			lua_pushnumber(L, m_spectrumN[i]);
 			lua_settable(L, -3);
 		}
-		lua_settable(L, -3);
+		lua_setfield(L, -1, "scoreReplays");
 
 		m_setLuaHolds(L);
 
@@ -3594,6 +3626,29 @@ public:
 
 		lua_setglobal(L, "gameplay");
 	}
+	void SetModsLua(lua_State* L) override {
+		lua_getglobal(L,"mods");
+		//TODO set variables for read
+		lua_setglobal(L, "mods");
+	}
+	void SetInitialModsLua(lua_State* L) override {
+		lua_getglobal(L,"mods");
+		//TODO set functions one time
+		auto pushFuncToTable = [&](const char *name, int (*func)(lua_State *)) {
+			lua_pushstring(L, name);
+			lua_pushcfunction(L, func);
+			lua_settable(L, -3);
+		};
+		auto pushIntToTable = [&](const char* name, int data)
+		{
+			lua_pushstring(L, name);
+			lua_pushinteger(L, data);
+			lua_settable(L, -3);
+		};
+		pushIntToTable("testNum",3);
+		
+		lua_setglobal(L, "mods");
+	}
 	void SetInitialGameplayLua(lua_State* L) override
 	{
 		auto pushStringToTable = [&](const char* name, String data)
@@ -3614,6 +3669,7 @@ public:
 			lua_pushnumber(L, data);
 			lua_settable(L, -3);
 		};
+		
 
 		auto mapSettings = GetBeatmap()->GetMapSettings();
 		lua_newtable(L);
@@ -3642,7 +3698,6 @@ public:
 			lua_settable(L, -3);
 
 		}
-
 
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
@@ -3773,6 +3828,29 @@ public:
 		pushFloatToTable("suddenFade", m_track->suddenFadewindow);
 		pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
 		m_setLuaHolds(L);
+		
+		//TODO move into mods table?
+		// audio vis spektrum, pushes 16 buckets
+		lua_pushstring(L, "spectrum");
+		lua_newtable(L);
+		for (size_t i = 0; i < 16; i++)
+		{
+			lua_pushnumber(L, i + 1);
+			lua_pushnumber(L, 0.0f);
+			lua_settable(L, -3);
+		}
+		lua_settable(L, -3);
+
+		lua_pushstring(L, "spectrumN");
+		lua_newtable(L);
+		for (size_t i = 0; i < 16; i++)
+		{
+			lua_pushnumber(L, i + 1);
+			lua_pushnumber(L, 0.0f);
+			lua_settable(L, -3);
+		}
+		lua_settable(L, -3);
+		
 		lua_setglobal(L, "gameplay");
 	}
 };

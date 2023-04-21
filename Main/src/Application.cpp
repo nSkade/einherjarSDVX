@@ -1810,8 +1810,7 @@ void Application::SetScriptPath(lua_State *s)
 bool Application::ScriptError(const String& name, lua_State* L)
 {
 	Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1)); //TODO: Don't spam the same message
-	if (g_gameConfig.GetBool(GameConfigKeys::SkinDevMode))
-	{
+	if (g_gameConfig.GetBool(GameConfigKeys::SkinDevMode)) {
 		String message = Utility::Sprintf("Lua error: %s \n\nReload Script?", lua_tostring(L, -1));
 		if (g_gameWindow->ShowYesNoMessage("Lua Error", message)) {
 			return ReloadScript(name, L);
@@ -2329,7 +2328,7 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 }
 
 #include "Lua/luaBindings.hpp"
-#include "Lua/luaMods.hpp"
+//#include "Lua/luaMods.hpp"
 
 void Application::SetLuaBindings(lua_State *state)
 {
@@ -2517,9 +2516,9 @@ void Application::SetLuaBindings(lua_State *state)
 
 	// ehj mods
 	{
-		lua_newtable(state);
-		pushFuncToTable("GScale",lehjGScale);
-		lua_setglobal(state,"mod");
+		//lua_newtable(state);
+		//pushFuncToTable("GScale",lehjGScale);
+		//lua_setglobal(state,"mod");
 	}
 
 	//path

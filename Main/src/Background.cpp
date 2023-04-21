@@ -69,6 +69,7 @@ protected:
 	Vector<String> defaultBGs;
 	LuaBindable *bindable = nullptr;
 	LuaBindable *trackBindable = nullptr;
+	LuaBindable *modsBindable = nullptr;
 	String folderPath;
 	lua_State *lua = nullptr;
 	Vector3 timing;
@@ -183,6 +184,8 @@ public:
 
 		trackBindable = game->MakeTrackLuaBindable(lua);
 		trackBindable->Push();
+		modsBindable = game->MakeModsLuaBindable(lua);
+		modsBindable->Push();
 
 		String matPath = "";
 		String fname = foreground ? "fg" : "bg";
@@ -214,11 +217,13 @@ public:
 
 		String path = Path::Normalize(folderPath + fname);
 		bool suc = m_init(path);
-		//TODO make option to enable skin dev mode
-		while (!suc) {
-			g_gameWindow->ShowMessageBox("Loading BGA error\n", lua_tostring(lua, -1), 0);
-			bool reload = g_gameWindow->ShowYesNoMessage("Loading BGA error\n", "Reload BG?\n");
-			suc = m_init(path) | !reload;
+		
+		if (game->IsPracticeMode() && g_gameConfig.GetBool(GameConfigKeys::SkinDevMode)) {
+			while (!suc) {
+				g_gameWindow->ShowMessageBox("Loading BGA error\n", lua_tostring(lua, -1), 0);
+				bool reload = g_gameWindow->ShowYesNoMessage("Loading BGA error\n", "Reload BG?\n");
+				suc = m_init(path) | !reload;
+			}
 		}
 		
 		if (m_init(path))
@@ -232,7 +237,10 @@ public:
 	}
 	virtual void Render(float deltaTime) override
 	{
-		if (errored)
+		if (errored && game->IsPracticeMode()) {
+			this->Init(this->foreground);
+			this->errored = false;
+		} else if (errored)
 			return;
 		UpdateRenderState(deltaTime);
 		game->SetGameplayLua(lua);

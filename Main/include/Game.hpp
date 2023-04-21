@@ -110,6 +110,7 @@ public:
 	virtual const PlayOptions& GetPlayOptions() const = 0;
 
 	virtual class LuaBindable* MakeTrackLuaBindable(struct lua_State* L) = 0;
+	virtual class LuaBindable* MakeModsLuaBindable(struct lua_State* L) = 0;
 
 	// Get lua state
 	virtual struct lua_State* GetLuaState() = 0;
@@ -125,10 +126,14 @@ public:
 	// Setup and set gameplay lua
 	virtual void SetInitialGameplayLua(struct lua_State* L) = 0;
 	virtual void SetGameplayLua(struct lua_State* L) = 0;
+	// Setup and set mods lua
+	virtual void SetInitialModsLua(struct lua_State* L) = 0;
+	virtual void SetModsLua(struct lua_State* L) = 0;
 	// Full path to map
 	virtual const String& GetChartPath() const = 0;
 	// Is this a multiplayer game
 	virtual bool IsMultiplayerGame() const = 0;
+	virtual bool IsPracticeMode() const = 0;
 
 	virtual int GetRetryCount() const = 0;
 	virtual String GetMissionStr() const = 0;

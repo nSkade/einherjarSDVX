@@ -5,6 +5,8 @@
 #include "lualib.h"
 //#include "GUI/nanovg_ehj.h"
 
+//TODO(skade) file obsolete remove?
+
 extern float g_scale;
 
 int lehjGScale(lua_State *L) {

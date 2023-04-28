@@ -162,6 +162,7 @@ public:
 
 		g_application->SetLuaBindings(lua);
 		game->SetInitialGameplayLua(lua);
+		game->SetInitialModsLua(lua);
 		// We have to do this seperately bc package is already defined
 		luaL_dostring(lua, "setmetatable(package, {__index = function() error(\"Song background cannot access the 'package' library\") end})");
 

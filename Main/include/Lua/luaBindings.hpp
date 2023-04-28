@@ -4,7 +4,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-//TODO move into cpp
+//TODO(skade) move into cpp
 //static int lGetMousePos(lua_State *L);
 //static int lGetResolution(lua_State *L);
 //static int lGetLaserColor(lua_State *L /*int laser*/);

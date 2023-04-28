@@ -499,14 +499,10 @@ uint32 BeatmapPlayback::CountBeats(MapTime start, MapTime range, int32& startInd
 float BeatmapPlayback::GetViewDistance(MapTime startTime, MapTime endTime) const
 {
 	if (startTime == endTime)
-	{
 		return 0.0f;
-	}
 
 	if (cMod || m_isCalibration)
-	{
 		return GetViewDistanceIgnoringScrollSpeed(startTime, endTime);
-	}
 
 	return m_beatmap->GetBeatCountWithScrollSpeedApplied(startTime, endTime, m_currentTiming);
 }
@@ -514,19 +510,13 @@ float BeatmapPlayback::GetViewDistance(MapTime startTime, MapTime endTime) const
 float BeatmapPlayback::GetViewDistanceIgnoringScrollSpeed(MapTime startTime, MapTime endTime) const
 {
 	if (startTime == endTime)
-	{
 		return 0.0f;
-	}
 
 	if (cMod)
-	{
 		return static_cast<float>(endTime - startTime) / 480000.0f;
-	}
 
 	if (m_isCalibration)
-	{
 		return static_cast<float>((endTime - startTime) / m_calibrationTiming.beatDuration);
-	}
 
 	return m_beatmap->GetBeatCount(startTime, endTime, m_currentTiming);
 }

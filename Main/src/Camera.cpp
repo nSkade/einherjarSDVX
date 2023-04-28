@@ -413,7 +413,9 @@ RenderState Camera::CreateRenderState(bool clipped)
 	float clipNear = Math::Min(endDist, beginDist);
 
 	rs.cameraTransform = cameraTransform;
-	rs.projectionTransform = ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, Math::Max(clipNear, 0.1f), clipFar + viewRangeExtension);
+	rs.projectionTransform = Transform::Translation(Vector3(-g_center.x+0.5,-g_center.y+0.5,0.0));
+	rs.projectionTransform *= Transform::Scale(Vector3(g_scale)); //TODO this seems to cause a slight offset on nanovg critline and real critline
+	rs.projectionTransform *= ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, Math::Max(clipNear, 0.1f), clipFar + viewRangeExtension);
 
 	m_rsLast = rs;
 	return rs;

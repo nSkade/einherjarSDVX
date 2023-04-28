@@ -592,7 +592,7 @@ public:
 		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
 		// Set gameplay table
 		SetInitialGameplayLua(m_lua);
-		//SetInitialModsLua(m_lua);
+		SetInitialModsLua(m_lua);
 
 		// For multiplayer we also bind the TCP in
 		if (m_multiplayer != nullptr)
@@ -999,9 +999,7 @@ public:
 
 		// Draw BG first
 		if (m_background)
-		{
 			m_background->Render(deltaTime * m_playback.GetScrollSpeed());
-		}
 
 		// Main render queue
 		RenderQueue renderQueue(g_gl, rs);
@@ -1206,8 +1204,8 @@ public:
 		lua_pop(m_lua, 1); \
 		} while (0)
 			
-			//TODO make optional
-			//TODO render pre crit base foreground layer
+			//TODO(skade) make optional
+			//TODO(skade) render pre crit base foreground layer
 
 			// Render Critical Line Base
 			lua_getglobal(m_lua, "render_crit_base");
@@ -1303,8 +1301,8 @@ public:
 					if (lua_isnumber(m_lua, lua_gettop(m_lua)))
 					{
 						float speed = Math::Clamp((float)lua_tonumber(m_lua, lua_gettop(m_lua)), 0.0f, 1.0f);
-						//m_audioPlayback.SetPlaybackSpeed(speed); // Skade-code mute
-						m_audioPlayback.SetVolume(speed); // Skade-code Math::Clamp(speed * 10.0f, 0.0f, 1.0f) ->
+						//m_audioPlayback.SetPlaybackSpeed(speed); // mute
+						m_audioPlayback.SetVolume(speed); // was Math::Clamp(speed * 10.0f, 0.0f, 1.0f) ->
 					}
 					lua_pop(m_lua, 1);
 					m_outroCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
@@ -1316,7 +1314,7 @@ public:
 				lua_settop(m_lua, 0);
 			}
 			
-		//TODO another foreground layer
+		//TODO(skade) another foreground layer
 		//	NVG_FLUSH();
 		//	// Render foreground
 		//	if (m_foreground)
@@ -2332,7 +2330,7 @@ public:
 		auto buttonIndex = (uint32) button;
 		bool skipEffect = m_scoring.HoldObjectAvailable(buttonIndex, false) && (!m_delayedHitEffects || buttonIndex > 3);
 		
-		// TODO skade
+		//TODO(skade)
 		if (!skipEffect) {
 			// set SCrit color
 			if(delta < this->GetHitWindow().perfect/2 && rating == ScoreHitRating::Perfect)
@@ -2343,7 +2341,7 @@ public:
 				c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
 
 			//m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
-			// TODO skade make option for hold
+			//TODO(skade) make option for hold
 			m_track->AddHitEffect(buttonIdx, c, false /*st && st->type == ObjectType::Hold*/);
 			
 			//m_track->AddHitEffect(buttonIdx, c, st && st->type == ObjectType::Hold);
@@ -3192,7 +3190,8 @@ public:
 	virtual LuaBindable* MakeModsLuaBindable(struct lua_State* L) {
 		auto* bind = new LuaBindable(L, "mods");
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
-		bind->AddFunction("GScale",this,&Game_Impl::lehjGScale);
+		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);
+		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);
 		return bind;
 	}
 	
@@ -3203,6 +3202,10 @@ public:
 	}
 	int lehjGScale(struct lua_State* L) {
 		g_scale = luaL_checknumber(L,2);
+		return 0;
+	}
+	int lehjGCenter(struct lua_State* L) {
+		g_center = Vector2(luaL_checknumber(L,2),luaL_checknumber(L,3));
 		return 0;
 	}
 
@@ -3404,7 +3407,7 @@ public:
 		//set lua
 		lua_getglobal(L, "gameplay");
 
-		//TODO move into mods table?
+		//TODO(skade) move into mods table?
 		// audio vis spektrum, pushes 16 buckets
 		lua_getfield(L,-1,"spectrum");
 		for (size_t i = 0; i < 16; i++)
@@ -3627,27 +3630,28 @@ public:
 		lua_setglobal(L, "gameplay");
 	}
 	void SetModsLua(lua_State* L) override {
-		lua_getglobal(L,"mods");
-		//TODO set variables for read
-		lua_setglobal(L, "mods");
-	}
-	void SetInitialModsLua(lua_State* L) override {
-		lua_getglobal(L,"mods");
-		//TODO set functions one time
-		auto pushFuncToTable = [&](const char *name, int (*func)(lua_State *)) {
-			lua_pushstring(L, name);
-			lua_pushcfunction(L, func);
-			lua_settable(L, -3);
-		};
-		auto pushIntToTable = [&](const char* name, int data)
+		lua_getglobal(L,"modI");
+		//TODO(skade) set variables for read
+		auto pushFloatToTable = [&](const char* name, float data)
 		{
 			lua_pushstring(L, name);
-			lua_pushinteger(L, data);
+			lua_pushnumber(L, data);
 			lua_settable(L, -3);
 		};
-		pushIntToTable("testNum",3);
+		pushFloatToTable("gScale",g_scale);
+		lua_setglobal(L, "modI");
+	}
+	void SetInitialModsLua(lua_State* L) override {
+		lua_newtable(L);
+		auto pushFloatToTable = [&](const char* name, float data)
+		{
+			lua_pushstring(L, name);
+			lua_pushnumber(L, data);
+			lua_settable(L, -3);
+		};
+		pushFloatToTable("gScale",g_scale);
 		
-		lua_setglobal(L, "mods");
+		lua_setglobal(L, "modI");
 	}
 	void SetInitialGameplayLua(lua_State* L) override
 	{
@@ -3669,7 +3673,6 @@ public:
 			lua_pushnumber(L, data);
 			lua_settable(L, -3);
 		};
-		
 
 		auto mapSettings = GetBeatmap()->GetMapSettings();
 		lua_newtable(L);
@@ -3730,8 +3733,7 @@ public:
 
 			lua_pushstring(L, "score");
 			{
-				if (auto* score = m_replayForPlayback->GetScoreIndex())
-				{
+				if (auto* score = m_replayForPlayback->GetScoreIndex()) {
 					lua_newtable(L);
 					pushFloatToTable("gauge", score->gauge);
 
@@ -3754,8 +3756,7 @@ public:
 					HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(L);
 					lua_settable(L, -3);
 				}
-				else if (m_replayForPlayback->GetScoreInfo().IsInitialized())
-				{
+				else if (m_replayForPlayback->GetScoreInfo().IsInitialized()) {
 					auto& score = m_replayForPlayback->GetScoreInfo();
 					lua_newtable(L);
 					pushFloatToTable("gauge", score.gauge);
@@ -3786,16 +3787,12 @@ public:
 					m_replayForPlayback->GetHitWindow().ToLuaTable(L);
 					lua_settable(L, -3);
 
-				}
-				else
-				{
+				} else {
 					lua_pushnil(L);
 				}
 			}
 			lua_settable(L, -3);
-		}
-		else
-		{
+		} else {
 			lua_pushnil(L);
 		}
 		lua_settable(L, -3);
@@ -3804,8 +3801,7 @@ public:
 		GetHitWindow().ToLuaTable(L);
 		lua_settable(L, -3);
 
-		if (m_multiplayer != nullptr)
-		{
+		if (m_multiplayer != nullptr) {
 			pushStringToTable("user_id", m_multiplayer->GetUserId());
 			Log("[Multiplayer] Started game in multiplayer mode!", Logger::Severity::Info);
 		}
@@ -3814,8 +3810,7 @@ public:
 		lua_pushboolean(L, m_scoring.autoplayInfo.autoplay);
 		lua_settable(L, -3);
 
-		if (m_isPracticeMode)
-		{
+		if (m_isPracticeMode) {
 			// Existence of this field implies that the game's in the practice mode.
 			lua_pushstring(L, "practice_setup");
 			lua_pushboolean(L, m_isPracticeSetup);
@@ -3829,12 +3824,11 @@ public:
 		pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
 		m_setLuaHolds(L);
 		
-		//TODO move into mods table?
+		//TODO(skade) move into mods table?
 		// audio vis spektrum, pushes 16 buckets
 		lua_pushstring(L, "spectrum");
 		lua_newtable(L);
-		for (size_t i = 0; i < 16; i++)
-		{
+		for (size_t i = 0; i < 16; i++) {
 			lua_pushnumber(L, i + 1);
 			lua_pushnumber(L, 0.0f);
 			lua_settable(L, -3);
@@ -3843,8 +3837,7 @@ public:
 
 		lua_pushstring(L, "spectrumN");
 		lua_newtable(L);
-		for (size_t i = 0; i < 16; i++)
-		{
+		for (size_t i = 0; i < 16; i++) {
 			lua_pushnumber(L, i + 1);
 			lua_pushnumber(L, 0.0f);
 			lua_settable(L, -3);

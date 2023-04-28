@@ -16,7 +16,7 @@ const float Track::opaqueTrackWidth = buttonTrackWidth * 1.357;
 
 Track::Track()
 {
-	// skade TODO
+	//TODO(skade)
 	m_viewRange = 2.0f;
 	if (g_aspectRatio < 1.0f)
 		trackLength = 12.0f;
@@ -202,7 +202,7 @@ bool Track::AsyncFinalize()
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackMesh[i]->SetData(splitMeshData);
 	
-		//TODO
+		//TODO(skade)
 		//track cover
 		pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -trackLength);
 		size = Vector2(trackWidth / 6.0f, trackLength * 2.0);
@@ -213,7 +213,6 @@ bool Track::AsyncFinalize()
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackCoverMesh[i]->SetData(splitMeshData);
 
-		//TODO
 		//tick meshes
 		pos = Vector2(-trackWidth * 0.5f + (1.0f/6.0f)*i*trackWidth, 0.0f);
 		size = Vector2(trackWidth / 6.0f, trackTickLength); // Skade-code buttonTrackWidth ->
@@ -414,7 +413,7 @@ void Track::DrawBase(class RenderQueue& rq)
 		Transform tT = trackOrigin;
 		tT *= Transform::Translation(tickPosition);
 		if (centerSplit != 0.0f) {
-			//TODO
+			//TODO(skade)
 			//rq.Draw(tT * Transform::Translation({ centerSplit * 1.075f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params); // Skade-code * 0.5f ->  
 			//rq.Draw(tT * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
 			rq.Draw(tT * Transform::Translation({-centerSplit * 0.75f * buttonWidth + 0.33f*buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[0], buttonMaterial, params);
@@ -448,7 +447,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 	float position = dontUseScrollSpeedForPos ? playback.TimeToViewDistanceIgnoringScrollSpeed(obj->time) : playback.TimeToViewDistance(obj->time);
 	position /= viewRange;
 
-	//TODO provide std::vector<float> of intersections at height from 0.0 to 1.0
+	//TODO(skade) provide std::vector<float> of intersections at height from 0.0 to 1.0
 
 	if(obj->type == ObjectType::Single || obj->type == ObjectType::Hold)
 	{
@@ -499,7 +498,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		params.SetParameter("trackPos", position);
 
-		if(isHold) {
+		if (isHold) {
 			if(!active && mobj->hold.GetRoot()->time > playback.GetLastTime())
 				params.SetParameter("hitState", 1);
 			else
@@ -685,6 +684,7 @@ void Track::DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale)
 	}
 }
 
+//TODO(skade) make combined method to split and control track,trackcover and lanelight (tick mesh)
 void Track::DrawTrackCover(RenderQueue& rq)
 {
 	#ifndef EMBEDDED
@@ -700,7 +700,7 @@ void Track::DrawTrackCover(RenderQueue& rq)
 
 		if (centerSplit != 0.0f)
 		{
-			//TODO
+			//TODO(skade)
 			//rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], trackCoverMaterial, p);
 			//rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], trackCoverMaterial, p);
 			rq.Draw(t * Transform::Translation({-centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[0], trackCoverMaterial, p);
@@ -729,7 +729,7 @@ void Track::DrawLaneLight(RenderQueue& rq)
 
 		if (centerSplit != 0.0f)
 		{
-			//TODO
+			//TODO(skade)
 			//rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], laneLightMaterial, p);
 			//rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], laneLightMaterial, p);
 			rq.Draw(t * Transform::Translation({-centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[0], laneLightMaterial, p);

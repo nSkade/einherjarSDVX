@@ -121,7 +121,7 @@ DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32
 	}
 	case EffectType::VocalFilter:
 	{
-		//TODO fix
+		//TODO(skade) fixed?
 		VocalFilterDSP* vf = new VocalFilterDSP(sampleRate);
 		ret = vf;
 		break;

@@ -341,17 +341,13 @@ float Beatmap::GetBeatCount(MapTime start, MapTime end, TimingPointsIterator hin
 	return sign * result;
 }
 
-float Beatmap::GetBeatCountWithScrollSpeedApplied(MapTime start, MapTime end, TimingPointsIterator hint) const
-{
+float Beatmap::GetBeatCountWithScrollSpeedApplied(MapTime start, MapTime end, TimingPointsIterator hint) const {
 	int sign = 1;
 
 	if (m_timingPoints.empty() || start == end)
-	{
 		return 0.0f;
-	}
-
-	if (end < start)
-	{
+	
+	if (end < start) {
 		std::swap(start, end);
 		sign = -1;
 	}
@@ -366,8 +362,7 @@ float Beatmap::GetBeatCountWithScrollSpeedApplied(MapTime start, MapTime end, Ti
 
 	const LineGraph& scrollSpeedGraph = m_effects.GetGraph(EffectTimeline::GraphType::SCROLL_SPEED);
 
-	while (tp_next != m_timingPoints.end() && tp_next->time < end)
-	{
+	while (tp_next != m_timingPoints.end() && tp_next->time < end) {
 		result += static_cast<float>(scrollSpeedGraph.Integrate(refTime, tp_next->time) / tp->beatDuration);
 
 		tp = tp_next;

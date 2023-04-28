@@ -1,4 +1,4 @@
-//TODO move static funcs in here?
+//TODO(skade) move static funcs in here?
 //#include "Lua/luaBindings.hpp"
 //
 //#include "Application.hpp"

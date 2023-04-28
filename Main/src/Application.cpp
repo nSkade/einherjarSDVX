@@ -1218,7 +1218,7 @@ void Application::m_MainLoop()
 	while (true)
 	{
 		m_appTime = appTimer.SecondsAsFloat();
-		//TODO skade nvg scale
+		//TODO(skade) nvg scale
 		//g_scale = 1.0f;//1.0f + sinf(m_appTime)*0.5f;
 		//g_center;
 		//g_centerOffset;
@@ -1719,7 +1719,7 @@ Material Application::LoadMaterial(const String &name, const String &path)
 	assert(ret);
 	return ret;
 }
-//TODO skade make it possible to load materials from currents song background folder
+//TODO(skade) make it possible to load materials from currents song background folder
 Material Application::LoadMaterial(const String &name)
 {
 	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));
@@ -2161,7 +2161,7 @@ int Application::IsNamedSamplePlaying(String name)
 }
 void Application::m_OnKeyPressed(SDL_Scancode code, int32 delta)
 {
-	// Fullscreen toggle
+	// Fullscreen toggle currently disabled in favour of Keyboard players.
 	/*
 	if (code == SDL_SCANCODE_RETURN)
 	{
@@ -2173,7 +2173,7 @@ void Application::m_OnKeyPressed(SDL_Scancode code, int32 delta)
 			return;
 		}
 	}
-	*/// Skade-code
+	*/
 
 	// Pass key to application
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)

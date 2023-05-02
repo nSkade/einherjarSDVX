@@ -1,6 +1,8 @@
 #pragma once
 #include "Shared/Transform.hpp"
 
+//TODO(skade) these are quite oboslete now with nanovg3D
+
 //TODO make a class
 //TODO interface for modificatable variables
 float g_scale = 1.0f;

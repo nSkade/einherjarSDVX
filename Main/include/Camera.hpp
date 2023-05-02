@@ -107,6 +107,10 @@ public:
 
 	Vector2 Project(const Vector3& pos);
 
+	// Creates and returns the Camera projection.
+	//TODO cache result and check for changes.
+	Transform CreateProjectionMatrix(bool clipped);
+
 	// Generates a new render state for drawing from this cameras Point of View
 	// the clipped boolean indicates whenether to clip the cameras clipping planes to the track range
 	RenderState CreateRenderState(bool clipped);
@@ -133,6 +137,7 @@ public:
 	Transform worldNormal;
 	Transform worldNoRoll;
 	Transform critOrigin;
+	Transform modTransform; //TODO(skade) better name
 
 private:
 	float m_ClampRoll(float in) const;

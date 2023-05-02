@@ -52,6 +52,27 @@ Transform::Transform(const Transform& other)
 {
 	memcpy(this, &other, sizeof(mat));
 }
+//TODO(skade) this seems about right? test in lua env with binding
+Transform::Transform(const Vector4& o1, const Vector4& o2, const Vector4& o3, const Vector4& o4) {
+	for(int i=0;i<4;++i)
+		mat[i] = o1[i];
+	for(int i=0;i<4;++i)
+		mat[i+4] = o2[i];
+	for(int i=0;i<4;++i)
+		mat[i+8] = o3[i];
+	for(int i=0;i<4;++i)
+		mat[i+12] = o4[i];
+
+	//TODO(skade) remove
+	//for(int i=0;i<4;++i)
+	//	mat[i*4] = o1[i];
+	//for(int i=0;i<4;++i)
+	//	mat[i*4+1] = o2[i];
+	//for(int i=0;i<4;++i)
+	//	mat[i*4+2] = o3[i];
+	//for(int i=0;i<4;++i)
+	//	mat[i*4+3] = o4[i];
+}
 Transform::Transform()
 {
 
@@ -109,6 +130,22 @@ Transform Transform::operator*(const Transform& other) const
 	}
 
 	return result;
+}
+Transform Transform::operator*(const float other) const {
+	Transform res;
+	for (uint32_t i=0;i<16;++i)
+		res[i] = this->mat[i]*other;
+	return res;
+}
+Vector4 Transform::operator*(const Vector4& other) const
+{
+	Vector4 res;
+	
+	size_t index = 0;
+	for (size_t y = 0; y < 4; ++y)
+		for(size_t x = 0; x < 4; ++x)
+			res[y] += other[x]*mat[y*4+x];
+	return res;
 }
 void Transform::ScaleTransform(const Vector3& scale)
 {
@@ -269,6 +306,65 @@ Transform Transform::FromAxes(Vector3 bitangent, Vector3 tangent, Vector3 normal
 	ret[10] = normal.z;
 
 	return ret;
+}
+
+Transform Transform::Inverse(const Transform& mat) {
+	const float* m = mat.mat;
+
+	// Ripped from glm, thanks to them.
+	float Coef00 = m[10] * m[15] - m[14] * m[11];
+	float Coef02 = m[6] * m[15] - m[14] * m[7];
+	float Coef03 = m[6] * m[11] - m[10] * m[7];
+
+	float Coef04 = m[9] * m[15] - m[13] * m[11];
+	float Coef06 = m[5] * m[15] - m[13] * m[7];
+	float Coef07 = m[5] * m[11] - m[9] * m[7];
+
+	float Coef08 = m[9] * m[14] - m[13] * m[10];
+	float Coef10 = m[5] * m[14] - m[13] * m[6];
+	float Coef11 = m[5] * m[10] - m[9] * m[6];
+
+	float Coef12 = m[8] * m[15] - m[12] * m[11];
+	float Coef14 = m[4] * m[15] - m[12] * m[7];
+	float Coef15 = m[4] * m[11] - m[8] * m[7];
+
+	float Coef16 = m[8] * m[14] - m[12] * m[10];
+	float Coef18 = m[4] * m[14] - m[12] * m[6];
+	float Coef19 = m[4] * m[10] - m[8] * m[6];
+
+	float Coef20 = m[8] * m[13] - m[12] * m[9];
+	float Coef22 = m[4] * m[13] - m[12] * m[5];
+	float Coef23 = m[4] * m[9] - m[8] * m[5];
+
+	Vector4 Fac0(Coef00, Coef00, Coef02, Coef03);
+	Vector4 Fac1(Coef04, Coef04, Coef06, Coef07);
+	Vector4 Fac2(Coef08, Coef08, Coef10, Coef11);
+	Vector4 Fac3(Coef12, Coef12, Coef14, Coef15);
+	Vector4 Fac4(Coef16, Coef16, Coef18, Coef19);
+	Vector4 Fac5(Coef20, Coef20, Coef22, Coef23);
+
+	Vector4 Vec0(m[4], m[0], m[0], m[0]);
+	Vector4 Vec1(m[5], m[1], m[1], m[1]);
+	Vector4 Vec2(m[6], m[2], m[2], m[2]);
+	Vector4 Vec3(m[7], m[3], m[3], m[3]);
+
+	Vector4 Inv0(Vec1 * Fac0 - Vec2 * Fac1 + Vec3 * Fac2);
+	Vector4 Inv1(Vec0 * Fac0 - Vec2 * Fac3 + Vec3 * Fac4);
+	Vector4 Inv2(Vec0 * Fac1 - Vec1 * Fac3 + Vec3 * Fac5);
+	Vector4 Inv3(Vec0 * Fac2 - Vec1 * Fac4 + Vec2 * Fac5);
+
+	Vector4 SignA(+1, -1, +1, -1);
+	Vector4 SignB(-1, +1, -1, +1);
+	Transform inv(Inv0 * SignA, Inv1 * SignB, Inv2 * SignA, Inv3 * SignB);
+
+	Vector4 Row0(inv[0], inv[4], inv[8], inv[12]);
+
+	Vector4 Dot0 = Row0*m[0];
+	float Dot1 = (Dot0.x + Dot0.y) + (Dot0.z + Dot0.w);
+
+	float OneOverDeterminant = 1.f / Dot1;
+
+	return inv * OneOverDeterminant;
 }
 
 Transform Transform::LookAt(const Vector3& position, const Vector3& target, const Vector3& up /*= Vector3(0, 1, 0)*/)

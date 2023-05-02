@@ -47,6 +47,40 @@ namespace VectorMath
 		{
 			return VectorBase<T1, 2>((T1)x, (T1)y);
 		}
+		T& operator[](size_t idx)
+		{
+			switch (idx)
+			{
+			case 0:
+				return x;
+			case 1:
+				return y;
+			case 2:
+				return z;
+			case 3:
+				return w;
+			default:
+				break;
+			}
+			return x;
+		}
+		T operator[](size_t idx) const
+		{
+			switch (idx)
+			{
+			case 0:
+				return x;
+			case 1:
+				return y;
+			case 2:
+				return z;
+			case 3:
+				return w;
+			default:
+				break;
+			}
+			return x;
+		}
 		VectorBase operator+(const VectorBase& r) const
 		{
 			return VectorBase(x + r.x, y + r.y, z + r.z, w + r.w);
@@ -139,6 +173,36 @@ namespace VectorMath
 		{
 			return VectorBase<T1, 2>((T1)x, (T1)y);
 		}
+		T& operator[](size_t idx)
+		{
+			switch (idx)
+			{
+			case 0:
+				return x;
+			case 1:
+				return y;
+			case 2:
+				return z;
+			default:
+				break
+			}
+			return x;
+		}
+		T operator[](size_t idx) const
+		{
+			switch (idx)
+			{
+			case 0:
+				return x;
+			case 1:
+				return y;
+			case 2:
+				return z;
+			default:
+				break;
+			}
+			return x;
+		}
 		VectorBase operator+(const VectorBase& r) const
 		{
 			return VectorBase(x + r.x, y + r.y, z + r.z);
@@ -218,6 +282,32 @@ namespace VectorMath
 		{
 			x = (T)other.x;
 			y = (T)other.y;
+		}
+		T& operator[](size_t idx)
+		{
+			switch (idx)
+			{
+			case 0:
+				return x;
+			case 1:
+				return y;
+			default:
+				break;
+			}
+			return x;
+		}
+		T operator[](size_t idx) const
+		{
+			switch (idx)
+			{
+			case 0:
+				return x;
+			case 1:
+				return y;
+			default:
+				break;
+			}
+			return x;
 		}
 		template<typename T1>
 		VectorBase operator+(const VectorBase<T1, 2>& r) const

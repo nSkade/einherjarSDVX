@@ -2474,6 +2474,15 @@ void Application::SetLuaBindings(lua_State *state)
 		pushIntToTable("BLEND_OP_COPY", NVGcompositeOperation::NVG_COPY);
 		pushIntToTable("BLEND_OP_XOR", NVGcompositeOperation::NVG_XOR);
 
+		
+		pushFuncToTable("SetProjMat", lsetProjMat);
+
+		// linar algebra
+		pushFuncToTable("MultMatVec", lmultMatVec);
+		pushFuncToTable("MultMatMat", lmultMatMat);
+		pushFuncToTable("GetRotMat", lgetRotMat);
+		pushFuncToTable("GetTransMat", lgetTransMat);
+		
 		lua_setglobal(state, "gfx");
 	}
 

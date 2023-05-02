@@ -71,10 +71,9 @@ struct GUIState
 	int scissorOffset;
 	Vector<Transform> transformStack;
 	Vector<int> nvgFonts;
+	Transform projMat; ///< NVG Projection Matrix to create 3D fx
+	Transform modMat;  ///< General-Purpouse Matrix
 };
-
-
-
 
 GUIState g_guiState;
 
@@ -1170,3 +1169,13 @@ static int lHueShift(lua_State* L /*float hueShift*/) {
 	g_guiState.hueShift = hueShift;
 	return 0;
 }
+
+//TODO better place
+#include "nanovg_linAlg.h"
+
+static int lsetProjMat(lua_State* L) {
+	g_guiState.projMat = readMat4(L,1);
+	nvgSetProjMat(g_guiState.vg,&g_guiState.projMat[0]);
+	return 0;
+}
+

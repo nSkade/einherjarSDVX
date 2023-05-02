@@ -1,7 +1,9 @@
 See the github page for instructions on how to run and use the game.
-https://github.com/Drewol/unnamed-sdvx-clone
+https://github.com/nSkade/einherjarSDVX
 
 Licenses:
+
+Copyright 2023 Mick Körner
 
 ------------------
 unnamed-sdvx-clone

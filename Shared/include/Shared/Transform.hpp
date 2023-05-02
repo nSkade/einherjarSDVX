@@ -32,6 +32,7 @@ class Transform
 public:
 	Transform();
 	Transform(const Transform& other);
+	Transform(const Vector4& o1,const Vector4& o2,const Vector4& o3,const Vector4& o4);
 	Transform(std::initializer_list<float> values);
 	Transform& operator=(const Transform& right);
 
@@ -39,6 +40,8 @@ public:
 	float& operator[](size_t idx);
 
 	Transform operator*(const Transform& other) const;
+	Transform operator*(float other) const;
+	Vector4 operator*(const Vector4& other) const; //what dis doin here?
 	Transform& operator*=(const Transform& other);
 
 	void ScaleTransform(const Vector3& scale);
@@ -50,6 +53,7 @@ public:
 	static Transform Scale(const Vector3& scale);
 	static Transform LookAt(const Vector3& position, const Vector3& target, const Vector3& up = Vector3(0, 1, 0));
 	static Transform FromAxes(Vector3 bitangent, Vector3 tangent, Vector3 normal);
+	static Transform Inverse(const Transform& mat);
 
 	Vector3 GetPosition() const;
 	Vector3 GetScale() const;

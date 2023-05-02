@@ -117,6 +117,7 @@ enum GLNVGuniformLoc {
 	GLNVG_LOC_VIEWSIZE,
 	GLNVG_LOC_TEX,
 	GLNVG_LOC_FRAG,
+	GLNVG_LOC_PT,
 	GLNVG_MAX_LOCS
 };
 
@@ -240,6 +241,7 @@ struct GLNVGcontext {
 	GLNVGshader shader;
 	GLNVGtexture* textures;
 	float view[2];
+	float proj[16];
 	int ntextures;
 	int ctextures;
 	int textureId;
@@ -500,12 +502,34 @@ static void glnvg__getUniforms(GLNVGshader* shader)
 {
 	shader->loc[GLNVG_LOC_VIEWSIZE] = glGetUniformLocation(shader->prog, "viewSize");
 	shader->loc[GLNVG_LOC_TEX] = glGetUniformLocation(shader->prog, "tex");
+	shader->loc[GLNVG_LOC_PT] = glGetUniformLocation(shader->prog, "PT");
 
 #if NANOVG_GL_USE_UNIFORMBUFFER
 	shader->loc[GLNVG_LOC_FRAG] = glGetUniformBlockIndex(shader->prog, "frag");
 #else
 	shader->loc[GLNVG_LOC_FRAG] = glGetUniformLocation(shader->prog, "frag");
 #endif
+}
+
+//TODO betterPos
+static void glnvg__setProj(void* uptr, float* mat)
+{
+	GLNVGcontext* gl = (GLNVGcontext*)uptr;
+	glUseProgram(gl->shader.prog);
+#if NANOVG_GL_USE_UNIFORMBUFFER
+		// Upload ubo for frag shaders
+		glBindBuffer(GL_UNIFORM_BUFFER, gl->fragBuf);
+		glBufferData(GL_UNIFORM_BUFFER, gl->nuniforms * gl->fragSize, gl->uniforms, GL_STREAM_DRAW);
+#endif
+
+		// Upload vertex data
+#if defined NANOVG_GL3
+		glBindVertexArray(gl->vertArr);
+#endif
+	glBindBuffer(GL_ARRAY_BUFFER, gl->vertBuf);
+	glUniformMatrix4fv(gl->shader.loc[GLNVG_LOC_PT], 1, GL_FALSE, mat);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glUseProgram(0);
 }
 
 static int glnvg__renderCreate(void* uptr)
@@ -536,7 +560,10 @@ static int glnvg__renderCreate(void* uptr)
 #endif
 	"\n";
 
+	//TODO(skade) make rotatable with uniform.
+	//in vec2 vertex is in pixel
 	static const char* fillVertShader =
+		"	uniform mat4 PT;\n"
 		"#ifdef NANOVG_GL3\n"
 		"	uniform vec2 viewSize;\n"
 		"	in vec2 vertex;\n"
@@ -552,8 +579,11 @@ static int glnvg__renderCreate(void* uptr)
 		"#endif\n"
 		"void main(void) {\n"
 		"	ftcoord = tcoord;\n"
+		"	float aspect = viewSize.x/viewSize.y;\n"
+		"	gl_Position = PT*vec4((2.0*vertex.x/viewSize.x - 1.0)*aspect, 1.0 - 2.0*vertex.y/viewSize.y, 0.0, 1);\n"
+		"	float div = PT[2][3] == 0.0 ? aspect : 1.0;\n"
+		"	gl_Position.x /= div;\n"
 		"	fpos = vertex;\n"
-		"	gl_Position = vec4(2.0*vertex.x/viewSize.x - 1.0, 1.0 - 2.0*vertex.y/viewSize.y, 0, 1);\n"
 		"}\n";
 
 	static const char* fillFragShader =
@@ -721,6 +751,12 @@ static int glnvg__renderCreate(void* uptr)
 	glnvg__checkError(gl, "create done");
 
 	glFinish();
+
+	float identity[16] = {1.0,0.0,0.0,0.0,
+						  0.0,1.0,0.0,0.0,
+						  0.0,0.0,1.0,0.0,
+						  0.0,0.0,0.0,1.0};
+	glnvg__setProj(gl,&identity[0]);
 
 	return 1;
 }
@@ -1193,7 +1229,6 @@ static void glnvg__renderFlush(void* uptr)
 
 		// Setup require GL state.
 		glUseProgram(gl->shader.prog);
-
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 		glFrontFace(GL_CCW);
@@ -1262,7 +1297,7 @@ static void glnvg__renderFlush(void* uptr)
 		glBindVertexArray(0);
 #endif
 		glDisable(GL_CULL_FACE);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glUseProgram(0);
 		glnvg__bindTexture(gl, 0);
 	}
@@ -1597,6 +1632,7 @@ NVGcontext* nvgCreateGLES3(int flags)
 	params.renderStroke = glnvg__renderStroke;
 	params.renderTriangles = glnvg__renderTriangles;
 	params.renderDelete = glnvg__renderDelete;
+	params.setProj = glnvg__setProj;
 	params.userPtr = gl;
 	params.edgeAntiAlias = flags & NVG_ANTIALIAS ? 1 : 0;
 

@@ -2681,7 +2681,7 @@ public:
 				Log("F11 Error reloading chart");
 		}
 		else if (code == SDL_SCANCODE_F12) {
-			ReloadBackground();
+			//ReloadBackground();
 		}
 	}
 
@@ -3192,6 +3192,8 @@ public:
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
 		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);
 		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);
+		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
+		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 		return bind;
 	}
 	
@@ -3207,6 +3209,28 @@ public:
 	int lehjGCenter(struct lua_State* L) {
 		g_center = Vector2(luaL_checknumber(L,2),luaL_checknumber(L,3));
 		return 0;
+	}
+
+	#include "GUI/nanovg_linAlg.h"
+
+	int lsetCamModMat(lua_State* L) {
+		m_camera.modTransform = Transform::Inverse(readMat4(L,2));
+		return 0;
+	}
+
+	int lgetProjMat(lua_State* L) {
+		Transform p = m_camera.CreateProjectionMatrix(false);
+		const float degToRad = (1.0f / 180.0f) * 3.14159265359;
+		int portrait = g_aspectRatio > 1 ? 0 : 1;
+		float fov = m_camera.fovs[portrait];
+		float offset = fov/90.;
+		float cot = cos(fov*0.5*degToRad)/sin(fov*0.5*degToRad);
+		Vector3 pos = {0.0,0.0,-cot};
+		Transform t = Transform::Translation(pos);
+		
+		Transform pt = p*t;
+		writeMat4(L,pt);
+		return 1;
 	}
 
 	int lCreateShadedMeshOnTrack(struct lua_State* L)

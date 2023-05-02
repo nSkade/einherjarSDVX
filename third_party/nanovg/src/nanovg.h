@@ -251,9 +251,6 @@ void nvgStrokePaint(NVGcontext* ctx, NVGpaint paint);
 // Sets current fill style to a solid color.
 void nvgFillColor(NVGcontext* ctx, NVGcolor color);
 
-// Shifts all colors by hueShift amount
-void nvgHueShift(NVGcontext* ctx, float hueShift);
-
 // Sets current fill style to a paint, which can be a one of the gradients or a pattern.
 void nvgFillPaint(NVGcontext* ctx, NVGpaint paint);
 
@@ -325,6 +322,15 @@ void nvgScale(NVGcontext* ctx, float x, float y);
 // There should be space for 6 floats in the return buffer for the values a-f.
 void nvgCurrentTransform(NVGcontext* ctx, float* xform);
 
+// Sets Projection Transform to create 3D effects.
+//   [0  4  8 12]
+//   [1  5  9 13]
+//   [2  6 10 14]
+//   [3  7 11 15]
+void nvgProjectTransform(NVGcontext* ctx, float* mat);
+
+// Resets Projection Transform to Identity.
+void nvgProjectTransformReset(NVGcontext* ctx);
 
 // The following functions can be used to make calculations on 2x3 transformation matrices.
 // A 2x3 matrix is represented as float[6].
@@ -616,6 +622,10 @@ void nvgTextMetrics(NVGcontext* ctx, float* ascender, float* descender, float* l
 // Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 int nvgTextBreakLines(NVGcontext* ctx, const char* string, const char* end, float breakRowWidth, NVGtextRow* rows, int maxRows);
 
+//TODO better?
+// 16 elements are needed in mat.
+void nvgSetProjMat(NVGcontext* ctx, float* mat);
+
 //
 // Internal Render API
 //
@@ -664,6 +674,7 @@ struct NVGparams {
 	void (*renderStroke)(void* uptr, NVGpaint* paint, NVGcompositeOperationState compositeOperation, NVGscissor* scissor, float fringe, float strokeWidth, const NVGpath* paths, int npaths);
 	void (*renderTriangles)(void* uptr, NVGpaint* paint, NVGcompositeOperationState compositeOperation, NVGscissor* scissor, const NVGvertex* verts, int nverts);
 	void (*renderDelete)(void* uptr);
+	void (*setProj)(void* uptr, float* mat);
 };
 typedef struct NVGparams NVGparams;
 

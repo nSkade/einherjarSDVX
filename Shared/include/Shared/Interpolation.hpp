@@ -36,7 +36,7 @@ namespace Interpolation
 	private:
 		void m_Set(float a, float b, float c, float d);
 		void m_Set(double a, double b, double c, double d);
-		float a, b, c, d;
+		float a, b, c, d; //TODO(skade) make const / change constructor so Sample can be optimized?
 	};
 
 	// Typedef for use with predefined functions
@@ -48,4 +48,6 @@ namespace Interpolation
 		return a + (b - a) * timeFunction(f);
 	}
 	int32 Lerp(int32 a, int32 b, float f, TimeFunction timeFunction = Linear);
+
+	float CosSpline(float in);
 }

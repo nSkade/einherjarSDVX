@@ -2,6 +2,7 @@
 #include "Scoring.hpp"
 #include "AsyncLoadable.hpp"
 #include <unordered_set>
+#include <Shared/Interpolation.hpp>
 
 #define BT_DELAY_FADE_DURATION (4 / 60.f)
 #define BT_HIT_EFFECT_DURATION (4 / 60.f)
@@ -56,6 +57,53 @@ struct TimedHitEffect : TimedEffect
 	void Draw(class RenderQueue& rq) override;
 
 	bool late;
+};
+
+enum SplineInterpType
+{
+	SIT_LINEAR,
+	SIT_COSINE,
+	SIT_CUBIC,
+};
+
+struct ModSpline
+{
+	SplineInterpType type = SIT_LINEAR;
+	uint32_t splineIndex = 0; //TODO(skade) use for updating spline for indipendency of offset.
+	float value = 0.f;
+	float offset = 0.f; ///< Offset from critline.
+};
+
+enum ModSplineType
+{
+	MST_XPOS,
+	MST_YPOS,
+	MST_ZPOS,
+	MST_XROT,
+	MST_YROT,
+	MST_ZROT,
+	MST_COUNT,
+};
+
+//TODO useless?
+enum ModLanes
+{
+	ML_BTA = 1,
+	ML_BTB = 2,
+	ML_BTC = 4,
+	ML_BTD = 8,
+	ML_FXL = 16,
+	ML_FXR = 32,
+	ML_LSL = 64,
+	ML_LSR = 128,
+};
+
+struct Mod
+{
+	uint32_t id; //TODO(skade) hash name for faster access
+	std::string name;
+	std::vector<ModSpline> splines[MST_COUNT];
+	uint8_t affectedLanes; ///< If Bit is set lane is affected.
 };
 
 /*
@@ -214,6 +262,8 @@ public:
 	bool hitEffectAutoplay = false;
 	float scrollSpeed = 0;
 
+	float Track::EvaluateSpline(const std::vector<std::vector<ModSpline>>& splines, uint32_t lane, float height);
+
 private:
 	// Laser track generators
 	class LaserTrackBuilder* m_laserTrackBuilder[2] = { 0 };
@@ -249,4 +299,21 @@ private:
 	float m_trackHide = 0.0f;
 	float m_trackHideSpeed = 0.0f;
 	float m_btOverFxScale = 0.8f;
+
+	/**
+	 * @brief Converts single index number to multibit index for affectedLanes.
+	 * @param index Button index 0-3 for bt, 4-5 for fx, 6-7 for laser.
+	*/
+	uint8_t ButtonIndexToAffectedLane(uint8_t index) { return 1 << (index+1); }
+
+	/**
+	 * @brief Iterates through all active mods and returns the new position.
+	 * @param p Current position of the button before any applied mods.
+	 * @param btx Button Index. 0-3 bt 4-5 fx 6-7 laser
+	*/
+	Vector3 EvaluateMods(Vector3 p, uint8_t btx);
+
+	// 0-7 for a,b,c,d,fxl,fxr,bl,rl
+	//std::vector<std::vector<ModSpline>> m_xSplines;
+	std::vector<Mod> m_mods;
 };

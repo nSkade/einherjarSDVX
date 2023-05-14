@@ -2479,9 +2479,11 @@ void Application::SetLuaBindings(lua_State *state)
 
 		// linar algebra
 		pushFuncToTable("MultMatVec", lmultMatVec);
-		pushFuncToTable("MultMatMat", lmultMatMat);
+		pushFuncToTable("MultMat", lmultMat);
 		pushFuncToTable("GetRotMat", lgetRotMat);
 		pushFuncToTable("GetTransMat", lgetTransMat);
+		pushFuncToTable("GetScaleMat", lgetScaleMat);
+		pushFuncToTable("GetInverse", lgetInverse);
 		
 		lua_setglobal(state, "gfx");
 	}

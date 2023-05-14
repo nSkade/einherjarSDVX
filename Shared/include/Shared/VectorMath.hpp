@@ -184,7 +184,7 @@ namespace VectorMath
 			case 2:
 				return z;
 			default:
-				break
+				break;
 			}
 			return x;
 		}

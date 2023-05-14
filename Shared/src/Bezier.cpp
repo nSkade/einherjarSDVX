@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+//TODO(skade) remove
 /*
 class TreeThingy
 {

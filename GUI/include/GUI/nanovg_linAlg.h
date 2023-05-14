@@ -38,52 +38,46 @@ static void dumpstack (lua_State *L) {
 
 static Transform readMat4(lua_State* L, int idx) {
 	Transform t;
-//	if (idx < 1 || !lua_istable(L,-idx))
-//		return t;
-	for (uint32_t i=1;i<=16;++i)
-		lua_rawgeti(L,idx,i);
-	for (uint32_t i=0;i<16;++i)
-		t[i] = luaL_checknumber(L,-16+i);
+	for (uint32_t i=0;i<16;++i) {
+		lua_rawgeti(L,idx,i+1);
+		t[i*4%16+i/4] = luaL_checknumber(L,-1); // Convert row wise to column wise.
+		lua_pop(L,1);
+	}
 	return t;
 }
 
 static Vector4 readVec4(lua_State* L, int idx) {
 	Vector4 v(0.0);
-//	if (idx < 1 || !lua_istable(L,-idx))
-//		return v;
-	for (uint32_t i=1;i<=4;++i)
+	for (uint32_t i = 1; i <= 4; ++i) {
 		lua_rawgeti(L,idx,i);
-	v.x = luaL_checknumber(L,-4);
-	v.y = luaL_checknumber(L,-3);
-	v.z = luaL_checknumber(L,-2);
-	v.w = luaL_checknumber(L,-1);
+		v[i-1] = luaL_checknumber(L,-1);
+		lua_pop(L,1);
+	}
 	return v;
 }
 
 static Vector3 readVec3(lua_State* L, int idx) {
 	Vector3 v(0.0);
-//	if (idx < 1 || !lua_istable(L,-idx))
-//		return v;
-	for (uint32_t i=1;i<=3;++i)
+	for (uint32_t i = 1; i <= 3; ++i) {
 		lua_rawgeti(L,idx,i);
-	v.x = luaL_checknumber(L,-3);
-	v.y = luaL_checknumber(L,-2);
-	v.z = luaL_checknumber(L,-1);
+		v[i-1] = luaL_checknumber(L,-1);
+		lua_pop(L,1);
+	}
 	return v;
 }
 
 static void writeMat4(lua_State* L, const Transform& t) {
-	//lua_createtable(L,16,0); //would be better but causes heap corruption
-	lua_newtable(L);
+	lua_createtable(L,16,0);
+	//lua_newtable(L);
 	for (uint32_t i=0;i<16;++i) {
-		lua_pushnumber(L, t[i]);
+		lua_pushnumber(L, t[i*4%16+i/4]); // Convert index from column to row wise.
 		lua_rawseti(L,-2,i+1);
 	}
 }
 
 static void writeVec4(lua_State* L, const Vector4& v) {
-	//lua_createtable(L,4,0); //would be better but causes heap corruption
-	lua_newtable(L);
+	lua_createtable(L,4,0);
+	//lua_newtable(L);
 	for (uint32_t i=0;i<4;++i) {
 		lua_pushnumber(L, v[i]);
 		lua_rawseti(L,-2,i+1);
@@ -91,20 +85,27 @@ static void writeVec4(lua_State* L, const Vector4& v) {
 }
 
 static void writeVec3(lua_State* L, const Vector3& v) {
-	//lua_createtable(L,3,0); //would be better but causes heap corruption
-	lua_newtable(L);
+	lua_createtable(L,3,0);
+	//lua_newtable(L);
 	for (uint32_t i=0;i<3;++i) {
 		lua_pushnumber(L, v[i]);
 		lua_rawseti(L,-2,i+1);
 	}
 }
 
-static int lmultMatMat(lua_State* L) {
-	Transform t1 = readMat4(L,1);
-	Transform t2 = readMat4(L,2);
-	
-	Transform res = t1*t2;
-	writeMat4(L,res);
+//TODO rename to multMat
+static int lmultMat(lua_State* L) {
+	int n = lua_gettop(L); // number of arguments
+	Transform r;
+	for (uint32_t i = 1; i <= n; i++) {
+		if (!lua_istable(L, i)) {
+			lua_pushstring(L, "incorrect argument");
+			lua_error(L);
+		}
+		Transform t = readMat4(L,i);
+		r = r*t;
+	}
+	writeMat4(L,r);
 	return 1;
 }
 
@@ -131,7 +132,13 @@ static int lgetTransMat(lua_State* L) {
 	return 1;
 }
 
-//TODO(skade) implement binding
+static int lgetScaleMat(lua_State* L) {
+	Vector3 vt = readVec3(L,1);
+	Transform t = Transform::Scale(vt);
+	writeMat4(L,t);
+	return 1;
+}
+
 static int lgetInverse(lua_State* L) {
 	Transform t = readMat4(L,1);
 	t = Transform::Inverse(t);

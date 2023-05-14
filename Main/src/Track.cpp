@@ -22,6 +22,19 @@ Track::Track()
 		trackLength = 12.0f;
 	else
 		trackLength = 10.0f;
+
+//	for (uint32_t i=0;i<7;++i)
+//		m_xSplines.push_back(std::vector<ModSpline>());
+//
+//	//TODO(skade)
+//	for (uint32_t i = 0; i < 15; ++i) {
+//		ModSpline ms;
+//		ms.type = SIT_COSINE;
+//		ms.splineIndex = i;
+//		ms.offset = (float) i / 15.f;
+//		ms.value = -float(i%2)*.75f*(.5f+.5f*std::sin(float(i)/15.f*M_PI*2.f));
+//		m_xSplines[0].push_back(ms);
+//	}
 }
 
 Track::~Track()
@@ -446,6 +459,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 	float position = dontUseScrollSpeedForPos ? playback.TimeToViewDistanceIgnoringScrollSpeed(obj->time) : playback.TimeToViewDistance(obj->time);
 	position /= viewRange;
+	// position is now between 0.0 and 1.0
 
 	//TODO(skade) provide std::vector<float> of intersections at height from 0.0 to 1.0
 
@@ -459,6 +473,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		float xscale = 1.0f;
 		float width;
 		float xposition;
+		float zposition = 0.f;
 		float length;
 		float currentObjectGlow = active ? objectGlow : 0.3f;
 		int currentObjectGlowState = active ? 2 + objectGlowState : 0;
@@ -508,9 +523,17 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			mat = holdButtonMaterial;
 		}
 
-		Vector3 buttonPos = Vector3(xposition, trackLength * position, 0.0f);
+		//xposition += EvaluateSpline(m_xSplines,mobj->button.index,position);
+
+		//Vector3 buttonPos = EvaluateMods(Vector3(xposition,position,zposition), mobj->button.index);
+
+		Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
 
 		Transform buttonTransform = trackOrigin;
+		
+		//TODO
+		//buttonTransform *= GLOBAL_ROT_MOD*Transform::Translation(buttonPos)*LOCAL_ROT_MODS;
+		
 		buttonTransform *= Transform::Translation(buttonPos);
 		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
 		if (isHold) { // Hold Note?
@@ -874,3 +897,83 @@ void Track::OnButtonReleasedDelta(Input::Button buttonCode, int32 delta)
 {
 	OnButtonReleased(buttonCode);
 }
+
+float Track::EvaluateSpline(const std::vector<std::vector<ModSpline>>& splines, uint32_t lane, float height)
+{
+	height = std::max(0.f,height); //TODO(skade)
+	
+	if (splines[lane].size() == 0)
+		return 0.f;
+	
+	uint32_t idx = splines[lane].size();
+	for (uint32_t i = 0; i < splines[lane].size(); ++i) {
+		if (height <= splines[lane][i].offset) {
+			idx = i;
+			break;
+		}
+	}
+	float bOff = 0.f;
+	float eOff = 1.f;
+	float bVal = 0.f;
+	float eVal = 0.f;
+	
+	if (idx == 0) { // interpolate with 0 offset on start
+		eVal = splines[lane][idx].value;
+		eOff = splines[lane][idx].offset;
+	}
+	else if (idx == splines[lane].size()) { // interpolate with 0 offset on end
+		bVal = splines[lane][idx-1].value;
+		bOff = splines[lane][idx-1].offset;
+		idx = idx-1; //TODO(skade) not clean
+	}
+	else { // interpolate between 2 splines
+		bVal = splines[lane][idx-1].value;
+		bOff = splines[lane][idx-1].offset;
+		eVal = splines[lane][idx].value;
+		eOff = splines[lane][idx].offset;
+	}
+	
+	// get button pos relative to 2 splines
+	float length = eOff-bOff;
+	if (length==0.f)
+		return splines[lane][idx].value;
+	float rOff = height-bOff;
+	
+	float s = 0.f;
+	switch (splines[lane][idx].type)
+	{
+	case SIT_CUBIC: //TODO(skade) more freedom needed?
+		s = Interpolation::CubicBezier(Interpolation::Predefined::Linear).Sample(rOff);
+		break;
+	case SIT_COSINE:
+		s = Interpolation::CosSpline(rOff/length);
+		break;
+	case SIT_LINEAR:
+	default:
+		s = rOff/length;
+		break;
+	}
+	
+	// interpolate between 2 values
+	float val = bVal+s*(eVal-bVal);
+	return val;
+}
+
+Vector3 Track::EvaluateMods(Vector3 p, uint8_t btx)
+{
+	Vector3 r = p;
+
+	uint8_t lane = ButtonIndexToAffectedLane(btx);
+
+	// iterate through all active mods and evaluate.
+	for (uint32_t i = 0; i < m_mods.size(); ++i) {
+		if (m_mods[i].affectedLanes & lane)
+			continue;
+		for (uint32_t j = 0; j < MST_COUNT; ++j) {
+			
+		}
+	}
+
+	return r;
+}
+

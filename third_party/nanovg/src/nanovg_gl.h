@@ -517,18 +517,19 @@ static void glnvg__setProj(void* uptr, float* mat)
 	GLNVGcontext* gl = (GLNVGcontext*)uptr;
 	glUseProgram(gl->shader.prog);
 #if NANOVG_GL_USE_UNIFORMBUFFER
-		// Upload ubo for frag shaders
-		glBindBuffer(GL_UNIFORM_BUFFER, gl->fragBuf);
-		glBufferData(GL_UNIFORM_BUFFER, gl->nuniforms * gl->fragSize, gl->uniforms, GL_STREAM_DRAW);
+	// Upload ubo for frag shaders
+	glBindBuffer(GL_UNIFORM_BUFFER, gl->fragBuf);
 #endif
 
-		// Upload vertex data
-#if defined NANOVG_GL3
-		glBindVertexArray(gl->vertArr);
+// Upload vertex data
+//TODO(skade) remove?
+#if  defined NANOVG_GL3
+	glBindVertexArray(gl->vertArr);
 #endif
 	glBindBuffer(GL_ARRAY_BUFFER, gl->vertBuf);
 	glUniformMatrix4fv(gl->shader.loc[GLNVG_LOC_PT], 1, GL_FALSE, mat);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glUseProgram(0);
 }
 

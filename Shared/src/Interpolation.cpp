@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "Interpolation.hpp"
 #include "VectorMath.hpp"
+#define _USE_MATH_DEFINES 
+#include <math.h>
 
 namespace Interpolation
 {
@@ -60,7 +62,7 @@ namespace Interpolation
 		float in3 = in2*in;
 		Vector2 r =  Vector2(0,0) * inv3 +
 			Vector2(a,b) * 3 * inv2 * in +
-			Vector2(c, d) * 3 * inv * in2 +
+			Vector2(c,d) * 3 * inv * in2 +
 			Vector2(1,1) * in3;
 		return r.y;
 	}
@@ -88,4 +90,13 @@ namespace Interpolation
 		return a + (int32)((float)(b - a) * timeFunction(f));
 	}
 
+	float CosSpline(float in)
+	{
+		assert(in >= 0);
+		assert(in <= 1.0f);
+		
+		float r = (1.f-std::cosf(in*M_PI))*.5f;
+
+		return r;
+	}
 }

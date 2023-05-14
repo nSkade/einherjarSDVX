@@ -3188,12 +3188,14 @@ public:
 	}
 
 	virtual LuaBindable* MakeModsLuaBindable(struct lua_State* L) {
-		auto* bind = new LuaBindable(L, "mods");
+		auto* bind = new LuaBindable(L, "mod");
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
 		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);
 		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
+
+		//bind->AddFunction("SetXSpline")
 		return bind;
 	}
 	

@@ -71,6 +71,9 @@ struct GUIState
 	int scissorOffset;
 	Vector<Transform> transformStack;
 	Vector<int> nvgFonts;
+
+	Transform modMatChart;
+	Transform modMatSkin;
 };
 
 GUIState g_guiState;
@@ -1171,10 +1174,37 @@ static int lHueShift(lua_State* L /*float hueShift*/) {
 //TODO better place
 #include "nanovg_linAlg.h"
 
-//TODO Set
+//TODO rename to NVG?
 static int lsetProjMat(lua_State* L) {
 	Transform t = readMat4(L,1);
+	g_guiState.modMatChart = t;
+	t = t*g_guiState.modMatSkin;
 	nvgSetProjMat(g_guiState.vg,&t[0]);
+	return 0;
+}
+
+static int lsetProjMatSkin(lua_State* L) {
+	Transform t = readMat4(L,1);
+	g_guiState.modMatSkin = t;
+	t = g_guiState.modMatChart*t;
+	nvgSetProjMat(g_guiState.vg,&t[0]);
+	return 0;
+}
+
+static int lgetProjMatChart(lua_State* L) {
+	writeMat4(L,g_guiState.modMatChart);
+	return 1;
+}
+
+static int lgetProjMatSkin(lua_State* L) {
+	writeMat4(L,g_guiState.modMatSkin);
+	return 1;
+}
+static int lTransform(lua_State* L)
+{
+	Transform t = readMat4(L,1);
+	g_guiState.t *= t;
+	nvgTransform(g_guiState.vg,t[0],t[1],t[4],t[5],t[12],t[13]);
 	return 0;
 }
 

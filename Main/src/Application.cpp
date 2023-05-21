@@ -1425,6 +1425,12 @@ void Application::RenderTickables()
 	}
 
 	m_renderStateBase.projectionTransform = GetGUIProjection();
+	
+	Transform identity;
+	
+	//TODO(skade)
+	//nvgSetProjMat(g_guiState.vg,&identity[0]);
+	
 	if (m_showFps)
 	{
 		nvgReset(g_guiState.vg);
@@ -1441,6 +1447,8 @@ void Application::RenderTickables()
 		//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
 		//nvgFill(g_guiState.vg);
 	}
+	//TODO(skade)
+	//nvgSetProjMat(g_guiState.vg,&(g_guiState.modMatChart*g_guiState.modMatSkin)[0]);
 	nvgEndFrame(g_guiState.vg);
 	m_renderQueueBase.Process();
 	glCullFace(GL_FRONT);
@@ -2364,6 +2372,9 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("Translate", lTranslate);
 		pushFuncToTable("Scale", lScale);
 		pushFuncToTable("Rotate", lRotate);
+		
+		pushFuncToTable("Transform", lTransform);
+
 		pushFuncToTable("ResetTransform", lResetTransform);
 		pushFuncToTable("LoadFont", lLoadFont);
 		pushFuncToTable("LoadSkinFont", lLoadSkinFont);
@@ -2474,12 +2485,16 @@ void Application::SetLuaBindings(lua_State *state)
 		pushIntToTable("BLEND_OP_COPY", NVGcompositeOperation::NVG_COPY);
 		pushIntToTable("BLEND_OP_XOR", NVGcompositeOperation::NVG_XOR);
 
-		
-		pushFuncToTable("SetProjMat", lsetProjMat);
+		//TODO(skade) better names
+
+		pushFuncToTable("SetNVGprojMat", lsetProjMat);
+		pushFuncToTable("SetNVGprojMatSkin", lsetProjMatSkin);
+		pushFuncToTable("GetNVGprojMat", lgetProjMatChart);
+		pushFuncToTable("GetNVGprojMatSkin", lgetProjMatSkin);
 
 		// linar algebra
-		pushFuncToTable("MultMatVec", lmultMatVec);
-		pushFuncToTable("MultMat", lmultMat);
+		pushFuncToTable("MultMatVec", lmultMatVec); // LAxMatVec
+		pushFuncToTable("MultMat", lmultMat);		// LAxMat
 		pushFuncToTable("GetRotMat", lgetRotMat);
 		pushFuncToTable("GetTransMat", lgetTransMat);
 		pushFuncToTable("GetScaleMat", lgetScaleMat);

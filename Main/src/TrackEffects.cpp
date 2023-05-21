@@ -153,7 +153,7 @@ TimedHitEffect::TimedHitEffect(bool late) : TimedEffect(0.75f), late(late)
 void TimedHitEffect::Draw(class RenderQueue& rq)
 {
 	float x = 0.0f;
-    float y = 0.5f;
+	float y = 0.5f;
 
 	float iScale = 1.0f;
 	uint32 on = (uint32)floorf(time * 20) % 2;

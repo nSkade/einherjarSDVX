@@ -76,12 +76,9 @@ struct ModSpline
 
 enum ModSplineType
 {
-	MST_XPOS,
-	MST_YPOS,
-	MST_ZPOS,
-	MST_XROT,
-	MST_YROT,
-	MST_ZROT,
+	MST_X,
+	MST_Y,
+	MST_Z,
 	MST_COUNT,
 };
 
@@ -98,12 +95,20 @@ enum ModLanes
 	ML_LSR = 128,
 };
 
+enum ModType {
+	MT_BASEROT,
+	MT_TRANSLATE,
+	MT_GLOBROT,
+	MT_COUNT,
+};
+
 struct Mod
 {
-	uint32_t id; //TODO(skade) hash name for faster access
-	std::string name;
+	uint32_t id = 0; //TODO(skade) hash name for faster access
 	std::vector<ModSpline> splines[MST_COUNT];
-	uint8_t affectedLanes; ///< If Bit is set lane is affected.
+	Transform gt; // global transform apllied last
+	uint8_t affectedLanes = 0; ///< If Bit is set lane is affected.
+	bool active = false;
 };
 
 /*
@@ -163,6 +168,8 @@ public:
 	void DrawLaneLight(RenderQueue& rq);
 	void DrawCalibrationCritLine(RenderQueue& rq);
 
+	void DrawLineMesh(RenderQueue& rq);
+
 	Vector3 TransformPoint(const Vector3& p);
 
 	// Adds a sprite effect to the track
@@ -215,6 +222,9 @@ public:
 	Texture trackCoverTexture;
 	Texture trackTickTexture;
 
+	Mesh m_lineMesh[4];
+	Material m_lineMaterial;
+
 	/* Object graphics */
 	Mesh buttonMesh;
 	Texture buttonTexture;
@@ -262,7 +272,9 @@ public:
 	bool hitEffectAutoplay = false;
 	float scrollSpeed = 0;
 
-	float Track::EvaluateSpline(const std::vector<std::vector<ModSpline>>& splines, uint32_t lane, float height);
+	float EvaluateSpline(const std::vector<ModSpline>& spline, float height);
+
+	void AddMod(std::string modName, ModType type);
 
 private:
 	// Laser track generators
@@ -304,16 +316,17 @@ private:
 	 * @brief Converts single index number to multibit index for affectedLanes.
 	 * @param index Button index 0-3 for bt, 4-5 for fx, 6-7 for laser.
 	*/
-	uint8_t ButtonIndexToAffectedLane(uint8_t index) { return 1 << (index+1); }
+	uint8_t ButtonIndexToAffectedLane(uint8_t index) { return 1 << index; }
 
 	/**
-	 * @brief Iterates through all active mods and returns the new position.
-	 * @param p Current position of the button before any applied mods.
+	 * @brief Iterates through list of mods and returns the Offset Vector.
+	 * @param mods List of mods to iterate through.
+	 * @param p Current position of the button before any applied mods. //TODO
 	 * @param btx Button Index. 0-3 bt 4-5 fx 6-7 laser
 	*/
-	Vector3 EvaluateMods(Vector3 p, uint8_t btx);
+	Vector3 EvaluateMods(const std::vector<Mod>& mods, float yOffset, uint8_t btx);
 
-	// 0-7 for a,b,c,d,fxl,fxr,bl,rl
-	//std::vector<std::vector<ModSpline>> m_xSplines;
-	std::vector<Mod> m_mods;
+	std::vector<Mod> m_modsRot;
+	std::vector<Mod> m_modsTrans;
+	std::vector<Mod> m_modsGRot;
 };

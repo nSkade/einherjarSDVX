@@ -7,6 +7,8 @@
 #include "AsyncAssetLoader.hpp"
 #include <unordered_set>
 
+#include <functional>
+
 const float Track::trackWidth = 1.0f;
 const float Track::buttonWidth = 1.0f / 6;
 const float Track::laserWidth = buttonWidth;
@@ -23,18 +25,21 @@ Track::Track()
 	else
 		trackLength = 10.0f;
 
-//	for (uint32_t i=0;i<7;++i)
-//		m_xSplines.push_back(std::vector<ModSpline>());
-//
-//	//TODO(skade)
-//	for (uint32_t i = 0; i < 15; ++i) {
-//		ModSpline ms;
-//		ms.type = SIT_COSINE;
-//		ms.splineIndex = i;
-//		ms.offset = (float) i / 15.f;
-//		ms.value = -float(i%2)*.75f*(.5f+.5f*std::sin(float(i)/15.f*M_PI*2.f));
-//		m_xSplines[0].push_back(ms);
-//	}
+
+	Mod transX;
+	transX.active = true;
+	transX.affectedLanes = ML_BTA | ML_BTC;
+	//TODO(skade)
+	for (uint32_t i = 0; i < 15; ++i) {
+		ModSpline ms;
+		ms.type = SIT_LINEAR;
+		ms.splineIndex = i;
+		ms.offset = (float) i / 15.f;
+		ms.value = -(.5f-.5f*std::cos(float(i)/15.f*M_PI*2.f));
+		transX.splines[MST_X].push_back(ms);
+	}
+
+	m_modsTrans.push_back(transX);
 }
 
 Track::~Track()
@@ -111,6 +116,8 @@ bool Track::AsyncLoad()
 	loader->AddMaterial(blackLaserMaterial, "blackLaser");
 	loader->AddMaterial(trackOverlay, "overlay");
 
+	loader->AddMaterial(m_lineMaterial, "lineT");
+
 	return loader->Load();
 }
 
@@ -161,6 +168,11 @@ bool Track::AsyncFinalize()
 	fxbuttonMesh = MeshGenerators::Quad(g_gl, Vector2(0.0f, 0.0f), Vector2(fxbuttonWidth, fxbuttonLength));
 
 	holdButtonMaterial->opaque = false;
+	
+	for (uint32_t i=0;i<4;++i) {
+		m_lineMesh[i] = MeshRes::Create(g_gl);
+		m_lineMesh[i]->SetPrimitiveType(PrimitiveType::LineStrip);
+	}
 
 	for (auto &laserTexture : laserTextures)
 	{
@@ -406,12 +418,12 @@ void Track::DrawBase(class RenderQueue& rq)
 	bool mode_seven = true; //TODO make configurable
 	
 	if (centerSplit != 0.0f || mode_seven) {
-		rq.Draw(transform * Transform::Translation({-centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
-		rq.Draw(transform * Transform::Translation({-centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[2], trackMaterial, params);
-		rq.Draw(transform * Transform::Translation({ centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[3], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[2], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[3], trackMaterial, params);
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[4], trackMaterial, params);
-		rq.Draw(transform * Transform::Translation({ centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[5], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[5], trackMaterial, params);
 	} else {
 		rq.Draw(transform, trackMesh, trackMaterial, params);
 	}
@@ -429,12 +441,12 @@ void Track::DrawBase(class RenderQueue& rq)
 			//TODO(skade)
 			//rq.Draw(tT * Transform::Translation({ centerSplit * 1.075f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params); // Skade-code * 0.5f ->  
 			//rq.Draw(tT * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
-			rq.Draw(tT * Transform::Translation({-centerSplit * 0.75f * buttonWidth + 0.33f*buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[0], buttonMaterial, params);
+			rq.Draw(tT * Transform::Translation({-centerSplit * 0.5f * buttonWidth + 0.33f*buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[0], buttonMaterial, params);
 			rq.Draw(tT * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[1], buttonMaterial, params);
-			rq.Draw(tT * Transform::Translation({-centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[2], buttonMaterial, params);
-			rq.Draw(tT * Transform::Translation({ centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[3], buttonMaterial, params);
+			rq.Draw(tT * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[2], buttonMaterial, params);
+			rq.Draw(tT * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[3], buttonMaterial, params);
 			rq.Draw(tT * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[4], buttonMaterial, params);
-			rq.Draw(tT * Transform::Translation({ centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[5], buttonMaterial, params);
+			rq.Draw(tT * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[5], buttonMaterial, params);
 		}
 		else if (true) {
 			
@@ -525,16 +537,19 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		//xposition += EvaluateSpline(m_xSplines,mobj->button.index,position);
 
-		//Vector3 buttonPos = EvaluateMods(Vector3(xposition,position,zposition), mobj->button.index);
+		//Vector3 buttonPos = EvaluateMod(Vector3(xposition,position,zposition), mobj->button.index);
 
 		Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
+		Vector3 baseRot = EvaluateMods(m_modsRot,position,mobj->button.index);
+		Vector3 baseTrans = EvaluateMods(m_modsTrans,position,mobj->button.index);
+		Vector3 globalRot = EvaluateMods(m_modsGRot,position,mobj->button.index);
 
 		Transform buttonTransform = trackOrigin;
 		
-		//TODO
-		//buttonTransform *= GLOBAL_ROT_MOD*Transform::Translation(buttonPos)*LOCAL_ROT_MODS;
+		//TODO(skade) Transform Spline better?
+		buttonTransform *= Transform::Rotation(globalRot)*Transform::Translation(buttonPos+baseTrans)*Transform::Rotation(baseRot);
+		//buttonTransform *= Transform::Translation(buttonPos);
 		
-		buttonTransform *= Transform::Translation(buttonPos);
 		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
 		if (isHold) { // Hold Note?
 			float trackScale = 0.0f;
@@ -726,12 +741,12 @@ void Track::DrawTrackCover(RenderQueue& rq)
 			//TODO(skade)
 			//rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], trackCoverMaterial, p);
 			//rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], trackCoverMaterial, p);
-			rq.Draw(t * Transform::Translation({-centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[0], trackCoverMaterial, p);
+			rq.Draw(t * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[0], trackCoverMaterial, p);
 			rq.Draw(t * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[1], trackCoverMaterial, p);
-			rq.Draw(t * Transform::Translation({-centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[2], trackCoverMaterial, p);
-			rq.Draw(t * Transform::Translation({ centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[3], trackCoverMaterial, p);
+			rq.Draw(t * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[2], trackCoverMaterial, p);
+			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[3], trackCoverMaterial, p);
 			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[4], trackCoverMaterial, p);
-			rq.Draw(t * Transform::Translation({ centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[5], trackCoverMaterial, p);
+			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[5], trackCoverMaterial, p);
 		}
 		else
 		{
@@ -755,12 +770,12 @@ void Track::DrawLaneLight(RenderQueue& rq)
 			//TODO(skade)
 			//rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], laneLightMaterial, p);
 			//rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], laneLightMaterial, p);
-			rq.Draw(t * Transform::Translation({-centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[0], laneLightMaterial, p);
+			rq.Draw(t * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[0], laneLightMaterial, p);
 			rq.Draw(t * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[1], laneLightMaterial, p);
-			rq.Draw(t * Transform::Translation({-centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[2], laneLightMaterial, p);
-			rq.Draw(t * Transform::Translation({ centerSplit * 0.25f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[3], laneLightMaterial, p);
+			rq.Draw(t * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[2], laneLightMaterial, p);
+			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[3], laneLightMaterial, p);
 			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[4], laneLightMaterial, p);
-			rq.Draw(t * Transform::Translation({ centerSplit * 0.75f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[5], laneLightMaterial, p);
+			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackCoverMesh[5], laneLightMaterial, p);
 		}
 		else
 		{
@@ -784,6 +799,36 @@ void Track::DrawCalibrationCritLine(RenderQueue& rq)
 		params.SetParameter("mainTex", whiteTexture);
 		rq.Draw(t, calibrationDarkMesh, spriteMaterial, params);
 	}
+}
+
+void Track::DrawLineMesh(RenderQueue& rq)
+{
+	//TODO(skade) draw lines
+	//for (uint32_t i=0;i<6;++i) { //TODO to ML_COUNT
+	uint32_t pointCount = 32;
+
+	for (uint32_t i = 0; i < 4; ++i) {
+		Vector<MeshGenerators::SimpleVertex> data;
+		std::vector<Vector3> offsets;
+		
+		//calculate offsets
+		for (uint32_t j = 0; j < pointCount; ++j) {
+			Vector3 v = EvaluateMods(m_modsTrans,((float)j)/pointCount,i);
+			offsets.push_back(v);
+		}
+		
+		for (uint32_t j = 0; j < pointCount; ++j) {
+			MeshGenerators::SimpleVertex v;
+			float xposition = buttonTrackWidth * -0.5f + buttonWidth * i + buttonWidth*.5f;
+			v.pos.x = offsets[j][0]+xposition;
+			v.pos.y = offsets[j][1]+trackLength*((float)j)/pointCount;
+			v.pos.z = offsets[j][2];
+			data.push_back(v);
+		}
+		m_lineMesh[i]->SetData(data);
+		rq.Draw(trackOrigin, m_lineMesh[i], m_lineMaterial);
+	}
+	//}
 }
 
 Vector3 Track::TransformPoint(const Vector3 & p)
@@ -898,16 +943,16 @@ void Track::OnButtonReleasedDelta(Input::Button buttonCode, int32 delta)
 	OnButtonReleased(buttonCode);
 }
 
-float Track::EvaluateSpline(const std::vector<std::vector<ModSpline>>& splines, uint32_t lane, float height)
+float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 {
 	height = std::max(0.f,height); //TODO(skade)
 	
-	if (splines[lane].size() == 0)
+	if (spline.size() == 0)
 		return 0.f;
 	
-	uint32_t idx = splines[lane].size();
-	for (uint32_t i = 0; i < splines[lane].size(); ++i) {
-		if (height <= splines[lane][i].offset) {
+	uint32_t idx = spline.size();
+	for (uint32_t i = 0; i < spline.size(); ++i) {
+		if (height <= spline[i].offset) {
 			idx = i;
 			break;
 		}
@@ -918,29 +963,29 @@ float Track::EvaluateSpline(const std::vector<std::vector<ModSpline>>& splines, 
 	float eVal = 0.f;
 	
 	if (idx == 0) { // interpolate with 0 offset on start
-		eVal = splines[lane][idx].value;
-		eOff = splines[lane][idx].offset;
+		eVal = spline[idx].value;
+		eOff = spline[idx].offset;
 	}
-	else if (idx == splines[lane].size()) { // interpolate with 0 offset on end
-		bVal = splines[lane][idx-1].value;
-		bOff = splines[lane][idx-1].offset;
+	else if (idx == spline.size()) { // interpolate with 0 offset on end
+		bVal = spline[idx-1].value;
+		bOff = spline[idx-1].offset;
 		idx = idx-1; //TODO(skade) not clean
 	}
-	else { // interpolate between 2 splines
-		bVal = splines[lane][idx-1].value;
-		bOff = splines[lane][idx-1].offset;
-		eVal = splines[lane][idx].value;
-		eOff = splines[lane][idx].offset;
+	else { // interpolate between 2 spline
+		bVal = spline[idx-1].value;
+		bOff = spline[idx-1].offset;
+		eVal = spline[idx].value;
+		eOff = spline[idx].offset;
 	}
 	
-	// get button pos relative to 2 splines
+	// get button pos relative to 2 spline
 	float length = eOff-bOff;
 	if (length==0.f)
-		return splines[lane][idx].value;
+		return spline[idx].value;
 	float rOff = height-bOff;
 	
 	float s = 0.f;
-	switch (splines[lane][idx].type)
+	switch (spline[idx].type)
 	{
 	case SIT_CUBIC: //TODO(skade) more freedom needed?
 		s = Interpolation::CubicBezier(Interpolation::Predefined::Linear).Sample(rOff);
@@ -959,21 +1004,43 @@ float Track::EvaluateSpline(const std::vector<std::vector<ModSpline>>& splines, 
 	return val;
 }
 
-Vector3 Track::EvaluateMods(Vector3 p, uint8_t btx)
+Vector3 Track::EvaluateMods(const std::vector<Mod>& mods, float yOffset, uint8_t btx)
 {
-	Vector3 r = p;
+	Vector3 r;
 
 	uint8_t lane = ButtonIndexToAffectedLane(btx);
 
 	// iterate through all active mods and evaluate.
-	for (uint32_t i = 0; i < m_mods.size(); ++i) {
-		if (m_mods[i].affectedLanes & lane)
+	for (uint32_t i = 0; i < mods.size(); ++i) {
+		
+		if (!(mods[i].affectedLanes & lane) || !mods[i].active)
 			continue;
 		for (uint32_t j = 0; j < MST_COUNT; ++j) {
-			
+			if (mods[i].splines[j].size() > 0) {
+				r[j] += EvaluateSpline(mods[i].splines[j],yOffset);
+			}
 		}
 	}
 
 	return r;
 }
 
+void Track::AddMod(std::string modName, ModType type) {
+	Mod nm;
+	nm.id = std::hash<std::string>{}(modName);
+
+	switch (type)
+	{
+	case MT_BASEROT:
+		m_modsRot.push_back(nm);
+		break;
+	case MT_TRANSLATE:
+		m_modsTrans.push_back(nm);
+		break;
+	case MT_GLOBROT:
+		m_modsGRot.push_back(nm);
+		break;
+	default:
+		break;
+	}
+}

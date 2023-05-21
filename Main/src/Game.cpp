@@ -895,6 +895,11 @@ public:
 					m_paused = true;
 				}
 
+				bool btp = g_input.GetButton(Input::Button::BT_0) ||
+						   g_input.GetButton(Input::Button::BT_1) ||
+						   g_input.GetButton(Input::Button::BT_2) ||
+						   g_input.GetButton(Input::Button::BT_3);
+				if (btp) scroll *= 3;
 				m_lastMapTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 500), 0, m_endTime);
 				JumpTo(m_lastMapTime);
 			}
@@ -1062,6 +1067,7 @@ public:
 		}
 		if(m_showCover)
 			m_track->DrawTrackCover(hitObjectsTrackCoverRq);
+		m_track->DrawLineMesh(renderQueue);
 
 		if (m_renderFastGui || m_renderDebugHUD)
 			m_track->DrawCalibrationCritLine(hitObjectsTrackCoverRq);
@@ -3193,6 +3199,7 @@ public:
 		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);
 		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
+		bind->AddFunction("GetCamModMat",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 
 		//bind->AddFunction("SetXSpline")
@@ -3216,8 +3223,13 @@ public:
 	#include "GUI/nanovg_linAlg.h"
 
 	int lsetCamModMat(lua_State* L) {
-		m_camera.modTransform = Transform::Inverse(readMat4(L,2));
+		m_camera.modTransform = readMat4(L,2);
 		return 0;
+	}
+
+	int lgetCamModMat(lua_State* L) {
+		writeMat4(L,m_camera.modTransform);
+		return 1;
 	}
 
 	int lgetProjMat(lua_State* L) {

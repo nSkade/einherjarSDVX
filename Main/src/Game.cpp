@@ -707,6 +707,8 @@ public:
 		m_scoring.SetInput(&g_input);
 		m_scoring.Reset(m_playOptions.range);
 
+		m_track->RemoveAllMods();
+
 		return true;
 	}
 
@@ -1923,6 +1925,7 @@ public:
 
 		m_scoring.FinishGame();
 		m_ended = true;
+		m_track->RemoveAllMods();
 	}
 	void OnScoreScreenLoaded(IAsyncLoadableApplicationTickable* tickable)
 	{
@@ -3196,13 +3199,22 @@ public:
 	virtual LuaBindable* MakeModsLuaBindable(struct lua_State* L) {
 		auto* bind = new LuaBindable(L, "mod");
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
-		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);
-		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);
+		bind->AddFunction("GetHispeed",this,&Game_Impl::lGetHispeed);
+		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO deprecated //add support for nvg3dmat on shadedMesh
+		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO deprecated
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
 		bind->AddFunction("GetCamModMat",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 
-		//bind->AddFunction("SetXSpline")
+		bind->AddFunction("addMod"            , this,&Game_Impl::laddMod);
+		bind->AddFunction("setEMod"           , this,&Game_Impl::lsetEMod);
+		bind->AddFunction("createSpline"      , this,&Game_Impl::lcreateSpline);
+		bind->AddFunction("setModSpline"      , this,&Game_Impl::lsetModSpline);
+		bind->AddFunction("setSplineProperty" , this,&Game_Impl::lsetSplineProperty);
+		bind->AddFunction("setEModSplineType" , this,&Game_Impl::lsetEModSplineType);
+		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
+		
+		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
 		return bind;
 	}
 	
@@ -3210,6 +3222,10 @@ public:
 	int lSetHispeed(struct lua_State* L) {
 		m_hispeed = luaL_checknumber(L,2);
 		return 0;
+	}
+	int lGetHispeed(struct lua_State* L) {
+		lua_pushnumber(L, m_hispeed);
+		return 1;
 	}
 	int lehjGScale(struct lua_State* L) {
 		g_scale = luaL_checknumber(L,2);
@@ -3219,6 +3235,67 @@ public:
 		g_center = Vector2(luaL_checknumber(L,2),luaL_checknumber(L,3));
 		return 0;
 	}
+
+	//BEGIN TRACK MOD SPLINE
+	//TODO(skade) move out
+
+	int ltoggleModLines(struct lua_State* L) {
+		int t = luaL_checknumber(L,2);
+		m_track->drawModLines = t != 0;
+		return 0;
+	}
+
+	int laddMod(struct lua_State* L) {
+		const char* s = lua_tostring(L,2);
+		int t = luaL_checknumber(L,3);
+		m_track->AddMod(std::string(s),(Track::ModType) t);
+		return 0;
+	}
+
+	int lsetEMod(lua_State* L) {
+		const char* s = lua_tostring(L,2);
+		m_track->SetEditMod(std::string(s));
+		return 0;
+	}
+
+	int lcreateSpline(lua_State* L) {
+		int a = luaL_checknumber(L,2);
+		m_track->CreateSpline(Track::MST_NONE,a);
+		return 0;
+	}
+	
+	int lsetModSpline(lua_State* L) {
+		int i = luaL_checknumber(L,2);
+		float v = luaL_checknumber(L,3);
+		m_track->SetModSpline(Track::MST_NONE,i,v);
+		return 0;
+	}
+
+	int lsetSplineProperty(lua_State* L) {
+		int i = luaL_checknumber(L,2);
+		float y = luaL_checknumber(L,3);
+		int t = luaL_checknumber(L,4);
+		m_track->SetSplineProperty(Track::MST_NONE,i,y,(Track::SplineInterpType)t);
+		return 0;
+	}
+
+	int lsetEModSplineType(lua_State* L) {
+		int i = luaL_checknumber(L,2);
+		if (i >= Track::MST_COUNT || i < Track::MST_X)
+			return 0; //TODO(skade) error feedback
+		m_track->SetEditModSplineType((Track::ModSplineType)i);
+		return 0;
+	}
+
+	int lsetModProperty(lua_State* L) {
+		int al = luaL_checknumber(L,2);
+		float at = luaL_checknumber(L,3);
+		bool atb = at != 0.0 ? true : false; //TODO(skade) needed?
+		m_track->SetModProperties(al,atb);
+		return 0;
+	}
+
+	//END TRACK MOD SPLINE
 
 	#include "GUI/nanovg_linAlg.h"
 
@@ -3668,7 +3745,7 @@ public:
 		lua_setglobal(L, "gameplay");
 	}
 	void SetModsLua(lua_State* L) override {
-		lua_getglobal(L,"modI");
+		lua_getglobal(L,"mdv");
 		//TODO(skade) set variables for read
 		auto pushFloatToTable = [&](const char* name, float data)
 		{
@@ -3677,7 +3754,7 @@ public:
 			lua_settable(L, -3);
 		};
 		pushFloatToTable("gScale",g_scale);
-		lua_setglobal(L, "modI");
+		lua_setglobal(L, "mdv");
 	}
 	void SetInitialModsLua(lua_State* L) override {
 		lua_newtable(L);
@@ -3687,9 +3764,42 @@ public:
 			lua_pushnumber(L, data);
 			lua_settable(L, -3);
 		};
-		pushFloatToTable("gScale",g_scale);
+		auto pushIntToTable = [&](const char* name, int data)
+		{
+			lua_pushstring(L, name);
+			lua_pushnumber(L, data);
+			lua_settable(L, -3);
+		};
 		
-		lua_setglobal(L, "modI");
+		//pushFloatToTable("gScale",g_scale);
+		pushIntToTable("BTA",Track::ML_BTA);
+		pushIntToTable("BTB",Track::ML_BTB);
+		pushIntToTable("BTC",Track::ML_BTC);
+		pushIntToTable("BTD",Track::ML_BTD);
+		pushIntToTable("FXL",Track::ML_FXL);
+		pushIntToTable("FXR",Track::ML_FXR);
+		pushIntToTable("LSL",Track::ML_LSL);
+		pushIntToTable("LSR",Track::ML_LSR);
+		pushIntToTable("SIT_LIN",Track::SIT_LINEAR);
+		pushIntToTable("SIT_COS",Track::SIT_COSINE);
+		pushIntToTable("SIT_CUB",Track::SIT_CUBIC);
+		pushIntToTable("SIT_NON",Track::SIT_NONE);
+		pushIntToTable("MST_X",  Track::MST_X);
+		pushIntToTable("MST_Y",  Track::MST_Y);
+		pushIntToTable("MST_Z",  Track::MST_Z);
+		pushIntToTable("MT_BR",  Track::MT_BASEROT);
+		pushIntToTable("MT_T",   Track::MT_TRANSLATE);
+		pushIntToTable("MT_GR",  Track::MT_GLOBROT);
+		pushFloatToTable("BT_W", Track::buttonWidth);
+		pushFloatToTable("FX_W", Track::fxbuttonWidth);
+		pushFloatToTable("LS_W", Track::laserWidth);
+		//pushFloatToTable("BT_H", m_track->buttonLength); //TODO put in update function
+		//pushFloatToTable("FX_H", m_track->fxbuttonLength); //TODO put in update function
+		pushFloatToTable("TRACK_W", Track::trackWidth);
+		pushFloatToTable("TRACK_W_BT", Track::buttonTrackWidth);
+		pushFloatToTable("TRACK_W_OP", Track::opaqueTrackWidth);
+
+		lua_setglobal(L, "mdv");
 	}
 	void SetInitialGameplayLua(lua_State* L) override
 	{

@@ -58,59 +58,6 @@ struct TimedHitEffect : TimedEffect
 
 	bool late;
 };
-
-enum SplineInterpType
-{
-	SIT_LINEAR,
-	SIT_COSINE,
-	SIT_CUBIC,
-};
-
-struct ModSpline
-{
-	SplineInterpType type = SIT_LINEAR;
-	uint32_t splineIndex = 0; //TODO(skade) use for updating spline for indipendency of offset.
-	float value = 0.f;
-	float offset = 0.f; ///< Offset from critline.
-};
-
-enum ModSplineType
-{
-	MST_X,
-	MST_Y,
-	MST_Z,
-	MST_COUNT,
-};
-
-//TODO useless?
-enum ModLanes
-{
-	ML_BTA = 1,
-	ML_BTB = 2,
-	ML_BTC = 4,
-	ML_BTD = 8,
-	ML_FXL = 16,
-	ML_FXR = 32,
-	ML_LSL = 64,
-	ML_LSR = 128,
-};
-
-enum ModType {
-	MT_BASEROT,
-	MT_TRANSLATE,
-	MT_GLOBROT,
-	MT_COUNT,
-};
-
-struct Mod
-{
-	uint32_t id = 0; //TODO(skade) hash name for faster access
-	std::vector<ModSpline> splines[MST_COUNT];
-	Transform gt; // global transform apllied last
-	uint8_t affectedLanes = 0; ///< If Bit is set lane is affected.
-	bool active = false;
-};
-
 /*
 	The object responsible for drawing the track.
 */
@@ -222,7 +169,7 @@ public:
 	Texture trackCoverTexture;
 	Texture trackTickTexture;
 
-	Mesh m_lineMesh[4];
+	Mesh m_lineMesh[8];
 	Material m_lineMaterial;
 
 	/* Object graphics */
@@ -272,9 +219,80 @@ public:
 	bool hitEffectAutoplay = false;
 	float scrollSpeed = 0;
 
+	enum SplineInterpType
+	{
+		SIT_LINEAR,
+		SIT_COSINE,
+		SIT_CUBIC,
+		SIT_NONE,
+	};
+
+	struct ModSpline
+	{
+		SplineInterpType type = SIT_LINEAR;
+		float value = 0.f;
+		float offset = 0.f; ///< Offset from critline.
+	};
+
+	enum ModSplineType
+	{
+		MST_NONE = -1,
+		MST_X,
+		MST_Y,
+		MST_Z,
+		MST_COUNT,
+	};
+
+	//TODO useless?
+	enum ModLanes
+	{
+		ML_BTA = 1,
+		ML_BTB = 2,
+		ML_BTC = 4,
+		ML_BTD = 8,
+		ML_FXL = 16,
+		ML_FXR = 32,
+		ML_LSL = 64,
+		ML_LSR = 128,
+	};
+
+	enum ModType {
+		MT_BASEROT,
+		MT_TRANSLATE,
+		MT_GLOBROT,
+		MT_COUNT,
+	};
+
+	//TODO(skade) improve memory layout?
+	struct Mod
+	{
+		uint32_t id = 0;
+		ModType type = MT_TRANSLATE;
+		
+		std::vector<ModSpline> splines[MST_COUNT];
+		Transform gt; //TODO(skade) global transform apllied last
+		uint8_t affectedLanes = 0; ///< If Bit is set lane is affected.
+		bool affectsTrack = true;
+		bool active = true;
+	};
+
+	void UpdateMeshMods();
+	
 	float EvaluateSpline(const std::vector<ModSpline>& spline, float height);
 
+	void SetEditMod(std::string modName);
+	void SetEditModSplineType(ModSplineType d);
 	void AddMod(std::string modName, ModType type);
+	void RemoveMod(std::string modName);
+	void RemoveAllMods();
+
+	void CreateSpline(ModSplineType d, uint32_t amount);
+	void SetModSpline(ModSplineType d, uint32_t idx, float val);
+	void SetSplineProperty(ModSplineType d, uint32_t idx, float yOffset, SplineInterpType type);
+	void SetModProperties(uint8_t affectedLanes, bool affectsTrack);
+	Mod* GetPEMod() { return m_pEMod; }
+
+	bool drawModLines = false;
 
 private:
 	// Laser track generators
@@ -324,9 +342,19 @@ private:
 	 * @param p Current position of the button before any applied mods. //TODO
 	 * @param btx Button Index. 0-3 bt 4-5 fx 6-7 laser
 	*/
-	Vector3 EvaluateMods(const std::vector<Mod>& mods, float yOffset, uint8_t btx);
+	Vector3 EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx);
 
-	std::vector<Mod> m_modsRot;
-	std::vector<Mod> m_modsTrans;
-	std::vector<Mod> m_modsGRot;
+	ModSplineType m_cMST = MST_X;
+	Mod* m_pEMod = nullptr; ///< Pointer to current Mod that is being edited.
+	std::unordered_map<uint32_t,Mod*> m_mods;
+
+	// Mod Vectors containing mods for fast iteration
+	std::vector<Mod*> m_modsRot;
+	std::vector<Mod*> m_modsTrans;
+	std::vector<Mod*> m_modsGRot;
+
+	uint32_t m_meshQuality = 32;
+	// Evaluated Mod Values for Meshes. (Line,Track etc.) //TODO(skade) rename not yOffsets but values
+	std::vector<Vector3> m_meshOffsets[8];
+	Vector<MeshGenerators::SimpleVertex> m_splitMeshData[6];
 };

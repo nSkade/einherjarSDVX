@@ -18,32 +18,20 @@ const float Track::opaqueTrackWidth = buttonTrackWidth * 1.357;
 
 Track::Track()
 {
-	//TODO(skade)
+	//TODO(skade) remove view range dependency on track by clipping track/hold/laser
 	m_viewRange = 2.0f;
 	if (g_aspectRatio < 1.0f)
 		trackLength = 12.0f;
 	else
 		trackLength = 10.0f;
 
-
-	Mod transX;
-	transX.active = true;
-	transX.affectedLanes = ML_BTA | ML_BTC;
-	//TODO(skade)
-	for (uint32_t i = 0; i < 15; ++i) {
-		ModSpline ms;
-		ms.type = SIT_LINEAR;
-		ms.splineIndex = i;
-		ms.offset = (float) i / 15.f;
-		ms.value = -(.5f-.5f*std::cos(float(i)/15.f*M_PI*2.f));
-		transX.splines[MST_X].push_back(ms);
-	}
-
-	m_modsTrans.push_back(transX);
+	for (uint32_t i=0;i<8;++i)
+		m_meshOffsets[i] = std::vector<Vector3>(m_meshQuality);
 }
 
 Track::~Track()
 {
+	RemoveAllMods();
 	g_input.OnButtonReleased.Remove(this, &Track::OnButtonReleasedDelta);
 
 	delete loader;
@@ -169,7 +157,7 @@ bool Track::AsyncFinalize()
 
 	holdButtonMaterial->opaque = false;
 	
-	for (uint32_t i=0;i<4;++i) {
+	for (uint32_t i=0;i<8;++i) {
 		m_lineMesh[i] = MeshRes::Create(g_gl);
 		m_lineMesh[i]->SetPrimitiveType(PrimitiveType::LineStrip);
 	}
@@ -224,9 +212,10 @@ bool Track::AsyncFinalize()
 		splitTrackMesh[i] = MeshRes::Create(g_gl);
 		splitTrackMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
 		Vector<MeshGenerators::SimpleVertex> splitMeshData;
-		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
-		splitTrackMesh[i]->SetData(splitMeshData);
-	
+		MeshGenerators::GenerateSubdividedTrack(rect, uv, m_meshQuality-1, m_splitMeshData[i]);
+		splitMeshData = MeshGenerators::Triangulate(m_splitMeshData[i]);
+		splitTrackMesh[i]->SetData(m_splitMeshData[i]);
+		
 		//TODO(skade)
 		//track cover
 		pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -trackLength);
@@ -370,7 +359,7 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 		//m_alertTimer[i] += deltaTime;
 	}
 
-
+	UpdateMeshMods();
 }
 
 void Track::DrawLaserBase(RenderQueue& rq, class BeatmapPlayback& playback, const Vector<ObjectState*>& objects)
@@ -418,6 +407,22 @@ void Track::DrawBase(class RenderQueue& rq)
 	bool mode_seven = true; //TODO make configurable
 	
 	if (centerSplit != 0.0f || mode_seven) {
+		for (uint32_t i = 0; i < 6; ++i) {
+			uint32_t idx = i;
+			if (idx==0) idx = 6; // laser left
+			else if (idx==5) idx = 7;
+			else idx--; // BTA is 1
+			
+			Vector<MeshGenerators::SimpleVertex> msmd = m_splitMeshData[i];
+			for (uint32_t j = 0; j < m_meshOffsets[idx].size(); j++) {
+				uint32_t im = (m_meshOffsets[idx].size()-1-j)*2;
+				msmd[im].pos = msmd[im].pos + m_meshOffsets[idx][j];
+				msmd[im+1].pos = msmd[im+1].pos + m_meshOffsets[idx][j];
+			}
+			msmd = MeshGenerators::Triangulate(msmd);
+			splitTrackMesh[i]->SetData(msmd);
+		}
+
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[2], trackMaterial, params);
@@ -447,11 +452,8 @@ void Track::DrawBase(class RenderQueue& rq)
 			rq.Draw(tT * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[3], buttonMaterial, params);
 			rq.Draw(tT * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[4], buttonMaterial, params);
 			rq.Draw(tT * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackTickMesh[5], buttonMaterial, params);
-		}
-		else if (true) {
-			
 		} else {
-			rq.Draw(tT, trackTickMesh, buttonMaterial, params);
+			rq.Draw(tT * Transform::Translation({-buttonTrackWidth/5.6f, 0.0f, 0.0f}), trackTickMesh, buttonMaterial, params);
 		}
 	}
 
@@ -577,11 +579,13 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			params.SetParameter("trackScale", 1.0f / trackLength);
 		}
 
+		//TODO(skade) make settable with spline.
 		params.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
 		params.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
 		params.SetParameter("suddenCutoff", suddenCutoff); // Sudden cutoff (% of track)
 		params.SetParameter("suddenFadeWindow", suddenFadewindow); // Sudden cutoff (% of track)
 
+		params.SetParameter("uColor",Vector3(1.f,0.f,0.f));
 
 		buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		rq.Draw(buttonTransform, mesh, mat, params);
@@ -598,6 +602,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			MaterialParameterSet laserParams;
 			laserParams.SetParameter("trackPos", posmult * position / trackLength);
 			laserParams.SetParameter("trackScale", 1.0f / trackLength);
+			
+			//TODO(skade) make settable with spline.
 			laserParams.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
 			laserParams.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
 			laserParams.SetParameter("suddenCutoff", suddenCutoff); // Hidden cutoff (% of track)
@@ -803,30 +809,40 @@ void Track::DrawCalibrationCritLine(RenderQueue& rq)
 
 void Track::DrawLineMesh(RenderQueue& rq)
 {
-	//TODO(skade) draw lines
-	//for (uint32_t i=0;i<6;++i) { //TODO to ML_COUNT
-	uint32_t pointCount = 32;
+	if (!drawModLines)
+		return;
 
-	for (uint32_t i = 0; i < 4; ++i) {
+	for (uint32_t i = 0; i < 8; ++i) {
 		Vector<MeshGenerators::SimpleVertex> data;
 		std::vector<Vector3> offsets;
+		MaterialParameterSet params;
 		
-		//calculate offsets
-		for (uint32_t j = 0; j < pointCount; ++j) {
-			Vector3 v = EvaluateMods(m_modsTrans,((float)j)/pointCount,i);
-			offsets.push_back(v);
-		}
-		
-		for (uint32_t j = 0; j < pointCount; ++j) {
+		for (uint32_t j = 0; j < m_meshQuality; ++j) {
 			MeshGenerators::SimpleVertex v;
-			float xposition = buttonTrackWidth * -0.5f + buttonWidth * i + buttonWidth*.5f;
-			v.pos.x = offsets[j][0]+xposition;
-			v.pos.y = offsets[j][1]+trackLength*((float)j)/pointCount;
-			v.pos.z = offsets[j][2];
+			float xposition = 0.f;
+			
+			if (i<4)
+				xposition = buttonTrackWidth * -0.5f + buttonWidth * i + buttonWidth*.5f;
+			else if (i<6)
+				xposition = buttonTrackWidth * -0.5f + .5f*fxbuttonWidth *(i+1-4)+(i-4)*fxbuttonWidth*.5f;
+			else if (i==6)
+				xposition = buttonTrackWidth * -.5f - buttonWidth*.5f;
+			else
+				xposition = buttonTrackWidth *.5f + buttonWidth*.5f;
+			
+			v.pos.x = m_meshOffsets[i][j][0]+xposition;
+			v.pos.y = m_meshOffsets[i][j][1]+trackLength*((float)j)/m_meshQuality;
+			v.pos.z = m_meshOffsets[i][j][2];
 			data.push_back(v);
 		}
 		m_lineMesh[i]->SetData(data);
-		rq.Draw(trackOrigin, m_lineMesh[i], m_lineMaterial);
+	
+		if (i >= 4 && i <= 5)
+			params.SetParameter("uColor",Vector3(212.f,53.f,49.f)/Vector3(255.f,255.f,255.f));
+		else
+			params.SetParameter("uColor",Vector3(1.f));
+		
+		rq.Draw(trackOrigin, m_lineMesh[i], m_lineMaterial, params);
 	}
 	//}
 }
@@ -943,6 +959,8 @@ void Track::OnButtonReleasedDelta(Input::Button buttonCode, int32 delta)
 	OnButtonReleased(buttonCode);
 }
 
+//TODO(skade) move into extra function.
+
 float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 {
 	height = std::max(0.f,height); //TODO(skade)
@@ -993,6 +1011,8 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 	case SIT_COSINE:
 		s = Interpolation::CosSpline(rOff/length);
 		break;
+	case SIT_NONE:
+		break;
 	case SIT_LINEAR:
 	default:
 		s = rOff/length;
@@ -1004,7 +1024,7 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 	return val;
 }
 
-Vector3 Track::EvaluateMods(const std::vector<Mod>& mods, float yOffset, uint8_t btx)
+Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx)
 {
 	Vector3 r;
 
@@ -1012,12 +1032,12 @@ Vector3 Track::EvaluateMods(const std::vector<Mod>& mods, float yOffset, uint8_t
 
 	// iterate through all active mods and evaluate.
 	for (uint32_t i = 0; i < mods.size(); ++i) {
-		
-		if (!(mods[i].affectedLanes & lane) || !mods[i].active)
+		Mod* m = mods[i];
+		if (!(m->affectedLanes & lane) || !m->active)
 			continue;
 		for (uint32_t j = 0; j < MST_COUNT; ++j) {
-			if (mods[i].splines[j].size() > 0) {
-				r[j] += EvaluateSpline(mods[i].splines[j],yOffset);
+			if (m->splines[j].size() > 0) {
+				r[j] += EvaluateSpline(m->splines[j],yOffset);
 			}
 		}
 	}
@@ -1025,22 +1045,154 @@ Vector3 Track::EvaluateMods(const std::vector<Mod>& mods, float yOffset, uint8_t
 	return r;
 }
 
+void Track::UpdateMeshMods() {
+	//calculate offsets
+	for (uint32_t i = 0; i < 8; ++i) {
+		for (uint32_t j = 0; j < m_meshQuality; ++j) {
+			Vector3 v = EvaluateMods(m_modsTrans,((float)j)/m_meshQuality,i);
+			m_meshOffsets[i][j] = v;
+		}
+	}
+}
+
+
+void Track::SetEditMod(std::string modName) {
+	if (modName.size()==0) {
+		m_pEMod = nullptr;
+		return;
+	}
+	uint32_t key = std::hash<std::string>{}(modName);
+	if (m_mods.find(key)==m_mods.end())
+		return;
+	m_pEMod = m_mods[key];
+}
+
+void Track::SetEditModSplineType(ModSplineType d) {
+	m_cMST = d;
+}
+
+void Track::CreateSpline(ModSplineType d, uint32_t amount) {
+	if (!m_pEMod)
+		return;
+	if (d==MST_NONE)
+		d = m_cMST;
+	std::vector<ModSpline>* spl = &m_pEMod->splines[d];
+
+	while (spl->size() <= amount) {
+		spl->push_back(ModSpline());
+	}
+	if (spl->size() > amount) {
+		spl->erase(spl->begin()+amount,spl->end());
+	}
+
+	for (uint32_t i=0;i<amount;++i) {
+		spl->at(i).offset = (float)i/amount;
+	}
+}
+
+void Track::SetSplineProperty(ModSplineType d, uint32_t idx, float yOffset, SplineInterpType type) {
+	if (!m_pEMod)
+		return;
+	if (d==MST_NONE)
+		d = m_cMST;
+	if (idx >= m_pEMod->splines[d].size())
+		return;
+	m_pEMod->splines[d][idx].offset = yOffset;
+	m_pEMod->splines[d][idx].type = type;
+}
+
+void Track::SetModSpline(ModSplineType d, uint32_t idx, float val) {
+	if (!m_pEMod)
+		return;
+	if (d==MST_NONE)
+		d = m_cMST;
+	for (uint32_t i=0;i<MST_COUNT;++i) {
+		if (m_pEMod->splines[d].size() <= idx)
+			continue;
+		m_pEMod->splines[d][idx].value = val;
+	}
+}
+
+void Track::SetModProperties(uint8_t affectedLanes, bool affectsTrack) {
+	if (!m_pEMod)
+		return;
+	m_pEMod->affectedLanes = affectedLanes;
+	m_pEMod->affectsTrack = affectsTrack;
+}
+
 void Track::AddMod(std::string modName, ModType type) {
-	Mod nm;
-	nm.id = std::hash<std::string>{}(modName);
+	
+	uint32_t key = std::hash<std::string>{}(modName);
+	if (m_mods.find(key)!=m_mods.end())
+		return;
+	
+	Mod* nm = new Mod;
+	nm->id = key;
+	nm->type = type;
+
+	std::vector<Mod*>* cModVec;
 
 	switch (type)
 	{
 	case MT_BASEROT:
-		m_modsRot.push_back(nm);
+		cModVec = &m_modsRot;
 		break;
 	case MT_TRANSLATE:
-		m_modsTrans.push_back(nm);
+		cModVec = &m_modsTrans;
 		break;
 	case MT_GLOBROT:
-		m_modsGRot.push_back(nm);
+		cModVec = &m_modsGRot;
 		break;
 	default:
 		break;
 	}
+	cModVec->push_back(nm);
+
+	// Set hash value to find mod easier.
+	m_mods[nm->id] = nm;
 }
+
+void Track::RemoveMod(std::string modName) {
+	uint32_t key = std::hash<std::string>{}(modName);
+	if (m_mods.find(key)==m_mods.end())
+		return;
+
+	Mod* m = m_mods[key];
+	
+	// Delete reference from Access Vector.
+	std::vector<Mod*>* cModVec = nullptr;
+	switch (m->type)
+	{
+	case MT_BASEROT:
+		cModVec = &m_modsRot;
+		break;
+	case MT_TRANSLATE:
+		cModVec = &m_modsTrans;
+		break;
+	case MT_GLOBROT:
+		cModVec = &m_modsGRot;
+		break;
+	default:
+		break;
+	}
+	if (cModVec)
+		cModVec->erase(std::find(cModVec->begin(),cModVec->end(),m));
+	m_mods.erase(key);
+
+	delete m;
+}
+
+void Track::RemoveAllMods() {
+	for (uint32_t i=0;i<m_modsRot.size();++i)
+		delete m_modsRot[i];
+	for (uint32_t i=0;i<m_modsTrans.size();++i)
+		delete m_modsTrans[i];
+	for (uint32_t i=0;i<m_modsGRot.size();++i)
+		delete m_modsGRot[i];
+	m_modsRot.clear();
+	m_modsTrans.clear();
+	m_modsGRot.clear();
+
+	m_mods.clear();
+}
+

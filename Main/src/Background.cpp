@@ -176,6 +176,7 @@ public:
 		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
 		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
 		bindable->AddFunction("GetTiming", this, &TestBackground::GetTiming);
+		bindable->AddFunction("GetBeat", this, &TestBackground::GetBeat); //TODO(skade) Binding also for skin?
 		bindable->AddFunction("GetTilt", this, &TestBackground::GetTilt);
 		bindable->AddFunction("GetScreenCenter", this, &TestBackground::GetScreenCenter);
 		bindable->AddFunction("GetClearTransition", this, &TestBackground::GetClearTransition);
@@ -322,6 +323,12 @@ public:
 		lua_pushnumber(L, timing.y);
 		lua_pushnumber(L, timing.z);
 		return 3;
+	}
+
+	int GetBeat(lua_State* L)
+	{
+		lua_pushnumber(L, game->GetPlayback().GetCurrBeat());
+		return 1;
 	}
 
 	int GetTilt(lua_State *L)

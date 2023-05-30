@@ -1,4 +1,5 @@
 vcpkg-manifest-install.log
+.vscode/
 
 # macOS system files
 .DS_Store

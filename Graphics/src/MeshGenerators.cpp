@@ -58,4 +58,52 @@ namespace Graphics
 			out.Add(v);
 	}
 
+	//TODO(skade)
+	void MeshGenerators::GenerateSubdividedTrack(Rect3D r, Rect uv, uint32_t count, Vector<SimpleVertex>& out)
+	{
+		Vector<MeshGenerators::SimpleVertex> vL;
+		
+		vL.emplace_back(Vector3(r.Left(), r.Top(), 0.0f),Vector2(uv.Left(), uv.Top()));
+		vL.emplace_back(Vector3(r.Right(), r.Top(), 0.0f),Vector2(uv.Right(), uv.Top()));
+		
+		uint32_t amount = count;
+		
+		for (uint32_t i = 1; i <= amount; ++i) {
+			float l = (float) i/amount;
+			float posSize = r.size.y+r.pos.y;
+			l = 1.f-((posSize-1)*l)/posSize;
+			float rv = r.Top()*l+(1.f-l)*r.Bottom();
+			float uvv = uv.Top()*l+(1.f-l)*uv.Bottom();
+			
+			if (i % 2 == 0) {
+				vL.emplace_back(Vector3(r.Left(), rv,  0.0f),Vector2(uv.Left(), uvv));
+				vL.emplace_back(Vector3(r.Right(), rv,  0.0f),Vector2(uv.Right(), uvv));
+			} else {
+				vL.emplace_back(Vector3(r.Left(), rv,  0.0f),Vector2(uv.Left(), uvv));
+				vL.emplace_back(Vector3(r.Right(), rv,  0.0f),Vector2(uv.Right(),uvv));
+			}
+		}
+
+		vL.emplace_back(Vector3(r.Left(), r.Bottom(),  0.0f),Vector2(uv.Left(), uv.Bottom()));
+		vL.emplace_back(Vector3(r.Right(), r.Bottom(),  0.0f),Vector2(uv.Right(), uv.Bottom()));
+		
+		for(auto& v : vL)
+			out.Add(v);
+	}
+
+	Vector<MeshGenerators::SimpleVertex> MeshGenerators::Triangulate(Vector<MeshGenerators::SimpleVertex> verts) {
+		Vector<MeshGenerators::SimpleVertex> ret;
+		for (uint32_t i = 0; i < verts.size()-2; ++i) {
+			if (i % 2 == 0) {
+				ret.push_back(verts[i]);
+				ret.push_back(verts[i+2]);
+				ret.push_back(verts[i+1]);
+			} else {
+				ret.push_back(verts[i]);
+				ret.push_back(verts[i+1]);
+				ret.push_back(verts[i+2]);
+			}
+		}
+		return ret;
+	}
 }

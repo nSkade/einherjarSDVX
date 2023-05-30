@@ -49,7 +49,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 	if (m_isCalibration) {
 		// Count bars
 		int32 beatID = 0;
-		uint32 nBeats = CountBeats(m_playbackTime - delta, delta, beatID);
+		//uint32 nBeats = CountBeats(m_playbackTime - delta, delta, beatID);
 		const TimingPoint& tp = GetCurrentTimingPoint();
 		double effectiveTime = ((double)newTime - tp.time); // Time with offset applied
 		m_barTime = (float)fmod(effectiveTime / (tp.beatDuration * tp.numerator), 1.0);
@@ -57,6 +57,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 
 		// Set new time
 		m_playbackTime = newTime;
+		m_currBeat = CountBeats(0, m_playbackTime, beatID);
 		return;
 	}
 
@@ -79,7 +80,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 
 	// Count bars
 	int32 beatID = 0;
-	uint32 nBeats = CountBeats(m_playbackTime - delta, delta, beatID);
+	//uint32 nBeats = CountBeats(m_playbackTime - delta, delta, beatID);
 	const TimingPoint& tp = GetCurrentTimingPoint();
 	double effectiveTime = ((double)newTime - tp.time); // Time with offset applied
 	m_barTime = (float)fmod(effectiveTime / (tp.beatDuration * tp.numerator), 1.0);
@@ -87,6 +88,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 
 	// Set new time
 	m_playbackTime = newTime;
+	m_currBeat = CountBeats(0, m_playbackTime, beatID);
 
 	// Advance timing
 	Beatmap::TimingPointsIterator timingEnd = m_SelectTimingPoint(m_playbackTime);

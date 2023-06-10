@@ -1067,6 +1067,7 @@ public:
 					m_track->DrawObjectState(hitObjectsTrackCoverRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
 			}
 		}
+
 		if(m_showCover)
 			m_track->DrawTrackCover(hitObjectsTrackCoverRq);
 		m_track->DrawLineMesh(renderQueue);
@@ -1106,7 +1107,7 @@ public:
 		hitEffectsRq.Process();
 		hitObjectsTrackCoverRq.Process();
 		scoringRq.Process();
-		//glFlush();
+		glFlush();
 
 		// Set laser follow particle visiblity
 		if (particleMaterial && basicParticleTexture)
@@ -1172,7 +1173,7 @@ public:
 			if (particleMaterial && basicParticleTexture)
 			{
 				RenderParticles(rs, deltaTime);
-				//glFlush();
+				glFlush();
 			}
 		}
 		else if (m_renderFastGui)
@@ -1191,7 +1192,7 @@ public:
 			if (particleMaterial && basicParticleTexture)
 			{
 				RenderParticles(rs, deltaTime);
-				//glFlush();
+				glFlush();
 			}
 		}
 		else
@@ -1233,7 +1234,7 @@ public:
 			if (particleMaterial && basicParticleTexture) 
 			{
 				RenderParticles(rs, deltaTime);
-				//glFlush();
+				glFlush();
 			}
 
 			// Render Critical Line Overlay
@@ -1247,7 +1248,7 @@ public:
 			if (m_foreground)
 			{
 				m_foreground->Render(deltaTime);
-				//glFlush();
+				glFlush();
 			}
 
 			// Render Lua HUD
@@ -1602,6 +1603,7 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
+		//TODO(skade) move into extra thread.
 		// assign spektrum buckets
 		g_audio->ProcessFFT(m_spectrum, m_spectrumN, 16);
 
@@ -3029,6 +3031,8 @@ public:
 
 	void StorePracticeSetupIndex()
 	{
+		//TODO(skade) bug in release mode where m_db is invalid?
+		return;
 		if (!m_db) return;
 		assert(m_isPracticeMode);
 
@@ -3198,14 +3202,20 @@ public:
 
 	virtual LuaBindable* MakeModsLuaBindable(struct lua_State* L) {
 		auto* bind = new LuaBindable(L, "mod");
+		bind->AddFunction("LaneHide",this,&Game_Impl::lSetLaneHide);
+		bind->AddFunction("LaneHideSud",this,&Game_Impl::lSetLaneHideSud);
+
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
 		bind->AddFunction("GetHispeed",this,&Game_Impl::lGetHispeed);
+
 		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO deprecated //add support for nvg3dmat on shadedMesh
 		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO deprecated
+
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
 		bind->AddFunction("GetCamModMat",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 
+		//TODO(skade) capital begin
 		bind->AddFunction("addMod"            , this,&Game_Impl::laddMod);
 		bind->AddFunction("setEMod"           , this,&Game_Impl::lsetEMod);
 		bind->AddFunction("createSpline"      , this,&Game_Impl::lcreateSpline);
@@ -3213,9 +3223,23 @@ public:
 		bind->AddFunction("setSplineProperty" , this,&Game_Impl::lsetSplineProperty);
 		bind->AddFunction("setEModSplineType" , this,&Game_Impl::lsetEModSplineType);
 		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
+		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
+		bind->AddFunction("setModLayer"    , this,&Game_Impl::lsetModLayer);
 		
 		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
 		return bind;
+	}
+
+	int lSetLaneHide(lua_State* L) {
+		float d = luaL_checknumber(L,2);
+		m_track->SetLaneHideD(d);
+		return 0;
+	}
+	
+	int lSetLaneHideSud(lua_State* L) {
+		float d = luaL_checknumber(L,2);
+		m_track->SetLaneHideSudD(d);
+		return 0;
 	}
 	
 	//TODO move to better place
@@ -3289,9 +3313,20 @@ public:
 
 	int lsetModProperty(lua_State* L) {
 		int al = luaL_checknumber(L,2);
-		float at = luaL_checknumber(L,3);
-		bool atb = at != 0.0 ? true : false; //TODO(skade) needed?
+		bool atb = lua_toboolean(L,3);
 		m_track->SetModProperties(al,atb);
+		return 0;
+	}
+
+	int lsetModLayer(lua_State* L) {
+		int ml = luaL_checknumber(L,2);
+		m_track->SetModLayer(ml);
+		return 0;
+	}
+
+	int lsetTickLayer(lua_State* L) {
+		int ml = luaL_checknumber(L,2);
+		m_track->tickLayer = ml;
 		return 0;
 	}
 
@@ -3787,9 +3822,9 @@ public:
 		pushIntToTable("MST_X",  Track::MST_X);
 		pushIntToTable("MST_Y",  Track::MST_Y);
 		pushIntToTable("MST_Z",  Track::MST_Z);
-		pushIntToTable("MT_BR",  Track::MT_BASEROT);
-		pushIntToTable("MT_T",   Track::MT_TRANSLATE);
-		pushIntToTable("MT_GR",  Track::MT_GLOBROT);
+		pushIntToTable("MT_S",  Track::MT_SCALE);
+		pushIntToTable("MT_R",  Track::MT_ROT);
+		pushIntToTable("MT_T",   Track::MT_TRANS);
 		pushFloatToTable("BT_W", Track::buttonWidth);
 		pushFloatToTable("FX_W", Track::fxbuttonWidth);
 		pushFloatToTable("LS_W", Track::laserWidth);

@@ -1771,7 +1771,6 @@ MapTotals Scoring::CalculateMapTotals() const
 	for (const auto& _obj : map.GetObjectStates())
 	{
 		const MultiObjectState* obj = *_obj;
-		const TimingPoint* tp = m_playback->GetTimingPointAt(obj->time);
 		if (obj->type == ObjectType::Single)
 		{
 			ret.maxScore += (uint32)ScoreHitRating::Perfect;

@@ -99,6 +99,14 @@ namespace Graphics
 						}
 					}
 				}
+
+				if(mat->depthTest)
+				{
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LESS);
+				} else {
+					glDisable(GL_DEPTH_TEST);
+				}
 			};
 
 			// Draw mesh helper
@@ -181,6 +189,7 @@ namespace Graphics
 		// Disable all states that were on
 		glDisable(GL_BLEND);
 		glDisable(GL_SCISSOR_TEST);
+		glDisable(GL_DEPTH_TEST);
 
 		if(clearQueue)
 		{

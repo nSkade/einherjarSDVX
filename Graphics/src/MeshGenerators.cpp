@@ -71,21 +71,16 @@ namespace Graphics
 		for (uint32_t i = 1; i <= amount; ++i) {
 			float l = (float) i/amount;
 			float posSize = r.size.y+r.pos.y;
-			l = 1.f-((posSize-1)*l)/posSize;
+			l = 1.f-(posSize*l)/r.size.y;
 			float rv = r.Top()*l+(1.f-l)*r.Bottom();
 			float uvv = uv.Top()*l+(1.f-l)*uv.Bottom();
 			
-			if (i % 2 == 0) {
-				vL.emplace_back(Vector3(r.Left(), rv,  0.0f),Vector2(uv.Left(), uvv));
-				vL.emplace_back(Vector3(r.Right(), rv,  0.0f),Vector2(uv.Right(), uvv));
-			} else {
-				vL.emplace_back(Vector3(r.Left(), rv,  0.0f),Vector2(uv.Left(), uvv));
-				vL.emplace_back(Vector3(r.Right(), rv,  0.0f),Vector2(uv.Right(),uvv));
-			}
+			vL.emplace_back(Vector3(r.Left(), rv, 0.0f),Vector2(uv.Left(), uvv));
+			vL.emplace_back(Vector3(r.Right(),rv, 0.0f),Vector2(uv.Right(),uvv));
 		}
 
-		vL.emplace_back(Vector3(r.Left(), r.Bottom(),  0.0f),Vector2(uv.Left(), uv.Bottom()));
-		vL.emplace_back(Vector3(r.Right(), r.Bottom(),  0.0f),Vector2(uv.Right(), uv.Bottom()));
+		vL.emplace_back(Vector3(r.Left(), r.Bottom(), 0.0f),Vector2(uv.Left(), uv.Bottom()));
+		vL.emplace_back(Vector3(r.Right(),r.Bottom(), 0.0f),Vector2(uv.Right(),uv.Bottom()));
 		
 		for(auto& v : vL)
 			out.Add(v);

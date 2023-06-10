@@ -22,6 +22,7 @@ BaseGameSettingsDialog::~BaseGameSettingsDialog()
 	g_input.OnButtonReleased.RemoveAll(this);
 	g_input.OnButtonPressed.RemoveAll(this);
 	g_gameWindow->OnKeyPressed.RemoveAll(this);
+	g_gameWindow->OnKeyReleased.RemoveAll(this);
 }
 
 void BaseGameSettingsDialog::ResetTabs()
@@ -49,6 +50,7 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
 		if (!m_active)
 		{
 			onClose.Call();
+			m_resetRepeat();
 		}
 	}
 
@@ -538,6 +540,14 @@ void BaseGameSettingsDialog::m_OnKeyReleased(SDL_Scancode code, int32 delta)
 		break;
 	default:
 		break;
+	}
+}
+
+void BaseGameSettingsDialog::m_resetRepeat()
+{
+	for (uint32_t i=0;i<4;++i) {
+		m_repeatTimer[i] = 0.f;
+		m_isRepeat[i] = false;
 	}
 }
 

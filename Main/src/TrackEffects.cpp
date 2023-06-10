@@ -49,7 +49,7 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	{
 		// Scale hit effect alpha between hispeed range of 100 to 600
 		if (delayFadeDuration > 0)
-            hiSpeedAlphaOffset = 0.25f * (Math::Clamp(track->scrollSpeed - 100, 0.f, 500.f) / 500);
+			hiSpeedAlphaOffset = 0.25f * (Math::Clamp(track->scrollSpeed - 100, 0.f, 500.f) / 500);
 
 		w = Track::buttonWidth;
 		x = (-Track::buttonWidth * 1.5f) + w * buttonCode;
@@ -73,7 +73,9 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	hitEffectSize.y = track->scoreHitTexture->CalculateHeight(hitEffectSize.x) * yMult;
 	Color c = color.WithAlpha(GetRate() * (alphaScale + hiSpeedAlphaOffset));
 	c.w *= yMult / 2.f;
-	track->DrawSprite(rq, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
+	//track->DrawSprite(rq, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
+	if (buttonCode < 4)
+		track->DrawSpriteLane(rq, buttonCode, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
 }
 
 ButtonHitRatingEffect::ButtonHitRatingEffect(uint32 buttonCode, ScoreHitRating rating) : TimedEffect(0.3f), buttonCode(buttonCode), rating(rating)

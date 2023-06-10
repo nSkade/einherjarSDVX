@@ -80,6 +80,7 @@ namespace Graphics
 		// Create a material that has both a vertex and fragment shader
 		static Ref<MaterialRes> Create(class OpenGL* gl, const String& vsPath, const String& fsPath);
 
+		bool depthTest = false;
 		bool opaque = true;
 		MaterialBlendMode blendMode = MaterialBlendMode::Normal;
 

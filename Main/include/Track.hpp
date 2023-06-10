@@ -110,6 +110,7 @@ public:
 	void DrawTrackOverlay(RenderQueue& rq, Texture texture, float heightOffset = 0.05f, float widthScale = 1.0f);
 	// Draw a centered sprite at pos, relative from the track
 	void DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, Color color = Color::White, float tilt = 0.0f);
+	void DrawSpriteLane(RenderQueue& rq, uint32_t buttonIndex, Vector3 pos, Vector2 size, Texture tex, Color color = Color::White, float tilt = 0.0f); //TODO(skade)
 	void DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale = 1.0f);
 	void DrawTrackCover(RenderQueue& rq);
 	void DrawLaneLight(RenderQueue& rq);
@@ -127,6 +128,9 @@ public:
 	void SetViewRange(float newRange);
 	void SendLaserAlert(uint8 laserIdx);
 	void SetLaneHide(bool hidden, double duration);
+	void SetLaneHideSud(bool hide, double duration);
+	void SetLaneHideD(float val);
+	void SetLaneHideSudD(float val);
 	float GetViewRange() const;
 
 	// Normal/FX button X-axis placement
@@ -257,9 +261,9 @@ public:
 	};
 
 	enum ModType {
-		MT_BASEROT,
-		MT_TRANSLATE,
-		MT_GLOBROT,
+		MT_SCALE,
+		MT_ROT,
+		MT_TRANS,
 		MT_COUNT,
 	};
 
@@ -267,7 +271,8 @@ public:
 	struct Mod
 	{
 		uint32_t id = 0;
-		ModType type = MT_TRANSLATE;
+		ModType type = MT_TRANS;
+		uint32_t layer = 0; ///< ModType layer. Higher Layers getting applied on Top.
 		
 		std::vector<ModSpline> splines[MST_COUNT];
 		Transform gt; //TODO(skade) global transform apllied last
@@ -292,7 +297,10 @@ public:
 	void SetModProperties(uint8_t affectedLanes, bool affectsTrack);
 	Mod* GetPEMod() { return m_pEMod; }
 
+	void SetModLayer(uint32_t layer);
+
 	bool drawModLines = false;
+	uint32_t tickLayer = 0; ///< Layer where Track relative Position gets applied.
 
 private:
 	// Laser track generators
@@ -328,6 +336,8 @@ private:
 	// How much the track is hidden. 1.0 = fully hidden, 0.0 = fully visible
 	float m_trackHide = 0.0f;
 	float m_trackHideSpeed = 0.0f;
+	float m_trackHideSud = 1.0f;
+	float m_trackHideSudSpeed = 0.0f;
 	float m_btOverFxScale = 0.8f;
 
 	/**
@@ -341,20 +351,27 @@ private:
 	 * @param mods List of mods to iterate through.
 	 * @param p Current position of the button before any applied mods. //TODO
 	 * @param btx Button Index. 0-3 bt 4-5 fx 6-7 laser
+	 * @param layer Requested Mod layer.
 	*/
-	Vector3 EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx);
+	Vector3 EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx, uint32_t layer);
+
+	/**
+	 * @brief Evaluates all mods across different layers.
+	*/
+	Transform EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx);
 
 	ModSplineType m_cMST = MST_X;
 	Mod* m_pEMod = nullptr; ///< Pointer to current Mod that is being edited.
 	std::unordered_map<uint32_t,Mod*> m_mods;
 
 	// Mod Vectors containing mods for fast iteration
-	std::vector<Mod*> m_modsRot;
-	std::vector<Mod*> m_modsTrans;
-	std::vector<Mod*> m_modsGRot;
+	std::vector<Mod*> m_modv[MT_COUNT];
 
+	//TODO(skade) seperate for line, make modifyable
 	uint32_t m_meshQuality = 32;
 	// Evaluated Mod Values for Meshes. (Line,Track etc.) //TODO(skade) rename not yOffsets but values
-	std::vector<Vector3> m_meshOffsets[8];
+	std::vector<Transform> m_meshOffsets[8];
 	Vector<MeshGenerators::SimpleVertex> m_splitMeshData[6];
+
+	uint32_t m_maxLayerSize = 1;
 };

@@ -145,8 +145,14 @@ Vector4 Transform::operator*(const Vector4& other) const
 	size_t index = 0;
 	for (size_t y = 0; y < 4; ++y)
 		for(size_t x = 0; x < 4; ++x)
-			res[y] += other[x]*mat[y*4+x];
+			res[y] += mat[y+x*4]*other[x];
 	return res;
+}
+Vector3 Transform::operator*(const Vector3& other) const
+{
+	Vector4 o4 = Vector4(other[0],other[1],other[2],1);
+	Vector4 res = (*this)*o4;
+	return res.xyz();
 }
 void Transform::ScaleTransform(const Vector3& scale)
 {
@@ -260,6 +266,13 @@ Vector3 Transform::GetEuler() const
 
 	return euler;
 }
+
+Transform Transform::GetRotation() const
+{
+	//TODO(skade) more efficient
+	return Rotation(this->GetEuler());
+}
+
 Vector3 Transform::GetForward() const
 {
 	return Vector3(this->mat[8], this->mat[9], this->mat[10]).Normalized();

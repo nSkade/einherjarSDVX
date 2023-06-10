@@ -60,7 +60,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
 	mainSettingTab->settings.emplace_back(std::move(enableNavSetting));
 
 	Setting speedSetting = std::make_unique<SettingData>("Playback speed (%)", SettingType::Integer);
-	speedSetting->intSetting.min = 25;
+	speedSetting->intSetting.min = 5;
 	speedSetting->intSetting.max = 400;
 	speedSetting->intSetting.val = Math::RoundToInt(m_playOptions.playbackSpeed * 100);
 	speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(data.intSetting.val == 100 ? 1.0f : data.intSetting.val / 100.0f); });

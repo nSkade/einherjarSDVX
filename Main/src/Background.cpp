@@ -288,7 +288,7 @@ public:
 
 		if (lua_isfunction(lua, -1))
 		{
-			lua_pushnumber(lua, deltaTime);
+			lua_pushnumber(lua, deltaTime); //TODO(skade) push table where bg and skin read and write data
 			if (lua_pcall(lua, 1, 0, 0) != 0)
 			{
 				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(lua, -1));

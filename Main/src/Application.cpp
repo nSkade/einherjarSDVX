@@ -1396,7 +1396,7 @@ void Application::RenderTickables()
 	CheckGLErrors("on entering Application::RenderTickables");
 
 	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
 	m_renderQueueBase = RenderQueue(g_gl, m_renderStateBase);
 	g_guiState.rq = &m_renderQueueBase;
@@ -1428,7 +1428,7 @@ void Application::RenderTickables()
 	
 	Transform identity;
 	
-	//TODO(skade)
+	//TODO(skade) only set proj mat on gameplay elements
 	//nvgSetProjMat(g_guiState.vg,&identity[0]);
 	
 	if (m_showFps)

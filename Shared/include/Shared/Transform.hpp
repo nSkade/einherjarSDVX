@@ -41,7 +41,8 @@ public:
 
 	Transform operator*(const Transform& other) const;
 	Transform operator*(float other) const;
-	Vector4 operator*(const Vector4& other) const; //what dis doin here?
+	Vector4 operator*(const Vector4& other) const;
+	Vector3 operator*(const Vector3& other) const;
 	Transform& operator*=(const Transform& other);
 
 	void ScaleTransform(const Vector3& scale);
@@ -58,6 +59,8 @@ public:
 	Vector3 GetPosition() const;
 	Vector3 GetScale() const;
 	Vector3 GetEuler() const;
+
+	Transform GetRotation() const;
 
 	Vector3 GetForward() const;
 	Vector3 GetUp() const;

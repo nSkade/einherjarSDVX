@@ -119,6 +119,7 @@ private:
 	void m_OnButtonReleased(Input::Button button, int32 delta);
 	void m_OnKeyPressed(SDL_Scancode code, int32 delta);
 	void m_OnKeyReleased(SDL_Scancode code, int32 delta);
+	void m_resetRepeat();
 	void m_ResetTabs();
 
 	// Set a target in open/close and apply it in the next tick because stuff

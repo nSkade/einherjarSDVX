@@ -47,8 +47,8 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${MAIN_SRC}" ${PCH_SRC})
 
 include_directories(Audio GUI .)
-add_executable(usc-game ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_FILES})
-target_include_directories(usc-game PRIVATE
+add_executable(einherjarSDVX ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_FILES})
+target_include_directories(einherjarSDVX PRIVATE
 	${SRCROOT}
 	${SRCROOT}/GUI
 	${SRCROOT}/Audio
@@ -56,70 +56,70 @@ target_include_directories(usc-game PRIVATE
 	${INCROOT}/GUI
 	${INCROOT}/Audio
 )
-target_compile_features(usc-game PUBLIC cxx_std_17)
-target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
-target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
-target_compile_definitions(usc-game PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})
+target_compile_features(einherjarSDVX PUBLIC cxx_std_17)
+target_compile_definitions(einherjarSDVX PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
+target_compile_definitions(einherjarSDVX PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
+target_compile_definitions(einherjarSDVX PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})
 find_package (Git)
 if(GIT_FOUND)
-	target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
+	target_compile_definitions(einherjarSDVX PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
 	execute_process(
 	  COMMAND git rev-parse --abbrev-ref HEAD
 	  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	  OUTPUT_VARIABLE GIT_BRANCH
 	  OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
-	target_compile_definitions(usc-game PRIVATE GIT_BRANCH="${GIT_BRANCH}")
+	target_compile_definitions(einherjarSDVX PRIVATE GIT_BRANCH="${GIT_BRANCH}")
 else(GIT_FOUND)
-	target_compile_definitions(usc-game PRIVATE GIT_COMMIT="")
-	target_compile_definitions(usc-game PRIVATE GIT_BRANCH="master")
+	target_compile_definitions(einherjarSDVX PRIVATE GIT_COMMIT="")
+	target_compile_definitions(einherjarSDVX PRIVATE GIT_BRANCH="master")
 endif(GIT_FOUND)
 
-set_output_postfixes(usc-game)
-set_werror(usc-game)
+set_output_postfixes(einherjarSDVX)
+set_werror(einherjarSDVX)
 
 if(MSVC)
 	# Set debugging folder
-	set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-	target_compile_options(usc-game PRIVATE /EHsc /MP)
+	set_target_properties(einherjarSDVX PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+	target_compile_options(einherjarSDVX PRIVATE /EHsc /MP)
 	# Target subsystem on windows, enable multiprocess build and faster PDB gen
-	set_target_properties(usc-game PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
-	set_target_properties(usc-game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
+	set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
+	set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
 endif(MSVC)
 
 # Dependencies
-target_link_libraries(usc-game Shared)
-target_link_libraries(usc-game Graphics)
-target_link_libraries(usc-game Audio)
-target_link_libraries(usc-game GUI)
-target_link_libraries(usc-game Beatmap)
-target_link_libraries(usc-game nanovg)
-target_link_libraries(usc-game lua)
-target_link_libraries(usc-game discord-rpc)
-target_link_libraries(usc-game cpr)
-target_link_libraries(usc-game nlohmann_json)
+target_link_libraries(einherjarSDVX Shared)
+target_link_libraries(einherjarSDVX Graphics)
+target_link_libraries(einherjarSDVX Audio)
+target_link_libraries(einherjarSDVX GUI)
+target_link_libraries(einherjarSDVX Beatmap)
+target_link_libraries(einherjarSDVX nanovg)
+target_link_libraries(einherjarSDVX lua)
+target_link_libraries(einherjarSDVX discord-rpc)
+target_link_libraries(einherjarSDVX cpr)
+target_link_libraries(einherjarSDVX nlohmann_json)
 
-target_link_libraries(usc-game ${SDL2_LIBRARY})
-target_link_libraries(usc-game ${LibArchive_LIBRARIES})
-target_include_directories(usc-game SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
+target_link_libraries(einherjarSDVX ${SDL2_LIBRARY})
+target_link_libraries(einherjarSDVX ${LibArchive_LIBRARIES})
+target_include_directories(einherjarSDVX SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
 
 if(WIN32)
-	target_link_libraries(usc-game
+	target_link_libraries(einherjarSDVX
 		optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Release.lib
 		optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client_Release.lib
 		optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Release.lib
 	)
-	target_link_libraries(usc-game
+	target_link_libraries(einherjarSDVX
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Debug.lib
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client_Debug.lib
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Debug.lib
 	)
-	target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
+	target_include_directories(einherjarSDVX PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
 endif()
 
 find_package(ZLIB REQUIRED)
 if(ZLIB_FOUND)
-	target_compile_definitions(usc-game PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
+	target_compile_definitions(einherjarSDVX PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
 endif()
 
-target_link_libraries(usc-game cc-common)
+target_link_libraries(einherjarSDVX cc-common)

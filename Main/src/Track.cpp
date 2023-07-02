@@ -35,8 +35,7 @@ Track::~Track()
 	g_input.OnButtonReleased.Remove(this, &Track::OnButtonReleasedDelta);
 
 	delete loader;
-	for (auto & i : m_laserTrackBuilder)
-		delete i;
+	delete m_laserTrackBuilder;
 	for (auto & m_hitEffect : m_hitEffects)
 		delete m_hitEffect;
 	delete timedHitEffect;
@@ -192,15 +191,12 @@ bool Track::AsyncFinalize()
 	// Overlay shader
 	trackOverlay->opaque = false;
 
-	// Create a laser track builder for each laser object
+	// Create a laser track builder
 	// these will output and cache meshes for rendering lasers
-	for(uint32 i = 0; i < 2; i++)
-	{
-		m_laserTrackBuilder[i] = new LaserTrackBuilder(g_gl, this, i);
-		m_laserTrackBuilder[i]->laserBorderPixels = 12;
-		m_laserTrackBuilder[i]->laserLengthScale = trackLength / (GetViewRange() * laserSpeedOffset);
-		m_laserTrackBuilder[i]->Reset(); // Also initializes the track builder
-	}
+	m_laserTrackBuilder = new LaserTrackBuilder(g_gl, this);
+	m_laserTrackBuilder->laserBorderPixels = 12;
+	m_laserTrackBuilder->laserLengthScale = trackLength / (GetViewRange() * laserSpeedOffset);
+	m_laserTrackBuilder->Reset(); // Also initializes the track builder
 
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
@@ -356,19 +352,16 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 	*/
 
 	// Perform laser track cache cleanup, etc.
-	for(uint32 i = 0; i < 2; i++)
-	{
-		m_laserTrackBuilder[i]->Update(m_lastMapTime);
+	m_laserTrackBuilder->Update(m_lastMapTime);
 
-		//laserAlertOpacity[i] = (-pow(m_alertTimer[i], 2.0f) + (1.5f * m_alertTimer[i])) * 5.0f;
-		//laserAlertOpacity[i] = Math::Clamp<float>(laserAlertOpacity[i], 0.0f, 1.0f);
-		//m_alertTimer[i] += deltaTime;
-	}
+	//laserAlertOpacity[i] = (-pow(m_alertTimer[i], 2.0f) + (1.5f * m_alertTimer[i])) * 5.0f;
+	//laserAlertOpacity[i] = Math::Clamp<float>(laserAlertOpacity[i], 0.0f, 1.0f);
+	//m_alertTimer[i] += deltaTime;
 
 	UpdateMeshMods();
 }
 
-//TODO(skade) obsolete?
+//TODO(skade) Not working currently (obsolete?)
 void Track::DrawLaserBase(RenderQueue& rq, class BeatmapPlayback& playback, const Vector<ObjectState*>& objects)
 {
 	for (auto obj : objects)
@@ -384,7 +377,7 @@ void Track::DrawLaserBase(RenderQueue& rq, class BeatmapPlayback& playback, cons
 			float position = playback.TimeToViewDistance(obj->time);
 			float posmult = trackLength / (m_viewRange * laserSpeedOffset);
 
-			Mesh laserMesh = m_laserTrackBuilder[laser->index]->GenerateTrackMesh(playback, laser);
+			Mesh laserMesh;// = m_laserTrackBuilder->GenerateTrackMesh(playback, laser);
 
 			MaterialParameterSet laserParams;
 			laserParams.SetParameter("mainTex", laserTextures[laser->index]);
@@ -426,9 +419,7 @@ void Track::DrawBase(class RenderQueue& rq)
 			for (uint32_t j = 0; j < m_meshQuality; j++) {
 			
 				uint32_t im = (m_meshQuality-1-j)*2;
-				Transform t = EvaluateModTransform(msmd[im].pos+Vector3(.5f*trackWidth / 6.0f,0,0),((float)j)/m_meshQuality,idx);
-
-				//Transform t = m_meshOffsets[idx][j];
+				Transform t = EvaluateModTransform(msmd[im].pos+Vector3(.5f*trackWidth / 6.0f,0,0),((float)j)/m_meshQuality,idx,MA_TRACK);
 				
 				Vector3 ml = Vector3(-.5f*trackWidth/6.f,0,0);
 				Vector3 mr = Vector3(.5f*trackWidth/6.f,0,0);
@@ -445,12 +436,17 @@ void Track::DrawBase(class RenderQueue& rq)
 			msmd = MeshGenerators::Triangulate(msmd);
 			splitTrackMesh[i]->SetData(msmd);
 		}
-
+		
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
+		params.SetParameter("uColor",Vector3(255.f,157.f,45.f)/Vector3(255.f)*4.f);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
+		params.SetParameter("uColor",Vector3(255.f,123.f,206.f)/Vector3(255.f)*4.f);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[2], trackMaterial, params);
+		params.SetParameter("uColor",Vector3(0.f,143.f,255.f)/Vector3(255.f)*4.f);
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[3], trackMaterial, params);
+		params.SetParameter("uColor",Vector3(37.f,227.f,89.f)/Vector3(255.f)*4.f);
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[4], trackMaterial, params);
+		params.SetParameter("uColor",Vector3(1.f));
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[5], trackMaterial, params);
 	} else {
 		rq.Draw(transform, trackMesh, trackMaterial, params);
@@ -471,10 +467,6 @@ void Track::DrawBase(class RenderQueue& rq)
 				uint32_t idx = i-1;
 				if (i==0) idx = 6;
 				if (i==5) idx = 7;
-				//Vector3 mScale = Vector3(1.f,1.f,1.f) + EvaluateMods(m_modv[MT_SCALE],fLocal,idx);
-				//Vector3 baseRot = EvaluateMods(m_modv[MT_ROT],fLocal,idx);
-				//Vector3 baseTrans = EvaluateMods(m_modv[MT_TRANS],fLocal,idx);
-				//Transform mt = Transform::Translation(tickPosition+baseTrans)*Transform::Rotation(baseRot)*Transform::Scale(mScale);
 
 				Vector3 centerSplitPos;
 				if (i==0)
@@ -482,7 +474,7 @@ void Track::DrawBase(class RenderQueue& rq)
 				else
 					centerSplitPos = Vector3({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f});
 
-				Transform mt = EvaluateModTransform(tickPosition+centerSplitPos,fLocal,idx);
+				Transform mt = EvaluateModTransform(tickPosition+centerSplitPos,fLocal,idx,MA_TRACK);
 				
 				rq.Draw(tT * mt, splitTrackTickMesh[i], buttonMaterial, params);
 			}
@@ -507,11 +499,9 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 	position /= viewRange;
 	// position is now between 0.0 and 1.0
 
-	//TODO(skade) provide std::vector<float> of intersections at height from 0.0 to 1.0
-
-	if(obj->type == ObjectType::Single || obj->type == ObjectType::Hold)
+	if(obj->type == ObjectType::Single)
 	{
-		bool isHold = obj->type == ObjectType::Hold;
+		bool isHold = obj->type == ObjectType::Hold; //TODO(skade)
 		MultiObjectState* mobj = (MultiObjectState*)obj;
 		MaterialParameterSet params;
 		Material mat = buttonMaterial;
@@ -559,59 +549,22 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		params.SetParameter("trackPos", position);
 
-		if (isHold) {
-			if(!active && mobj->hold.GetRoot()->time > playback.GetLastTime())
-				params.SetParameter("hitState", 1);
-			else
-				params.SetParameter("hitState", currentObjectGlowState);
-
-			params.SetParameter("objectGlow", currentObjectGlow);
-			mat = holdButtonMaterial;
-		}
-
-		//xposition += EvaluateSpline(m_xSplines,mobj->button.index,position);
-
-		//Vector3 buttonPos = EvaluateMod(Vector3(xposition,position,zposition), mobj->button.index);
-
 		Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
-
-		//Vector3 mScale = Vector3(1.f,1.f,1.f) + EvaluateMods(m_modv[MT_SCALE],position,mobj->button.index);
-		//Vector3 baseRot = EvaluateMods(m_modv[MT_ROT],position,mobj->button.index);
-		//Vector3 baseTrans = EvaluateMods(m_modv[MT_TRANS],position,mobj->button.index);
 
 		Transform buttonTransform = trackOrigin;
 		
 		//TODO(skade) Transform Spline better?
-		buttonTransform *= EvaluateModTransform(buttonPos,position,mobj->button.index);
-		//buttonTransform *= Transform::Translation(buttonPos+baseTrans)*Transform::Rotation(baseRot)*Transform::Scale(mScale);
+		buttonTransform *= EvaluateModTransform(buttonPos,position,mobj->button.index, MA_BUTTON);
 		//buttonTransform *= Transform::Translation(buttonPos);
 		
 		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
-		if (isHold) { // Hold Note?
-			float trackScale = 0.0f;
-			if (dontUseScrollSpeedForPos) {
-				if (mobj->time + mobj->hold.duration <= playback.GetLastTime()) {
-					trackScale = playback.ToViewDistanceIgnoringScrollSpeed(mobj->time, mobj->hold.duration);
-				} else {
-					const float remainingDistance = playback.TimeToViewDistance(mobj->time + mobj->hold.duration);
-					trackScale = Math::Max(0.0f, remainingDistance) - playback.TimeToViewDistanceIgnoringScrollSpeed(mobj->time);
-				}
-			} else {
-				trackScale = playback.ToViewDistance(mobj->time, mobj->hold.duration);
-			}
 
-			trackScale /= viewRange * length;
-			scale = trackScale * trackLength;
-
-			params.SetParameter("trackScale", trackScale);
-		} else {
-			//TODO rewrite
-			if (mobj->button.index < 4) // bt button scale
-				scale = 0.2f + (1.5f) * position;
-			else //fx button scale
-				scale = 0.35f + (1.5f) * position;
-			params.SetParameter("trackScale", 1.0f / trackLength);
-		}
+		//TODO rewrite
+		if (mobj->button.index < 4) // bt button scale
+			scale = 0.2f + (1.5f) * position;
+		else //fx button scale
+			scale = 0.35f + (1.5f) * position;
+		params.SetParameter("trackScale", 1.0f / trackLength);
 
 		//TODO(skade) make settable with spline.
 		params.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
@@ -619,9 +572,10 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		params.SetParameter("suddenCutoff", suddenCutoff); // Sudden cutoff (% of track)
 		params.SetParameter("suddenFadeWindow", suddenFadewindow); // Sudden cutoff (% of track)
 
+		//TODO(skade) mod binding
 		bool skipFX = mobj->button.index < 4; //TODO make option
 
-		if (skipFX && obj->type == ObjectType::Single) {
+		if (skipFX) {
 			
 			int32 barTime = playback.GetTimingPointAt(obj->time)->time;
 			double beatD = playback.GetTimingPointAt(obj->time)->GetBarDuration();
@@ -646,6 +600,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 				}
 			}
 
+			//TODO(skade) mod binding
 			switch (c)
 			{
 			case 0: // 4th
@@ -673,16 +628,97 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
-	else if(obj->type == ObjectType::Laser) // Draw laser
+	else if (obj->type == ObjectType::Hold) {
+		MultiObjectState* mobj = (MultiObjectState*)obj;
+		MaterialParameterSet params;
+		Material mat = buttonMaterial;
+		Mesh mesh;
+		float xscale = 1.0f;
+		float width;
+		float xposition;
+		float zposition = 0.f;
+		float length;
+		float currentObjectGlow = active ? objectGlow : 0.3f;
+		int currentObjectGlowState = active ? 2 + objectGlowState : 0;
+		
+		if(mobj->button.index < 4) { // Normal button
+			width = buttonWidth;
+			xposition = buttonTrackWidth * -0.5f + width * mobj->button.index + width*.5f;
+			int fxIdx = 0;
+			if (mobj->button.index < 2) {
+				xposition -= 0.5 * centerSplit * buttonWidth;
+			} else {
+				xposition += 0.5 * centerSplit * buttonWidth;
+				fxIdx = 1;
+			}
+			length = buttonLength;
+			params.SetParameter("hasSample", mobj->button.hasSample);
+			params.SetParameter("mainTex", buttonHoldTexture);
+			//mesh = buttonMesh;
+		
+		} else { // FX Button
+			width = fxbuttonWidth;
+			xposition = buttonTrackWidth * -0.5f + fxbuttonWidth *(mobj->button.index - 4) + fxbuttonWidth*.5f;
+			if (mobj->button.index < 5) {
+				xposition -= 0.5f * centerSplit * buttonWidth;
+			} else {
+				xposition += 0.5f * centerSplit * buttonWidth;
+			}
+			length = fxbuttonLength;
+			params.SetParameter("hasSample", mobj->button.hasSample);
+			params.SetParameter("mainTex",fxbuttonHoldTexture);
+			//mesh = fxbuttonMesh;
+		}
+		float trackScale = 0.0f;
+		if(!active && mobj->hold.GetRoot()->time > playback.GetLastTime())
+			params.SetParameter("hitState", 1);
+		else
+			params.SetParameter("hitState", currentObjectGlowState);
+
+		params.SetParameter("objectGlow", currentObjectGlow);
+		mat = holdButtonMaterial;
+		
+		if (dontUseScrollSpeedForPos) {
+			if (mobj->time + mobj->hold.duration <= playback.GetLastTime()) {
+				trackScale = playback.ToViewDistanceIgnoringScrollSpeed(mobj->time, mobj->hold.duration);
+			} else {
+				const float remainingDistance = playback.TimeToViewDistance(mobj->time + mobj->hold.duration);
+				trackScale = Math::Max(0.0f, remainingDistance) - playback.TimeToViewDistanceIgnoringScrollSpeed(mobj->time);
+			}
+		} else {
+			trackScale = playback.ToViewDistance(mobj->time, mobj->hold.duration);
+		}
+
+		trackScale /= viewRange * length;
+		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
+		scale = trackScale * trackLength;
+
+		Transform buttonTransform = trackOrigin;
+		Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
+
+		HoldObjectState* hold = (HoldObjectState*)obj;
+		mesh = m_laserTrackBuilder->GenerateHold(playback,hold,buttonPos,position,scale,m_meshQuality); //TODO(skade) binding for lane quality.
+
+		// find find which positions on i/m_meshQuality this mesh intersects.
+
+		//buttonTransform *= Transform::Translation(buttonPos);
+		//buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
+		params.SetParameter("trackScale", trackScale);
+		rq.Draw(buttonTransform, mesh, mat, params);
+	}
+	else if (obj->type == ObjectType::Laser) // Draw laser
 	{
 		position = playback.TimeToViewDistance(obj->time);
-		float viewRange = GetViewRange();
-		float posy = position/viewRange;
 		float posmult = trackLength / (m_viewRange * laserSpeedOffset);
+		float posy = posmult * position / trackLength;
 		LaserObjectState* laser = (LaserObjectState*)obj;
+		Vector3 laserPos = Vector3(0.0f, posmult * position, 0.0f);
+
+		bool isEntry = !laser->prev;
+		bool isExit = !laser->next && (laser->flags & LaserObjectState::flag_Instant) != 0; // Only draw exit on slams
 
 		// Draw segment function
-		auto DrawSegment = [&](Mesh mesh, Texture texture, int part)
+		auto DrawSegment = [&](Mesh mesh, Texture texture, int part,bool modTrans)
 		{
 			MaterialParameterSet laserParams;
 			laserParams.SetParameter("trackPos", posmult * position / trackLength);
@@ -698,7 +734,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			if (laser->GetRoot()->time > playback.GetLastTime())
 			{
 				laserParams.SetParameter("objectGlow", 0.6f);
-				laserParams.SetParameter("hitState", 2);	// Skade-code 1 -> 2
+				laserParams.SetParameter("hitState", 2);
 			}
 			else
 			{
@@ -710,43 +746,38 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 			// Get the length of this laser segment
 			Transform laserTransform = trackOrigin;
-			Vector3 laserPos = Vector3(0.0f, posmult * position, 0.0f);
 			//laserTransform *= Transform::Translation(laserPos);
 			
 			uint32_t idx = 1-laser->index+6;
-			//Vector3 mScale = Vector3(1.f,1.f,1.f) + EvaluateMods(m_modv[MT_SCALE],posy,idx);
-			//Vector3 baseRot = EvaluateMods(m_modv[MT_ROT],posy,idx);
-			//Vector3 baseTrans = EvaluateMods(m_modv[MT_TRANS],posy,idx);
 
-			laserTransform *= EvaluateModTransform(laserPos,posy,idx);
-
-			//laserTransform *= Transform::Translation(laserPos+baseTrans)*Transform::Rotation(baseRot)*Transform::Scale(mScale);
+			if (modTrans || laser->flags & LaserObjectState::flag_Instant)
+				laserTransform *= EvaluateModTransform(laserPos,posy,idx, MA_LASER);
+			//else
+				//laserTransform *= Transform::Translation(laserPos);
 
 			// Set laser color
 			laserParams.SetParameter("color", laserColors[laser->index]);
 
 			if(mesh)
-			{
 				rq.Draw(laserTransform, mesh, laserMaterial, laserParams);
-			}
 		};
 
-		// Draw entry?
-		if(!laser->prev)
+		// Draw entry
+		if(isEntry)
 		{
-			Mesh laserTail = m_laserTrackBuilder[laser->index]->GenerateTrackEntry(playback, laser);
-			DrawSegment(laserTail, laserTailTextures[laser->index], 1);
+			Mesh laserTail = m_laserTrackBuilder->GenerateTrackEntry(playback, laser);
+			DrawSegment(laserTail, laserTailTextures[laser->index], 1,true);
 		}
 
 		// Body
-		Mesh laserMesh = m_laserTrackBuilder[laser->index]->GenerateTrackMesh(playback, laser);
-		DrawSegment(laserMesh, laserTextures[laser->index], 0);
+		Mesh laserMesh = m_laserTrackBuilder->GenerateTrackMesh(playback, laser, laserPos, posy,1.f,m_meshQuality); //TODO(skade) quality
+		DrawSegment(laserMesh, laserTextures[laser->index], 0,false);
 
-		// Draw exit?
-		if(!laser->next && (laser->flags & LaserObjectState::flag_Instant) != 0) // Only draw exit on slams
+		// Draw exit
+		if(isExit) // Only draw exit on slams
 		{
-			Mesh laserTail = m_laserTrackBuilder[laser->index]->GenerateTrackExit(playback, laser);
-			DrawSegment(laserTail, laserTailTextures[2 + laser->index], 2);
+			Mesh laserTail = m_laserTrackBuilder->GenerateTrackExit(playback, laser);
+			DrawSegment(laserTail, laserTailTextures[2 + laser->index], 2,true);
 		}
 	}
 }
@@ -989,12 +1020,10 @@ void Track::SetViewRange(float newRange)
 
 		// Update view range
 		float newLaserLengthScale = trackLength / (m_viewRange * laserSpeedOffset);
-		m_laserTrackBuilder[0]->laserLengthScale = newLaserLengthScale;
-		m_laserTrackBuilder[1]->laserLengthScale = newLaserLengthScale;
+		m_laserTrackBuilder->laserLengthScale = newLaserLengthScale;
 
 		// Reset laser tracks cause these won't be correct anymore
-		m_laserTrackBuilder[0]->Reset();
-		m_laserTrackBuilder[1]->Reset();
+		m_laserTrackBuilder->Reset();
 	}
 }
 
@@ -1143,9 +1172,11 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 	return val;
 }
 
-Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx, uint32_t layer)
+Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx, uint8_t af, uint32_t layer, bool isMult)
 {
 	Vector3 r;
+	if (isMult)
+		r = Vector3(1.f);
 
 	uint8_t lane = ButtonIndexToAffectedLane(btx);
 
@@ -1153,17 +1184,24 @@ Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_
 	for (uint32_t i = 0; i < mods.size(); ++i) {
 		Mod* m = mods[i];
 
+		if (!(af & m->affection))
+			continue;
+		if (!(m->affectedLanes & lane) || !m->active)
+			continue;
+
 		// Check for the requested layer.
 		if (m->layer < layer)
 			continue;
 		else if (m->layer > layer)
 			break;
-
-		if (!(m->affectedLanes & lane) || !m->active)
-			continue;
+		
 		for (uint32_t j = 0; j < MST_COUNT; ++j) {
 			if (m->splines[j].size() > 0) {
-				r[j] += EvaluateSpline(m->splines[j],yOffset);
+				float val = EvaluateSpline(m->splines[j],yOffset);
+				if (!isMult)
+					r[j] += val;
+				else
+					r[j] *= val;
 			}
 		}
 	}
@@ -1171,15 +1209,14 @@ Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_
 	return r;
 }
 
-Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx)
+Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx, uint8_t af)
 {
 	Transform mt;
 	for (uint32_t i=0;i<m_maxLayerSize;++i) {
-		Vector3 scale = Vector3(1.f,1.f,1.f);
-		Vector3 rot, trans;
-		scale += EvaluateMods(m_modv[MT_SCALE],yOffset,btx,i);
-		rot += EvaluateMods(m_modv[MT_ROT],yOffset,btx,i);
-		trans += EvaluateMods(m_modv[MT_TRANS],yOffset,btx,i);
+		Vector3 scale, rot, trans; // scale starts in EvaluateMods with 1.
+		scale += EvaluateMods(m_modv[MT_SCALE],yOffset,btx,af,i,true);
+		rot += EvaluateMods(m_modv[MT_ROT],yOffset,btx,af,i);
+		trans += EvaluateMods(m_modv[MT_TRANS],yOffset,btx,af,i);
 		if (i==tickLayer)
 			trans += tickPosition;
 
@@ -1188,16 +1225,13 @@ Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_
 	return mt;
 }
 
+//TODO only lane, put into lane
 void Track::UpdateMeshMods() {
 	//calculate offsets
 	for (uint32_t i = 0; i < 8; ++i) {
 		for (uint32_t j = 0; j < m_meshQuality; ++j) {
-			Transform mt = EvaluateModTransform(Vector3(),((float)j)/m_meshQuality,i);
-			Vector3 v = mt.GetPosition();
-			Vector3 s = mt.GetScale();
-			Vector3 r = mt.GetEuler();
-			
-			m_meshOffsets[i][j] = mt;//v;
+			Transform mt = EvaluateModTransform(Vector3(),((float)j)/m_meshQuality,i,MA_LINE);
+			m_meshOffsets[i][j] = mt;
 		}
 	}
 }
@@ -1281,18 +1315,36 @@ void Track::SetModSpline(ModSplineType d, uint32_t idx, float val) {
 		return;
 	if (d==MST_NONE)
 		d = m_cMST;
-	for (uint32_t i=0;i<MST_COUNT;++i) {
-		if (m_pEMod->splines[d].size() <= idx)
-			continue;
-		m_pEMod->splines[d][idx].value = val;
-	}
+	if (m_pEMod->splines[d].size() <= idx)
+		return;
+	m_pEMod->splines[d][idx].value = val;
 }
 
-void Track::SetModProperties(uint8_t affectedLanes, bool affectsTrack) {
+float Track::GetModSplineValue(ModSplineType d, uint32_t idx) {
+	if (!m_pEMod)
+		return 0.f;
+	if (d==MST_NONE)
+		d = m_cMST;
+	if (m_pEMod->splines[d].size() <= idx)
+		return 0.f;
+	return m_pEMod->splines[d][idx].value;
+}
+
+float Track::GetModSplineOffset(ModSplineType d, uint32_t idx) {
+	if (!m_pEMod)
+		return 0.f;
+	if (d==MST_NONE)
+		d = m_cMST;
+	if (m_pEMod->splines[d].size() <= idx)
+		return 0.f;
+	return m_pEMod->splines[d][idx].offset;
+}
+
+void Track::SetModProperties(uint8_t affectedLanes, uint8_t affection) {
 	if (!m_pEMod)
 		return;
 	m_pEMod->affectedLanes = affectedLanes;
-	m_pEMod->affectsTrack = affectsTrack;
+	m_pEMod->affection = affection;
 }
 
 void Track::AddMod(std::string modName, ModType type) {

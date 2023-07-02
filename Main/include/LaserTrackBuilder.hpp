@@ -1,23 +1,24 @@
 #pragma once
 #include <Beatmap/BeatmapObjects.hpp>
 
+//TODO(skade) rename
 class LaserTrackBuilder
 {
 public:
-	LaserTrackBuilder(class OpenGL* gl, class Track* track, uint32 laserIndex);
+	LaserTrackBuilder(class OpenGL* gl, class Track* track);
 	void Reset();
 	void Update(MapTime newTime);
 
 	// Generates a normal segment
-	Mesh GenerateTrackMesh(class BeatmapPlayback& playback, LaserObjectState* laser);
+	Mesh GenerateTrackMesh(class BeatmapPlayback& playback, LaserObjectState* laser, Vector3 t, float yPos, float scale, uint32_t quality);
 
 	// Generate the starting segment of a laser
 	Mesh GenerateTrackEntry(class BeatmapPlayback& playback, LaserObjectState* laser);
 	// Generate the ending segment of a laser
 	Mesh GenerateTrackExit(class BeatmapPlayback& playback, LaserObjectState* laser);
 
-	// Laser length scale at a given position
-	float GetLaserLengthScaleAt(MapTime time);
+	Mesh GenerateHold(class BeatmapPlayback& playback, HoldObjectState* hold, Vector3 t, float yPos, float scale, uint32_t quality);
+
 
 	// Used to generate larges meshes but allow the texture to match the actual laser width
 	uint32 laserBorderPixels;
@@ -54,12 +55,14 @@ private:
 private:
 	void m_RecalculateConstants();
 	void m_Cleanup(MapTime newTime, Map<LaserObjectState*, Mesh>& arr);
+	void m_Cleanup(MapTime newTime, Map<HoldObjectState*, Mesh>& arr);
 	class OpenGL* m_gl;
 	class Track* m_track;
 
 	float m_trackWidth;
 	float m_laserWidth;
-	uint32 m_laserIndex;
+
+	Map<HoldObjectState*, Mesh> m_objectCacheHold;
 	Map<LaserObjectState*, Mesh> m_objectCache;
 	Map<LaserObjectState*, Mesh> m_cachedEntries;
 	Map<LaserObjectState*, Mesh> m_cachedExits;

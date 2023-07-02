@@ -114,7 +114,7 @@ if(MSVC)
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 	# Set usc-game as default target in VS
-	set_directory_properties(PROPERTY VS_STARTUP_PROJECT usc-game)
+	set_directory_properties(PROPERTY VS_STARTUP_PROJECT einherjarSDVX)
 
 	# Put all third party libraries in a seperate folder in the VS solution
 	set_target_properties(cpr PROPERTIES FOLDER "Third Party")

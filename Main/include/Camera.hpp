@@ -138,6 +138,7 @@ public:
 	Transform worldNoRoll;
 	Transform critOrigin;
 	Transform modTransform; //TODO(skade) better name
+	Transform modTransformSkin; //TODO(skade) better name
 
 private:
 	float m_ClampRoll(float in) const;

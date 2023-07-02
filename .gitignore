@@ -10,8 +10,10 @@ vcpkg-manifest-install.log
 *.exe
 *.a
 bin/usc-game
+bin/einherjarSDVX
 bin/Tests.Game
 bin/Tests.Shared
+bin/*.lnk
 
 # Memory dump files
 *.dmp

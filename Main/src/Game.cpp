@@ -1047,7 +1047,7 @@ public:
 		RenderQueue hitObjectsTrackCoverRq(g_gl, rs);
 
 		/// TODO: Performance impact analysis.
-		m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
+		//m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
 
 		// Draw the base track + time division ticks
 		m_track->DrawBase(renderQueue);
@@ -3208,11 +3208,13 @@ public:
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
 		bind->AddFunction("GetHispeed",this,&Game_Impl::lGetHispeed);
 
-		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO deprecated //add support for nvg3dmat on shadedMesh
-		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO deprecated
+		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO(skade) deprecated //add support for nvg3dmat on shadedMesh
+		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO(skade) deprecated
 
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
 		bind->AddFunction("GetCamModMat",this,&Game_Impl::lgetCamModMat);
+		bind->AddFunction("SetCamModMatSkin",this,&Game_Impl::lsetCamModMat);
+		bind->AddFunction("GetCamModMatSkin",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 
 		//TODO(skade) capital begin
@@ -3223,10 +3225,12 @@ public:
 		bind->AddFunction("setSplineProperty" , this,&Game_Impl::lsetSplineProperty);
 		bind->AddFunction("setEModSplineType" , this,&Game_Impl::lsetEModSplineType);
 		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
-		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
-		bind->AddFunction("setModLayer"    , this,&Game_Impl::lsetModLayer);
+		bind->AddFunction("setModLayer"       , this,&Game_Impl::lsetModLayer);
 		
 		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
+
+		bind->AddFunction("getModSpline"      , this,&Game_Impl::lgetModSpline);
+		bind->AddFunction("getModSplineOffset", this,&Game_Impl::lgetModSplineOffset); //TODO(skade) getSplineProperty instead
 		return bind;
 	}
 
@@ -3295,6 +3299,20 @@ public:
 		return 0;
 	}
 
+	int lgetModSpline(lua_State* L) {
+		int i = luaL_checknumber(L,2);
+		float v = m_track->GetModSplineValue(Track::MST_NONE,i);
+		lua_pushnumber(L,v);
+		return 1;
+	}
+	
+	int lgetModSplineOffset(lua_State* L) {
+		int i = luaL_checknumber(L,2);
+		float o = m_track->GetModSplineOffset(Track::MST_NONE,i);
+		lua_pushnumber(L,o);
+		return 1;
+	}
+
 	int lsetSplineProperty(lua_State* L) {
 		int i = luaL_checknumber(L,2);
 		float y = luaL_checknumber(L,3);
@@ -3313,8 +3331,8 @@ public:
 
 	int lsetModProperty(lua_State* L) {
 		int al = luaL_checknumber(L,2);
-		bool atb = lua_toboolean(L,3);
-		m_track->SetModProperties(al,atb);
+		int af = luaL_checknumber(L,3);
+		m_track->SetModProperties(al,af);
 		return 0;
 	}
 
@@ -3341,6 +3359,16 @@ public:
 
 	int lgetCamModMat(lua_State* L) {
 		writeMat4(L,m_camera.modTransform);
+		return 1;
+	}
+
+	int lsetCamModMatSkin(lua_State* L) {
+		m_camera.modTransformSkin = readMat4(L,2);
+		return 0;
+	}
+
+	int lgetCamModMatSkin(lua_State* L) {
+		writeMat4(L,m_camera.modTransformSkin);
 		return 1;
 	}
 
@@ -3815,6 +3843,11 @@ public:
 		pushIntToTable("FXR",Track::ML_FXR);
 		pushIntToTable("LSL",Track::ML_LSL);
 		pushIntToTable("LSR",Track::ML_LSR);
+		pushIntToTable("ML_BT",Track::ML_BT);
+		pushIntToTable("ML_FX",Track::ML_FX);
+		pushIntToTable("ML_LS",Track::ML_LS);
+		pushIntToTable("ML_ALL",Track::ML_ALL);
+		
 		pushIntToTable("SIT_LIN",Track::SIT_LINEAR);
 		pushIntToTable("SIT_COS",Track::SIT_COSINE);
 		pushIntToTable("SIT_CUB",Track::SIT_CUBIC);
@@ -3833,6 +3866,13 @@ public:
 		pushFloatToTable("TRACK_W", Track::trackWidth);
 		pushFloatToTable("TRACK_W_BT", Track::buttonTrackWidth);
 		pushFloatToTable("TRACK_W_OP", Track::opaqueTrackWidth);
+		
+		pushIntToTable("MA_BT",  Track::MA_BUTTON);
+		pushIntToTable("MA_HLD", Track::MA_HOLD  );
+		pushIntToTable("MA_LS", Track::MA_LASER );
+		pushIntToTable("MA_TRK", Track::MA_TRACK );
+		pushIntToTable("MA_LIN", Track::MA_LINE  );
+		pushIntToTable("MA_ALL", Track::MA_ALL   );
 
 		lua_setglobal(L, "mdv");
 	}

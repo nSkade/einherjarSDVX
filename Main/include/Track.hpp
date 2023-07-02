@@ -258,6 +258,11 @@ public:
 		ML_FXR = 32,
 		ML_LSL = 64,
 		ML_LSR = 128,
+
+		ML_BT = 16-1,
+		ML_FX = 16+32,
+		ML_LS = 64+128,
+		ML_ALL = 256-1,
 	};
 
 	enum ModType {
@@ -265,6 +270,15 @@ public:
 		MT_ROT,
 		MT_TRANS,
 		MT_COUNT,
+	};
+
+	enum ModAffection {
+		MA_BUTTON = 1,
+		MA_HOLD = 2,
+		MA_LASER = 4,
+		MA_TRACK = 8,
+		MA_LINE = 16,
+		MA_ALL = 32-1,
 	};
 
 	//TODO(skade) improve memory layout?
@@ -275,9 +289,9 @@ public:
 		uint32_t layer = 0; ///< ModType layer. Higher Layers getting applied on Top.
 		
 		std::vector<ModSpline> splines[MST_COUNT];
-		Transform gt; //TODO(skade) global transform apllied last
+		Transform gt; //TODO(skade) global transform apllied last currently unused.
 		uint8_t affectedLanes = 0; ///< If Bit is set lane is affected.
-		bool affectsTrack = true;
+		uint8_t affection = MA_ALL;
 		bool active = true;
 	};
 
@@ -294,17 +308,34 @@ public:
 	void CreateSpline(ModSplineType d, uint32_t amount);
 	void SetModSpline(ModSplineType d, uint32_t idx, float val);
 	void SetSplineProperty(ModSplineType d, uint32_t idx, float yOffset, SplineInterpType type);
-	void SetModProperties(uint8_t affectedLanes, bool affectsTrack);
+	void SetModProperties(uint8_t affectedLanes, uint8_t affection);
 	Mod* GetPEMod() { return m_pEMod; }
 
 	void SetModLayer(uint32_t layer);
 
+	float GetModSplineValue(ModSplineType d, uint32_t idx);
+	float GetModSplineOffset(ModSplineType d, uint32_t idx);
+
 	bool drawModLines = false;
 	uint32_t tickLayer = 0; ///< Layer where Track relative Position gets applied.
 
+	/**
+	 * @brief Iterates through list of mods and returns the Offset Vector.
+	 * @param mods List of mods to iterate through.
+	 * @param p Current position of the button before any applied mods. //TODO
+	 * @param btx Button Index. 0-3 bt 4-5 fx 6-7 laser
+	 * @param layer Requested Mod layer.
+	*/
+	Vector3 EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx, uint8_t af, uint32_t layer, bool isMult = false);
+
+	/**
+	 * @brief Evaluates all mods across different layers.
+	*/
+	Transform EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx, uint8_t af);
+
 private:
 	// Laser track generators
-	class LaserTrackBuilder* m_laserTrackBuilder[2] = { 0 };
+	class LaserTrackBuilder* m_laserTrackBuilder;
 
 	const TimingPoint* m_lastTimingPoint = nullptr;
 
@@ -345,20 +376,6 @@ private:
 	 * @param index Button index 0-3 for bt, 4-5 for fx, 6-7 for laser.
 	*/
 	uint8_t ButtonIndexToAffectedLane(uint8_t index) { return 1 << index; }
-
-	/**
-	 * @brief Iterates through list of mods and returns the Offset Vector.
-	 * @param mods List of mods to iterate through.
-	 * @param p Current position of the button before any applied mods. //TODO
-	 * @param btx Button Index. 0-3 bt 4-5 fx 6-7 laser
-	 * @param layer Requested Mod layer.
-	*/
-	Vector3 EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_t btx, uint32_t layer);
-
-	/**
-	 * @brief Evaluates all mods across different layers.
-	*/
-	Transform EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx);
 
 	ModSplineType m_cMST = MST_X;
 	Mod* m_pEMod = nullptr; ///< Pointer to current Mod that is being edited.

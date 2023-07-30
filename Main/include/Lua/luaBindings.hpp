@@ -179,6 +179,24 @@ static int lLoadSkinSample(lua_State *L /*char* name */)
 	return 0;
 }
 
+static int lLoadSample(lua_State *L /*char* name */)
+{
+	const char *name = luaL_checkstring(L, 1);
+	Sample newSample = g_application->LoadSample(name,true);
+	if (!newSample)
+	{
+		lua_Debug ar;
+		lua_getstack(L, 1, &ar);
+		lua_getinfo(L, "Snl", &ar);
+		String luaFilename;
+		Path::RemoveLast(ar.source, &luaFilename);
+		lua_pushstring(L, *Utility::Sprintf("Failed to load sample \"%s\" at line %d in \"%s\"", name, ar.currentline, luaFilename));
+		return lua_error(L);
+	}
+	g_application->StoreNamedSample(name, newSample);
+	return 0;
+}
+
 static int lPlaySample(lua_State *L /*char* name, bool loop */)
 {
 	const char *name = luaL_checkstring(L, 1);
@@ -309,6 +327,22 @@ static int lSetSkinSetting(lua_State *L /*String key, Any value*/)
 		}
 	}
 	return 0;
+}
+
+static int lLoadFile(lua_State* L) {
+	
+	std::string path = luaL_checkstring(L,1);
+	
+	std::string content;
+	File f;
+	f.OpenRead(path);
+	content.resize(f.GetSize());
+	f.Read(content.data(),f.GetSize());
+	f.Close();
+
+	lua_pushlstring(L,content.data(),content.length());
+	
+	return 1;
 }
 
 static int lGetSkinSetting(lua_State *L /*String key*/)

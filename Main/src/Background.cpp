@@ -113,7 +113,59 @@ public:
 			Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/backgrounds/")));
 
 		String skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+
+		String matPath = "";
+		String fname = foreground ? "fg" : "bg";
+		String kshLayer = game->GetBeatmap()->GetMapSettings().foregroundPath;
+		String layer;
+
+		if (!kshLayer.Split(";", &layer, nullptr))
+		{
+			layer = kshLayer;
+		}
+		
+		//TODOs try to load chart BG first.
+		if (defaultBGs.Contains(layer))
+		{
+			//default bg: load from skin path
+			folderPath = "skins/" +
+						 g_application->GetCurrentSkin() + Path::sep +
+						 "backgrounds" + Path::sep +
+						 layer +
+						 Path::sep;
+			folderPath = Path::Absolute(folderPath);
+		}
+		else
+		{
+			//if skin doesn't have it, try loading from chart folder
+			folderPath = game->GetChartRootPath() + Path::sep +
+						 layer +
+						 Path::sep;
+			folderPath = Path::Absolute(folderPath);
+		}
+
+		String path = Path::Normalize(folderPath + fname);
+
 		lua = luaL_newstate();
+		luaL_openlibs(lua);
+
+		//void Application::SetScriptPath(lua_State *s)
+		{
+			//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
+			String lua_path = Path::Normalize(
+				Path::Absolute(folderPath + "?.lua;") +
+				Path::Absolute(folderPath + "?"));
+
+			lua_getglobal(lua, "package");
+			lua_getfield(lua, -1, "path");				// get field "path" from table at top of stack (-1)
+			std::string cur_path = lua_tostring(lua, -1); // grab path string from top of stack
+			cur_path.append(";");						// do your path magic here
+			cur_path.append(lua_path.c_str());
+			lua_pop(lua, 1);						 // get rid of the string on the stack e just pushed on line 5
+			lua_pushstring(lua, cur_path.c_str()); // push the new one
+			lua_setfield(lua, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
+			lua_pop(lua, 1);						 // get rid of package table from top of stack
+		}
 
 		auto openLib = [this](const char *name, lua_CFunction lib) {
 			luaL_requiref(lua, name, lib, 1);
@@ -131,13 +183,14 @@ public:
 		openLib(LUA_TABLIBNAME, luaopen_table);
 		openLib(LUA_STRLIBNAME, luaopen_string);
 		openLib(LUA_MATHLIBNAME, luaopen_math);
+		openLib(LUA_DBLIBNAME, luaopen_math); //TODO(skade) only open on debug command argument
 
 		// Add error messages to libs which are not allowed
 		errorOnLib(LUA_COLIBNAME);
 		errorOnLib(LUA_IOLIBNAME);
 		errorOnLib(LUA_OSLIBNAME);
 		errorOnLib(LUA_UTF8LIBNAME);
-		errorOnLib(LUA_DBLIBNAME);
+		//errorOnLib(LUA_DBLIBNAME);
 
 		// Clean up the 'package' library so we can't load dlls
 		lua_getglobal(lua, "package");
@@ -172,6 +225,9 @@ public:
 		bindable->AddFunction("LoadTexture", this, &TestBackground::LoadTexture);
 		bindable->AddFunction("SetParami", this, &TestBackground::SetParami);
 		bindable->AddFunction("SetParamf", this, &TestBackground::SetParamf);
+		bindable->AddFunction("SetParam2f", this, &TestBackground::SetParam2f);
+		bindable->AddFunction("SetParam3f", this, &TestBackground::SetParam3f);
+		bindable->AddFunction("SetParam4f", this, &TestBackground::SetParam4f);
 		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
 		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
 		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
@@ -188,47 +244,27 @@ public:
 		trackBindable->Push();
 		modsBindable = game->MakeModsLuaBindable(lua);
 		modsBindable->Push();
-
-		String matPath = "";
-		String fname = foreground ? "fg" : "bg";
-		String kshLayer = game->GetBeatmap()->GetMapSettings().foregroundPath;
-		String layer;
-
-		if (!kshLayer.Split(";", &layer, nullptr))
-		{
-			layer = kshLayer;
-		}
-		if (defaultBGs.Contains(layer))
-		{
-			//default bg: load from skin path
-			folderPath = "skins/" +
-						 g_application->GetCurrentSkin() + Path::sep +
-						 "backgrounds" + Path::sep +
-						 layer +
-						 Path::sep;
-			folderPath = Path::Absolute(folderPath);
-		}
-		else
-		{
-			//if skin doesn't have it, try loading from chart folder
-			folderPath = game->GetChartRootPath() + Path::sep +
-						 layer +
-						 Path::sep;
-			folderPath = Path::Absolute(folderPath);
-		}
-
-		String path = Path::Normalize(folderPath + fname);
+		
 		bool suc = m_init(path);
 		
 		if (game->IsPracticeMode() && g_gameConfig.GetBool(GameConfigKeys::SkinDevMode)) {
 			while (!suc) {
-				g_gameWindow->ShowMessageBox("Loading BGA error\n", lua_tostring(lua, -1), 0);
+				String luaMsg;
+				//TODO(skade) nullptr happens on frag error (non lua), somehow fetch shader error msg?
+				if (lua_tostring(lua,-1))
+					luaMsg = String(lua_tostring(lua,-1));
+				else
+					luaMsg = "Non lua error, probably shader related. Check Log or enable console\n";
+
+				g_gameWindow->ShowMessageBox("Loading BGA error\n", luaMsg, 0);
 				bool reload = g_gameWindow->ShowYesNoMessage("Loading BGA error\n", "Reload BG?\n");
-				suc = m_init(path) | !reload;
+				if (!reload)
+					break;
+				suc = m_init(path);
 			}
 		}
 		
-		if (m_init(path))
+		if (suc)
 			return true;
 
 		Logf("Failed to load %s at path: \"%s\" Attempting to load fallback instead.", Logger::Severity::Warning, foreground ? "foreground" : "background", folderPath);
@@ -291,6 +327,7 @@ public:
 			lua_pushnumber(lua, deltaTime); //TODO(skade) push table where bg and skin read and write data
 			if (lua_pcall(lua, 1, 0, 0) != 0)
 			{
+				//TODO(skade) check lua_tostring nullptr before constructing String
 				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(lua, -1), 0);
 				errored = true;
@@ -364,6 +401,27 @@ public:
 	{
 		String param(luaL_checkstring(L, 2));
 		float v(luaL_checknumber(L, 3));
+		fullscreenMaterialParams.SetParameter(param, v);
+		return 0;
+	}
+	int SetParam2f(lua_State *L /*String param, float v*/)
+	{
+		String param(luaL_checkstring(L, 2));
+		Vector2 v = Vector2(luaL_checknumber(L,3),luaL_checknumber(L,4));
+		fullscreenMaterialParams.SetParameter(param, v);
+		return 0;
+	}
+	int SetParam3f(lua_State *L /*String param, float v*/)
+	{
+		String param(luaL_checkstring(L, 2));
+		Vector3 v = Vector3(luaL_checknumber(L,3),luaL_checknumber(L,4),luaL_checknumber(L,5));
+		fullscreenMaterialParams.SetParameter(param, v);
+		return 0;
+	}
+	int SetParam4f(lua_State *L /*String param, float v*/)
+	{
+		String param(luaL_checkstring(L, 2));
+		Vector4 v = Vector4(luaL_checknumber(L,3),luaL_checknumber(L,4),luaL_checknumber(L,5),luaL_checknumber(L,6));
 		fullscreenMaterialParams.SetParameter(param, v);
 		return 0;
 	}

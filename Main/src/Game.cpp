@@ -210,6 +210,8 @@ private:
 	uint32 m_pressTimes[static_cast<size_t>(Input::Button::Length)] = { 0 };
 	uint8 m_hispeedAdjustMode = 0; // for skins, 0 = not adjusting, 1 = coarse adjustment, 2 = fine adjustment
 
+	bool m_cursorVisible = true;
+
 public:
 	Game_Impl(const String& mapPath, PlayOptions&& options) : m_playOptions(std::move(options))
 	{
@@ -281,7 +283,7 @@ public:
 		//}
 
 		// In case the cursor was still hidden
-		g_gameWindow->SetCursorVisible(true); 
+		g_gameWindow->SetCursorVisible(true);
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_input.OnButtonReleased.RemoveAll(this);
 		g_transition->OnLoadingComplete.RemoveAll(this);
@@ -521,7 +523,7 @@ public:
 			return false;
 
 		// Always hide mouse during gameplay no matter what input mode.
-		g_gameWindow->SetCursorVisible(false);
+		//g_gameWindow->SetCursorVisible(false);
 
 		//Lua
 		m_lua = g_application->LoadScript("gameplay");
@@ -2675,7 +2677,8 @@ public:
 		}
 		else if(code == SDL_SCANCODE_TAB)
 		{
-			g_gameWindow->SetCursorVisible(true);
+			m_cursorVisible = !m_cursorVisible;
+			g_gameWindow->SetCursorVisible(m_cursorVisible);
 		}
 		else if(code == SDL_SCANCODE_F9)
 		{
@@ -3217,7 +3220,7 @@ public:
 		bind->AddFunction("GetCamModMatSkin",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 
-		//TODO(skade) capital begin
+		//TODO(skade) capital begin / rework names
 		bind->AddFunction("addMod"            , this,&Game_Impl::laddMod);
 		bind->AddFunction("setEMod"           , this,&Game_Impl::lsetEMod);
 		bind->AddFunction("createSpline"      , this,&Game_Impl::lcreateSpline);
@@ -3226,11 +3229,19 @@ public:
 		bind->AddFunction("setEModSplineType" , this,&Game_Impl::lsetEModSplineType);
 		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
 		bind->AddFunction("setModLayer"       , this,&Game_Impl::lsetModLayer);
+		bind->AddFunction("setModEnable"      , this,&Game_Impl::lsetModEnable);
 		
 		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
 
 		bind->AddFunction("getModSpline"      , this,&Game_Impl::lgetModSpline);
 		bind->AddFunction("getModSplineOffset", this,&Game_Impl::lgetModSplineOffset); //TODO(skade) getSplineProperty instead
+
+		bind->AddFunction("setMQLine"         , this,&Game_Impl::lsetMQLine);
+		bind->AddFunction("setMQTrack"        , this,&Game_Impl::lsetMQTrack);
+		bind->AddFunction("setMQTrackNeg"     , this,&Game_Impl::lsetMQTrackNeg);
+		bind->AddFunction("setMQHold"         , this,&Game_Impl::lsetMQHold);
+		bind->AddFunction("setMQLaser"        , this,&Game_Impl::lsetMQLaser);
+
 		return bind;
 	}
 
@@ -3342,12 +3353,48 @@ public:
 		return 0;
 	}
 
+	int lsetModEnable(lua_State* L) {
+		bool e = lua_toboolean(L,2);
+		m_track->SetModEnable(e);
+		return 0;
+	}
+
 	int lsetTickLayer(lua_State* L) {
 		int ml = luaL_checknumber(L,2);
 		m_track->tickLayer = ml;
 		return 0;
 	}
 
+	int lsetMQLine(lua_State* L) {
+		int mq = luaL_checknumber(L,2);
+		m_track->SetMQLine(mq);
+		return 0;
+	}
+
+	int lsetMQTrack(lua_State* L) {
+		int mq = luaL_checknumber(L,2);
+		m_track->SetMQTrack(mq);
+		return 0;
+	}
+	
+	int lsetMQTrackNeg(lua_State* L) {
+		int mq = luaL_checknumber(L,2);
+		m_track->SetMQTrackNeg(mq);
+		return 0;
+	}
+
+	int lsetMQHold(lua_State* L) {
+		int mq = luaL_checknumber(L,2);
+		m_track->SetMQHold(mq);
+		return 0;
+	}
+
+	int lsetMQLaser(lua_State* L) {
+		int mq = luaL_checknumber(L,2);
+		m_track->SetMQLaser(mq);
+		return 0;
+	}
+	
 	//END TRACK MOD SPLINE
 
 	#include "GUI/nanovg_linAlg.h"

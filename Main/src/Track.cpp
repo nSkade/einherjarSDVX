@@ -26,7 +26,7 @@ Track::Track()
 		trackLength = 10.0f;
 
 	for (uint32_t i=0;i<8;++i)
-		m_meshOffsets[i] = std::vector<Transform>(m_meshQuality);
+		m_meshOffsets[i] = std::vector<Transform>(m_mqLine);
 }
 
 Track::~Track()
@@ -201,29 +201,19 @@ bool Track::AsyncFinalize()
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
 	
+	UpdateTrackMeshData();
+
 	for (size_t i = 0; i < 6; i++)
 	{
-		//track base
-		Vector2 pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -1);
-		Vector2 size = Vector2(trackWidth / 6.0f, trackLength + 1);
-		Rect rect = Rect(pos, size);
-		//Rect uv = Rect(0.5 - 0.5 * i, 0.0f, 1.0 - 0.5 * i, 1.0f);
-		Rect uv = Rect(float(i)/6.0f, 0.0f, float(i+1)/6.0f, 1.0f);
-		splitTrackMesh[i] = MeshRes::Create(g_gl);
-		splitTrackMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
-		Vector<MeshGenerators::SimpleVertex> splitMeshData;
-		MeshGenerators::GenerateSubdividedTrack(rect, uv, m_meshQuality-1, m_splitMeshData[i]);
-		splitMeshData = MeshGenerators::Triangulate(m_splitMeshData[i]);
-		splitTrackMesh[i]->SetData(m_splitMeshData[i]);
-		
 		//TODO(skade)
 		//track cover
-		pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -trackLength);
-		size = Vector2(trackWidth / 6.0f, trackLength * 2.0);
-		rect = Rect(pos, size);
+		Vector2 pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -trackLength);
+		Vector2 size = Vector2(trackWidth / 6.0f, trackLength * 2.0);
+		Rect uv = Rect(float(i)/6.0f, 0.0f, float(i+1)/6.0f, 1.0f);
+		Rect rect = Rect(pos, size);
 		splitTrackCoverMesh[i] = MeshRes::Create(g_gl);
 		splitTrackCoverMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
-		splitMeshData.clear();
+		Vector<MeshGenerators::SimpleVertex> splitMeshData;
 		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
 		splitTrackCoverMesh[i]->SetData(splitMeshData);
 
@@ -415,22 +405,32 @@ void Track::DrawBase(class RenderQueue& rq)
 			else if (idx==5) idx = 7;
 			else idx--; // BTA is 1
 			
-			Vector<MeshGenerators::SimpleVertex> msmd = m_splitMeshData[i];
-			for (uint32_t j = 0; j < m_meshQuality; j++) {
+			Vector3 ml = Vector3(-.5f*trackWidth/6.f,0,0);
+			Vector3 mr = Vector3(.5f*trackWidth/6.f,0,0);
 			
-				uint32_t im = (m_meshQuality-1-j)*2;
-				Transform t = EvaluateModTransform(msmd[im].pos+Vector3(.5f*trackWidth / 6.0f,0,0),((float)j)/m_meshQuality,idx,MA_TRACK);
-				
-				Vector3 ml = Vector3(-.5f*trackWidth/6.f,0,0);
-				Vector3 mr = Vector3(.5f*trackWidth/6.f,0,0);
+			Vector<MeshGenerators::SimpleVertex> msmd = m_splitMeshData[i];
+			for (uint32_t j = 0; j < m_mqTrack; j++) {
+			
+				uint32_t im = (m_mqTrack-1-j)*2;
+				Transform t = EvaluateModTransform(msmd[im].pos+Vector3(.5f*trackWidth / 6.0f,0,0),((float)j)/(m_mqTrack-1),idx,MA_TRACK);
 
 				msmd[im].pos = t*ml;
 				msmd[im+1].pos = t*mr;
 			}
-			//TODO make optional
-			// calculate offset at -1 by interpolating last two values
-			msmd[0].pos = msmd[2].pos+(msmd[2].pos-msmd[4].pos);
-			msmd[1].pos = msmd[3].pos+(msmd[3].pos-msmd[5].pos);
+			uint32_t cls = (m_mqTrack)*2; // crit line start
+			for (uint32_t j=0;j<m_mqTrackNeg;++j) { //TODO
+				uint32_t im = j*2+cls;
+				float tl = 1.f/trackLength;
+				Transform t = EvaluateModTransform(msmd[im].pos+Vector3(.5f*trackWidth / 6.0f,0,0),-((float)j)/(m_mqTrackNeg-1)*tl,idx,MA_TRACK);
+
+				msmd[im].pos = t*ml;
+				msmd[im+1].pos = t*mr;
+			}
+			//TODO
+			//uint32_t last = msmd.size()-1;
+			//Transform t = EvaluateModTransform(msmd[last-1].pos+Vector3(.5f*trackWidth / 6.0f,0,0),0.f,idx,MA_TRACK);
+			//msmd[last-0].pos = t*mr;
+			//msmd[last-1].pos = t*ml;
 			
 			//TODO(skade) more efficient?
 			msmd = MeshGenerators::Triangulate(msmd);
@@ -697,9 +697,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
 
 		HoldObjectState* hold = (HoldObjectState*)obj;
-		mesh = m_laserTrackBuilder->GenerateHold(playback,hold,buttonPos,position,scale,m_meshQuality); //TODO(skade) binding for lane quality.
-
-		// find find which positions on i/m_meshQuality this mesh intersects.
+		float buttonLength = length;
+		mesh = m_laserTrackBuilder->GenerateHold(playback,hold,buttonPos,position,scale,m_mqHold,buttonLength);
 
 		//buttonTransform *= Transform::Translation(buttonPos);
 		//buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
@@ -770,7 +769,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		}
 
 		// Body
-		Mesh laserMesh = m_laserTrackBuilder->GenerateTrackMesh(playback, laser, laserPos, posy,1.f,m_meshQuality); //TODO(skade) quality
+		Mesh laserMesh = m_laserTrackBuilder->GenerateTrackMesh(playback, laser, laserPos, posy,1.f,m_mqLaser);
 		DrawSegment(laserMesh, laserTextures[laser->index], 0,false);
 
 		// Draw exit
@@ -953,7 +952,7 @@ void Track::DrawLineMesh(RenderQueue& rq)
 		std::vector<Vector3> offsets;
 		MaterialParameterSet params;
 		
-		for (uint32_t j = 0; j < m_meshQuality; ++j) {
+		for (uint32_t j = 0; j < m_mqLine; ++j) {
 			MeshGenerators::SimpleVertex v;
 			float xposition = 0.f;
 			
@@ -969,7 +968,7 @@ void Track::DrawLineMesh(RenderQueue& rq)
 			v.pos = m_meshOffsets[i][j].GetPosition();
 
 			v.pos.x += xposition;
-			v.pos.y += trackLength*((float)j)/m_meshQuality;
+			v.pos.y += trackLength*((float)j)/m_mqLine;
 			data.push_back(v);
 		}
 		m_lineMesh[i]->SetData(data);
@@ -1111,8 +1110,6 @@ void Track::OnButtonReleasedDelta(Input::Button buttonCode, int32 delta)
 
 float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 {
-	height = std::max(0.f,height); //TODO(skade)
-	
 	if (spline.size() == 0)
 		return 0.f;
 	
@@ -1146,9 +1143,9 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 	
 	// get button pos relative to 2 spline
 	float length = eOff-bOff;
-	if (length==0.f)
-		return spline[idx].value;
 	float rOff = height-bOff;
+	
+	assert(rOff > 0.f); //TODO(skade)
 	
 	float s = 0.f;
 	switch (spline[idx].type)
@@ -1211,6 +1208,7 @@ Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_
 
 Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx, uint8_t af)
 {
+	//TODOs much room for performance improvements here.
 	Transform mt;
 	for (uint32_t i=0;i<m_maxLayerSize;++i) {
 		Vector3 scale, rot, trans; // scale starts in EvaluateMods with 1.
@@ -1229,8 +1227,8 @@ Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_
 void Track::UpdateMeshMods() {
 	//calculate offsets
 	for (uint32_t i = 0; i < 8; ++i) {
-		for (uint32_t j = 0; j < m_meshQuality; ++j) {
-			Transform mt = EvaluateModTransform(Vector3(),((float)j)/m_meshQuality,i,MA_LINE);
+		for (uint32_t j = 0; j < m_mqLine; ++j) {
+			Transform mt = EvaluateModTransform(Vector3(),((float)j)/m_mqLine,i,MA_LINE);
 			m_meshOffsets[i][j] = mt;
 		}
 	}
@@ -1295,7 +1293,7 @@ void Track::CreateSpline(ModSplineType d, uint32_t amount) {
 	}
 
 	for (uint32_t i=0;i<amount;++i) {
-		spl->at(i).offset = (float)i/amount;
+		spl->at(i).offset = (float)i/(amount-1);
 	}
 }
 
@@ -1338,6 +1336,12 @@ float Track::GetModSplineOffset(ModSplineType d, uint32_t idx) {
 	if (m_pEMod->splines[d].size() <= idx)
 		return 0.f;
 	return m_pEMod->splines[d][idx].offset;
+}
+
+void Track::SetModEnable(bool enable) {
+	if (!m_pEMod)
+		return;
+	m_pEMod->active = enable;
 }
 
 void Track::SetModProperties(uint8_t affectedLanes, uint8_t affection) {
@@ -1394,3 +1398,44 @@ void Track::RemoveAllMods() {
 	m_pEMod = nullptr;
 }
 
+// Meshing qualities
+
+void Track::SetMQLine(uint32_t q) {
+	m_mqLine = q;
+	for (uint32_t i=0;i<8;++i)
+		m_meshOffsets[i].resize(q);
+}
+
+void Track::SetMQTrack(uint32_t q) {
+	m_mqTrack = q;
+	// Update Track Mesh so m_splitMeshData gets resized.
+	UpdateTrackMeshData();
+}
+void Track::SetMQTrackNeg(uint32_t q) {
+	m_mqTrackNeg = q;
+	// Update Track Mesh so m_splitMeshData gets resized.
+	UpdateTrackMeshData();
+}
+void Track::SetMQLaser(uint32_t q) {
+	m_mqLaser = q;
+}
+void Track::SetMQHold(uint32_t q) {
+	m_mqHold = q;
+}
+
+void Track::UpdateTrackMeshData() {
+	for (size_t i = 0; i < 6; i++) {
+		//track base
+		Vector2 pos = Vector2(-trackWidth*0.5f + (1.0f/6.0f)*i*trackWidth, -1);
+		Vector2 size = Vector2(trackWidth / 6.0f, trackLength + 1);
+		Rect rect = Rect(pos, size);
+		Rect uv = Rect(float(i)/6.0f, 0.0f, float(i+1)/6.0f, 1.0f);
+		splitTrackMesh[i] = MeshRes::Create(g_gl);
+		splitTrackMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
+		Vector<MeshGenerators::SimpleVertex> splitMeshData;
+		m_splitMeshData[i].clear();
+		MeshGenerators::GenerateSubdividedTrack(rect, uv, m_mqTrack-1, m_mqTrackNeg-1, m_splitMeshData[i]);
+		splitMeshData = MeshGenerators::Triangulate(m_splitMeshData[i]);
+		splitTrackMesh[i]->SetData(m_splitMeshData[i]);
+	}
+}

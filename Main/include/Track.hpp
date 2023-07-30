@@ -308,6 +308,7 @@ public:
 	void CreateSpline(ModSplineType d, uint32_t amount);
 	void SetModSpline(ModSplineType d, uint32_t idx, float val);
 	void SetSplineProperty(ModSplineType d, uint32_t idx, float yOffset, SplineInterpType type);
+	void SetModEnable(bool enable);
 	void SetModProperties(uint8_t affectedLanes, uint8_t affection);
 	Mod* GetPEMod() { return m_pEMod; }
 
@@ -315,6 +316,12 @@ public:
 
 	float GetModSplineValue(ModSplineType d, uint32_t idx);
 	float GetModSplineOffset(ModSplineType d, uint32_t idx);
+
+	void SetMQLine(uint32_t q);
+	void SetMQTrack(uint32_t q);
+	void SetMQTrackNeg(uint32_t q);
+	void SetMQLaser(uint32_t q);
+	void SetMQHold(uint32_t q);
 
 	bool drawModLines = false;
 	uint32_t tickLayer = 0; ///< Layer where Track relative Position gets applied.
@@ -377,6 +384,8 @@ private:
 	*/
 	uint8_t ButtonIndexToAffectedLane(uint8_t index) { return 1 << index; }
 
+	void UpdateTrackMeshData();
+
 	ModSplineType m_cMST = MST_X;
 	Mod* m_pEMod = nullptr; ///< Pointer to current Mod that is being edited.
 	std::unordered_map<uint32_t,Mod*> m_mods;
@@ -384,8 +393,17 @@ private:
 	// Mod Vectors containing mods for fast iteration
 	std::vector<Mod*> m_modv[MT_COUNT];
 
-	//TODO(skade) seperate for line, make modifyable
-	uint32_t m_meshQuality = 32;
+	// Triangle Count below 300 dont impact Modern GPUs
+	// -> get as many Triangles without Impact.
+	// One Strip extends with 2 Tris: 2*128 = aprox 256
+	uint32_t m_meshQuality = 128;
+
+	uint32_t m_mqTrack = m_meshQuality;
+	uint32_t m_mqTrackNeg = float(1.f/(10.f+1.f)*m_meshQuality); //TODOs trackLength instead of 10.f
+	uint32_t m_mqHold = m_meshQuality;
+	uint32_t m_mqLaser = m_meshQuality;
+	uint32_t m_mqLine = m_meshQuality;
+
 	// Evaluated Mod Values for Meshes. (Line,Track etc.) //TODO(skade) rename not yOffsets but values
 	std::vector<Transform> m_meshOffsets[8];
 	Vector<MeshGenerators::SimpleVertex> m_splitMeshData[6];

@@ -59,17 +59,15 @@ namespace Graphics
 	}
 
 	//TODO(skade)
-	void MeshGenerators::GenerateSubdividedTrack(Rect3D r, Rect uv, uint32_t count, Vector<SimpleVertex>& out)
+	void MeshGenerators::GenerateSubdividedTrack(Rect3D r, Rect uv, uint32_t countPos, uint32_t countNeg, Vector<SimpleVertex>& out)
 	{
 		Vector<MeshGenerators::SimpleVertex> vL;
 		
 		vL.emplace_back(Vector3(r.Left(), r.Top(), 0.0f),Vector2(uv.Left(), uv.Top()));
 		vL.emplace_back(Vector3(r.Right(), r.Top(), 0.0f),Vector2(uv.Right(), uv.Top()));
 		
-		uint32_t amount = count;
-		
-		for (uint32_t i = 1; i <= amount; ++i) {
-			float l = (float) i/amount;
+		for (uint32_t i = 1; i <= countPos; ++i) {
+			float l = (float) i/countPos;
 			float posSize = r.size.y+r.pos.y;
 			l = 1.f-(posSize*l)/r.size.y;
 			float rv = r.Top()*l+(1.f-l)*r.Bottom();
@@ -78,7 +76,17 @@ namespace Graphics
 			vL.emplace_back(Vector3(r.Left(), rv, 0.0f),Vector2(uv.Left(), uvv));
 			vL.emplace_back(Vector3(r.Right(),rv, 0.0f),Vector2(uv.Right(),uvv));
 		}
-
+		for (uint32_t i = 0; i<countNeg; ++i) {
+			float l = (float) i/countNeg;
+			float negSize = -r.pos.y;
+			l = (negSize-(negSize*l))/r.size.y;
+			float rv = r.Top()*l+(1.f-l)*r.Bottom();
+			float uvv = uv.Top()*l+(1.f-l)*uv.Bottom();
+			
+			vL.emplace_back(Vector3(r.Left(), rv, 0.0f),Vector2(uv.Left(), uvv));
+			vL.emplace_back(Vector3(r.Right(),rv, 0.0f),Vector2(uv.Right(),uvv));
+		}
+		
 		vL.emplace_back(Vector3(r.Left(), r.Bottom(), 0.0f),Vector2(uv.Left(), uv.Bottom()));
 		vL.emplace_back(Vector3(r.Right(),r.Bottom(), 0.0f),Vector2(uv.Right(),uv.Bottom()));
 		

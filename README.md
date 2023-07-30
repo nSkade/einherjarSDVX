@@ -1,10 +1,30 @@
 # einherjarSDVX
-is a fork of [Unnamed SDVX clone](https://github.com/Drewol/unnamed-sdvx-clone), which aims to improve Modchart freedom.
+is an experimental fork of [Unnamed SDVX clone](https://github.com/Drewol/unnamed-sdvx-clone), which aims to improve Modchart freedom.
 
 ### Current features:
-- Realtime Audio Spectrum
-- Additional Audio Effects:
-	- Vocal
+- extensive spline based mod system
+	- access via custom Background lua
+	- variable spline Point amount and position
+	- multiple interpolation types:
+		- linear
+		- cos
+		- none
+		- cubic
+	- Track, Hold and Laser support
+	- Toggle Specific Lanes
+	- no limitations in degrees of freedom (layered Translation, Rotation, Scale)
+- reworked Practice Mode for chart editing preview
+	- reload lua bg and chart on the fly (F11)
+- realtime audio spectrum
+- additional audio effects:
+	- vocal filter
+	
+- minor quality of life improvements
+	- repeat key on hold in navigation
+	- more command line options:
+		- ```-console``` view log in cmd
+		- ```-cExit``` confirm exit
+		- ```-practice``` start in practice Mode (or press shift in song select)
 
 <!---	### Other changes to Unnamed SDVX clone		-->
 <!---	-						-->
@@ -12,8 +32,7 @@ is a fork of [Unnamed SDVX clone](https://github.com/Drewol/unnamed-sdvx-clone),
 ## How to build:
 
 ### Windows:
-It is not required to build from source. A download link to a pre-built copy of the game is located at the beginning of this README.
-The recommended Visual Studio version is 2017, if you want to use a different version then you
+The recommended Visual Studio version is 2019, if you want to use a different version then you
 will need to edit the 'GenerateWin64ProjectFiles.bat' if you want to follow the guide below.
 
 0. Clone the project using `git` and then run `git submodule update --init --recursive` to download the required submodules.

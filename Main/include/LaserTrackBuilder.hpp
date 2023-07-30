@@ -17,7 +17,7 @@ public:
 	// Generate the ending segment of a laser
 	Mesh GenerateTrackExit(class BeatmapPlayback& playback, LaserObjectState* laser);
 
-	Mesh GenerateHold(class BeatmapPlayback& playback, HoldObjectState* hold, Vector3 t, float yPos, float scale, uint32_t quality);
+	Mesh GenerateHold(class BeatmapPlayback& playback, HoldObjectState* hold, Vector3 t, float yPos, float scale, uint32_t quality, float buttonLength);
 
 
 	// Used to generate larges meshes but allow the texture to match the actual laser width

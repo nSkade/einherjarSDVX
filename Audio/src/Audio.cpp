@@ -40,6 +40,7 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 		{
 			// Clear sample buffer storing a fixed amount of samples
 			m_sampleBuffer.fill(0);
+			m_sampleBufferN.fill(0);
 
 			// Render items
 			lock.lock();
@@ -74,6 +75,10 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 			// Apply volume levels
 			for (uint32 i = 0; i < m_sampleBufferLength; i++)
 			{
+				// Assign normal Sample Buffer before applying leveling.
+				m_sampleBufferN[i * 2 + 0] = m_sampleBuffer[i * 2 + 0];
+				m_sampleBufferN[i * 2 + 1] = m_sampleBuffer[i * 2 + 1];
+
 				m_sampleBuffer[i * 2 + 0] *= globalVolume;
 				m_sampleBuffer[i * 2 + 1] *= globalVolume;
 				// Safety clamp to [-1, 1] that should help protect speakers a bit in case of corruption
@@ -155,7 +160,7 @@ double Audio_Impl::GetSecondsPerSample() const
 
 void* Audio_Impl::GetSampleBuffer()
 {
-	return &m_sampleBuffer;
+	return &m_sampleBufferN;
 }
 
 uint32 Audio_Impl::GetSampleBufferLength()
@@ -268,9 +273,10 @@ void Audio::ProcessFFT(float* out_buckets, float* out_bucketsN, uint32 in_bucket
 		double mag = 0.2 * (bins[i] * 0.5 / max_magnitude); // mid
 		double lin = 0.7 * bins[i] * i; // high notes
 		double exp = 0.6 * std::log(bins[i] * 1000.0f) * 0.125f;
+		double cus = (base + lin + mag + exp)*0.75;
 
-		out_buckets[i] = (base + lin + mag + exp)*0.75;
-		out_bucketsN[i] = bins[i];
+		out_buckets[i] = (float) cus;
+		out_bucketsN[i] = (float) bins[i];
 	}
 
 	//TODO find a way to increase volume of quieter songs

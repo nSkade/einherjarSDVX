@@ -7,19 +7,26 @@
 // Windows entry point
 int32 __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
 #ifdef _DEBUG
 	RedirectIOToConsole();
+#else
+	if (commandLine.find("-console")!=String::npos)
+		RedirectIOToConsole();
 #endif
+
 	new Application();
 
-	printf("printfTest\n");
-	std::cout << "std::cout Test\n";
-
-	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
 	g_application->SetCommandLine(*commandLine);
 
 	int32 ret = g_application->Run();
 	delete g_application;
+
+	if (commandLine.find("-cExit") != String::npos) {
+		std::cout << "Press Enter to Exit";
+		std::cin.ignore(std::numeric_limits<streamsize>::max(),'\n');
+	}
+
 	return ret;
 }
 #else

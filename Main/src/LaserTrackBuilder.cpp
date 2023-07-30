@@ -19,7 +19,7 @@ LaserTrackBuilder::LaserTrackBuilder(class OpenGL* gl, class Track* track)
 	laserExitTextureSize = track->laserTailTextures[2]->GetSize();
 }
 
-Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObjectState* hold, Vector3 t, float yPos, float scale, uint32_t quality) {
+Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObjectState* hold, Vector3 t, float yPos, float scale, uint32_t quality, float buttonLength) {
 	Mesh mesh;
 	if(m_objectCacheHold.Contains(hold))
 		mesh = m_objectCacheHold[hold];
@@ -28,14 +28,16 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 		m_objectCacheHold.Add(hold, mesh);
 	}
 
+	float length = scale*buttonLength;
+
 	Vector<MeshGenerators::SimpleVertex> verts;
-	uint32_t rows = scale*m_track->buttonLength/(m_track->trackLength)*quality;//+1;
+	uint32_t rows = float(length/(m_track->trackLength)*float(quality))+1;
 
 	//TODO(skade) clamp to maximum trackLength
 	for (uint32_t i = 0; i <= rows; ++i) {
 		MeshGenerators::SimpleVertex left, right;
 		float rf = (float)i/rows;
-		float rfs = rf*scale*m_track->buttonLength;
+		float rfs = rf*length;
 
 		Vector3 pos = t+Vector3(0.f,rfs,0.f);
 		
@@ -56,7 +58,7 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 	}
 	
 	Vector<MeshGenerators::SimpleVertex> vt = MeshGenerators::Triangulate(verts);
-	mesh->SetData(vt); //TODO(skade) Set subdata option (also for Track on m_meshQuality change)
+	mesh->SetData(vt);
 	mesh->SetPrimitiveType(PrimitiveType::TriangleList);
 	return mesh;
 }
@@ -223,7 +225,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 		scale = length;
 		Vector<MeshGenerators::SimpleVertex> verts;
-		uint32_t rows = scale/(m_track->trackLength)*quality+1; //TODO(skade)
+		uint32_t rows = (scale*laserLengthScale-prevLength)/(m_track->trackLength)*quality+1; //TODO(skade)
 			
 		float lp0 = laser->points[0];
 		float lp1 = laser->points[1];

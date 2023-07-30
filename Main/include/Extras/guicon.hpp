@@ -1,6 +1,5 @@
 #pragma once
 //from https://stackoverflow.com/questions/191842/how-do-i-get-console-output-in-c-with-a-windows-program
-#ifdef _DEBUG
 #include <windows.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -55,6 +54,5 @@ void RedirectIOToConsole()
 	freopen("CONOUT$", "w", stdout);
 };
 
-#endif
 //End of File
 

@@ -2495,6 +2495,10 @@ void Application::SetLuaBindings(lua_State *state)
 		// linar algebra
 		pushFuncToTable("MultMatVec", lmultMatVec); // LAxMatVec
 		pushFuncToTable("MultMat", lmultMat);		// LAxMat
+		pushFuncToTable("CrossP", lcrossP);		// LAxMat
+		pushFuncToTable("DotP3", ldotP3);		// LAxMat
+		pushFuncToTable("DotP4", ldotP4);		// LAxMat
+		pushFuncToTable("GetIdentMat", lgetIdentMat);
 		pushFuncToTable("GetRotMat", lgetRotMat);
 		pushFuncToTable("GetTransMat", lgetTransMat);
 		pushFuncToTable("GetScaleMat", lgetScaleMat);
@@ -2511,6 +2515,7 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("Log", lLog);
 		pushFuncToTable("Print", lPrint);
 		pushFuncToTable("LoadSkinSample", lLoadSkinSample);
+		pushFuncToTable("LoadSample", lLoadSample);
 		pushFuncToTable("PlaySample", lPlaySample);
 		pushFuncToTable("StopSample", lStopSample);
 		pushFuncToTable("IsSamplePlaying", lIsSamplePlaying);
@@ -2522,6 +2527,7 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("GetSkin", lGetSkin);
 		pushFuncToTable("GetSkinSetting", lGetSkinSetting);
 		pushFuncToTable("SetSkinSetting", lSetSkinSetting);
+		pushFuncToTable("LoadFile", lLoadFile);
 
 		//constants
 		pushIntToTable("LOGGER_INFO", (int)Logger::Severity::Info);

@@ -32,7 +32,7 @@ namespace Graphics
 
 		void GenerateSimpleXZQuad(Rect3D r, Rect uv, Vector<MeshGenerators::SimpleVertex>& out);
 
-		void GenerateSubdividedTrack(Rect3D r, Rect uv, uint32_t count, Vector<SimpleVertex>& out);
+		void GenerateSubdividedTrack(Rect3D r, Rect uv, uint32_t countPos, uint32_t countNeg, Vector<SimpleVertex>& out);
 		Vector<MeshGenerators::SimpleVertex> Triangulate(Vector<MeshGenerators::SimpleVertex> verts);
 	}
 }

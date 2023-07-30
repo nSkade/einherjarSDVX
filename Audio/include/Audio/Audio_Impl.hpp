@@ -27,7 +27,7 @@ public:
 	uint32 GetSampleRate() const;
 	double GetSecondsPerSample() const;
 
-	float globalVolume = 1.0f;
+	float globalVolume = 0.0f;
 
 	mutex lock;
 	Vector<AudioBase*> itemsToRender;
@@ -48,6 +48,7 @@ protected:
 	// Used to limit rendering to a fixed number of samples
 	constexpr static uint32 m_sampleBufferLength = 384;
 	std::array<float, 2*m_sampleBufferLength> m_sampleBuffer;
+	std::array<float, 2*m_sampleBufferLength> m_sampleBufferN; //< Normal SampleBuffer, no global volume applied
 	
 private:
 	alignas(sizeof(float))

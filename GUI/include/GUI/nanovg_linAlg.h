@@ -118,6 +118,33 @@ static int lmultMatVec(lua_State* L) {
 	return 1;
 }
 
+static int lcrossP(lua_State* L) {
+	Vector3 a = readVec3(L,1);
+	Vector3 b = readVec3(L,2);
+	writeVec3(L,VectorMath::Cross(a,b));
+	return 1;
+}
+
+static int ldotP3(lua_State* L) {
+	Vector3 a = readVec3(L,1);
+	Vector3 b = readVec3(L,2);
+	lua_pushnumber(L,VectorMath::Dot(a,b));
+	return 1;
+}
+
+static int ldotP4(lua_State* L) {
+	Vector4 a = readVec4(L,1);
+	Vector4 b = readVec4(L,2);
+	lua_pushnumber(L,VectorMath::Dot(a,b));
+	return 1;
+}
+
+static int lgetIdentMat(lua_State* L) {
+	Transform t;
+	writeMat4(L,t);
+	return 1;
+}
+
 static int lgetRotMat(lua_State* L) {
 	Vector3 r = readVec3(L,1);
 	Transform t = Transform::Rotation(r);

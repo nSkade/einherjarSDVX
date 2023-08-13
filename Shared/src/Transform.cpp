@@ -86,6 +86,7 @@ const float& Transform::operator[](size_t idx) const
 {
 	return mat[idx];
 }
+//TODO(skade) unintuitive to have *= use other on right
 Transform& Transform::operator*=(const Transform& other)
 {
 	Transform result;

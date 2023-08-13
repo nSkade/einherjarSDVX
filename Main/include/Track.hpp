@@ -217,7 +217,7 @@ public:
 	// Early/Late indicator
 	struct TimedHitEffect* timedHitEffect = nullptr;
 
-	// Track Origin position
+	// Track Origin position (transfroms from object space to track space)
 	Transform trackOrigin;
 
 	bool hitEffectAutoplay = false;
@@ -324,7 +324,7 @@ public:
 	void SetMQHold(uint32_t q);
 
 	bool drawModLines = false;
-	uint32_t tickLayer = 0; ///< Layer where Track relative Position gets applied.
+	uint32_t m_tickLayer = 0; ///< Layer where Track relative Position gets applied.
 
 	/**
 	 * @brief Iterates through list of mods and returns the Offset Vector.
@@ -339,6 +339,8 @@ public:
 	 * @brief Evaluates all mods across different layers.
 	*/
 	Transform EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx, uint8_t af);
+
+	void SetDepthTest(ModAffection type, bool isDT);
 
 private:
 	// Laser track generators

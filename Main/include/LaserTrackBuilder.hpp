@@ -13,9 +13,9 @@ public:
 	Mesh GenerateTrackMesh(class BeatmapPlayback& playback, LaserObjectState* laser, Vector3 t, float yPos, float scale, uint32_t quality);
 
 	// Generate the starting segment of a laser
-	Mesh GenerateTrackEntry(class BeatmapPlayback& playback, LaserObjectState* laser);
+	Mesh GenerateTrackEntry(class BeatmapPlayback& playback, LaserObjectState* laser, Vector3 t, float yPos);
 	// Generate the ending segment of a laser
-	Mesh GenerateTrackExit(class BeatmapPlayback& playback, LaserObjectState* laser);
+	Mesh GenerateTrackExit(class BeatmapPlayback& playback, LaserObjectState* laser, Vector3 t, float yPos);
 
 	Mesh GenerateHold(class BeatmapPlayback& playback, HoldObjectState* hold, Vector3 t, float yPos, float scale, uint32_t quality, float buttonLength);
 

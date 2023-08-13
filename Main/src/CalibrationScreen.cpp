@@ -221,8 +221,7 @@ void CalibrationScreen::Tick(float deltaTime)
 	m_lastTime = 2000 + (m_timer.Milliseconds() % 2000);
 	m_lastTime -= m_audioOffset;
 
-
-	m_playback.Update(m_lastTime);
+	m_playback.Update(m_lastTime,m_audioOffset);
 	m_camera.Tick(deltaTime, m_playback);
 	m_track.Tick(m_playback, deltaTime);
 }

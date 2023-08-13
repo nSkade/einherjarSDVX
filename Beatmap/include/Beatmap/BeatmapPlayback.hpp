@@ -18,7 +18,7 @@ public:
 	// Updates the time of the playback
 	// checks all items that have been triggered between last time and this time
 	// if it is a new timing point, this is used for the new BPM
-	void Update(MapTime newTime);
+	void Update(MapTime newTime, int audioOffset);
 
 	MapTime hittableObjectEnter = 500;
 	MapTime hittableLaserEnter = 1000;
@@ -56,6 +56,8 @@ public:
 	//	with a multiplier of 2 a 4/4 signature would tick twice as fast
 	uint32 CountBeats(MapTime start, MapTime range, int32& startIndex, uint32 multiplier = 1) const;
 
+	MapTime BeatmapPlayback::CountTime(uint32 beats, uint32 multiplier = 1) const;
+
 	// View coordinate conversions
 	inline float TimeToViewDistance(MapTime mapTime) const
 	{
@@ -90,6 +92,9 @@ public:
 	inline float GetBarTime() const { return m_barTime; }
 	inline float GetBeatTime() const { return m_beatTime; }
 	inline uint32_t GetCurrBeat() const { return m_currBeat; }
+
+	MapTime GetTimeByBeat(int measure) { return m_beatmap->GetMapTimeFromMeasureInd(measure); } //TODO(skade) offset? -m_audioOffset; }
+	int GetBeatByTime(MapTime time) { return m_beatmap->GetMeasureIndFromMapTime(time+m_audioOffset); }
 
 	// Gets the currently set value of a value set by events in the beatmap
 	const EventData& GetEventData(EventKey key);
@@ -173,6 +178,8 @@ private:
 	float m_barTime;
 	float m_beatTime;
 	uint32_t m_currBeat;
+
+	int m_audioOffset = 0;
 
 	const Beatmap* m_beatmap = nullptr;
 

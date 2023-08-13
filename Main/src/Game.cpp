@@ -1579,24 +1579,26 @@ public:
 
 		// Update beatmap playback
 		const MapTime playbackPositionMs = m_audioPlayback.GetPosition() - GetAudioOffset();
-		m_playback.Update(playbackPositionMs);
+		m_playback.Update(playbackPositionMs,GetAudioOffset());
 
 		const MapTime delta = playbackPositionMs - m_lastMapTime;
-		int32 beatStart = 0;
-		uint32 numBeats = m_playback.CountBeats(m_lastMapTime, delta, beatStart, 1);
-		if(numBeats > 0)
-		{
-			// Click Track
-			//uint32 beat = beatStart % m_playback.GetCurrentTimingPoint().measure;
-			//if(beat == 0)
-			//{
-			//	m_clickSamples[0]->Play();
-			//}
-			//else
-			//{
-			//	m_clickSamples[1]->Play();
-			//}
-		}
+		
+		//TODO(skade) useless code? remove
+		//int32 beatStart = 0;
+		//uint32 numBeats = m_playback.CountBeats(m_lastMapTime, delta, beatStart, 1);
+		//if(numBeats > 0)
+		//{
+		//	// Click Track
+		//	//uint32 beat = beatStart % m_playback.GetCurrentTimingPoint().measure;
+		//	//if(beat == 0)
+		//	//{
+		//	//	m_clickSamples[0]->Play();
+		//	//}
+		//	//else
+		//	//{
+		//	//	m_clickSamples[1]->Play();
+		//	//}
+		//}
 
 		/// #Scoring
 		// Update music filter states
@@ -2671,9 +2673,13 @@ public:
 				m_restartTriggerTimeSet = true;
 			}
 		}
-		else if(code == SDL_SCANCODE_F8)
+		else if(code == SDL_SCANCODE_F7)
 		{
 			m_renderDebugHUD = !m_renderDebugHUD;
+		}
+		else if (code == SDL_SCANCODE_F8) {
+			g_gameWindow->ShowMessageBox("Congratulations!!!\n",
+			"!!!Congratulations!!! You found the Function Key of the number 8 on your Typing device !!!Congratulations!!!\n\nPress OK to calim your Prize now!!!", 1);
 		}
 		else if(code == SDL_SCANCODE_TAB)
 		{
@@ -2685,7 +2691,7 @@ public:
 			Restart();
 		}
 		else if (code == SDL_SCANCODE_F10 && m_isPracticeMode) {
-			g_application->ReloadScript("gameplay", m_lua);
+			g_application->ReloadScript("gameplay", m_lua); //TODOs correctly reload skin
 			if (!ReloadChart())
 				Log("F11 Error reloading chart");
 		}
@@ -3230,6 +3236,8 @@ public:
 		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
 		bind->AddFunction("setModLayer"       , this,&Game_Impl::lsetModLayer);
 		bind->AddFunction("setModEnable"      , this,&Game_Impl::lsetModEnable);
+		bind->AddFunction("setTickLayer"      , this,&Game_Impl::lsetTickLayer);
+		bind->AddFunction("setDepthTest"      , this,&Game_Impl::lsetDepthTest);
 		
 		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
 
@@ -3361,7 +3369,7 @@ public:
 
 	int lsetTickLayer(lua_State* L) {
 		int ml = luaL_checknumber(L,2);
-		m_track->tickLayer = ml;
+		m_track->m_tickLayer = ml;
 		return 0;
 	}
 
@@ -3392,6 +3400,13 @@ public:
 	int lsetMQLaser(lua_State* L) {
 		int mq = luaL_checknumber(L,2);
 		m_track->SetMQLaser(mq);
+		return 0;
+	}
+
+	int lsetDepthTest(lua_State* L) {
+		uint32_t i = luaL_checknumber(L,2);
+		bool e = lua_toboolean(L,3);
+		m_track->SetDepthTest((Track::ModAffection) i,e);
 		return 0;
 	}
 	

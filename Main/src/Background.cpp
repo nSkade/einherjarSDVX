@@ -233,6 +233,12 @@ public:
 		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
 		bindable->AddFunction("GetTiming", this, &TestBackground::GetTiming);
 		bindable->AddFunction("GetBeat", this, &TestBackground::GetBeat); //TODO(skade) Binding also for skin?
+		bindable->AddFunction("GetTime", this, &TestBackground::GetTime); //TODO(skade) Binding also for skin?
+		bindable->AddFunction("GetBarTime", this, &TestBackground::GetBarTime);
+		bindable->AddFunction("GetTimeByBeat", this, &TestBackground::GetTimeFromBeat);
+		bindable->AddFunction("GetBeatByTime", this, &TestBackground::GetBeatFromTime);
+		bindable->AddFunction("GetViewRange", this, &TestBackground::GetViewRange);
+		bindable->AddFunction("GetViewRangeMeasure", this, &TestBackground::GetViewRangeMeasure);
 		bindable->AddFunction("GetTilt", this, &TestBackground::GetTilt);
 		bindable->AddFunction("GetScreenCenter", this, &TestBackground::GetScreenCenter);
 		bindable->AddFunction("GetClearTransition", this, &TestBackground::GetClearTransition);
@@ -362,9 +368,47 @@ public:
 		return 3;
 	}
 
+	int GetTime(lua_State *L)
+	{
+		lua_pushnumber(L,timing.z);
+		return 1;
+	}
+
 	int GetBeat(lua_State* L)
 	{
 		lua_pushnumber(L, game->GetPlayback().GetCurrBeat());
+		return 1;
+	}
+
+	int GetBarTime(lua_State* L)
+	{
+		lua_pushnumber(L,game->GetPlayback().GetBarTime());
+		return 1;
+	}
+
+	int GetTimeFromBeat(lua_State* L)
+	{
+		int measure = luaL_checknumber(L,2);
+		lua_pushnumber(L,game->GetPlayback().GetTimeByBeat(measure)*0.001);
+		return 1;
+	}
+
+	int GetBeatFromTime(lua_State* L)
+	{
+		float time = luaL_checknumber(L,2)*1000.f;
+		lua_pushnumber(L,game->GetPlayback().GetBeatByTime(time));
+		return 1;
+	}
+
+	int GetViewRangeMeasure(lua_State* L)
+	{
+		lua_pushnumber(L,game->GetTrack().GetViewRange()/4.f);
+		return 1;
+	}
+
+	int GetViewRange(lua_State* L)
+	{
+		lua_pushnumber(L,game->GetTrack().GetViewRange());
 		return 1;
 	}
 

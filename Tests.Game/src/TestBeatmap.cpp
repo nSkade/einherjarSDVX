@@ -82,10 +82,11 @@ Test("Beatmap.Playback")
 			uint32 lastTime = playback.GetLastTime();
 			uint32 mapTime = song->GetPosition();
 			int32 beatIndex = 0;
-			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 1);
-			if(beatCount > 0)
-				Logf("> %d", Logger::Severity::Info, beatIndex);
-			playback.Update(mapTime);
+			//TODO(skade) Tests
+			//int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 1);
+			//if(beatCount > 0)
+			//	Logf("> %d", Logger::Severity::Info, beatIndex);
+			playback.Update(mapTime,0);
 		}
 	};
 	Player player(beatmap, mapRootPath);
@@ -123,10 +124,11 @@ Test("Beatmap.BPMChanges")
 			uint32 lastTime = playback.GetLastTime();
 			uint32 mapTime = song->GetPosition();
 			int32 beatIndex = 0;
-			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 1);
-			if(beatCount > 0)
-				Logf("> %d", Logger::Severity::Info, beatIndex);
-			playback.Update(mapTime);
+			//TODO(skade) Tests
+			//int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 1);
+			//if(beatCount > 0)
+			//	Logf("> %d", Logger::Severity::Info, beatIndex);
+			playback.Update(mapTime,0);
 		}
 	};
 	Player player(beatmap, mapRootPath);
@@ -182,10 +184,11 @@ Test("Beatmap.DoubleFilter")
 			int32 lastTime = playback.GetLastTime();
 			int32 mapTime = song->GetPosition();
 			int32 beatIndex = 0;
-			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 4);
-			if(beatCount > 0)
-				Logf("> %d [%f] [%f]", Logger::Severity::Info, beatIndex, laserValue[0], laserValue[1]);
-			playback.Update(mapTime);
+			//TODO(skade) Tests
+			//int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 4);
+			//if(beatCount > 0)
+			//	Logf("> %d [%f] [%f]", Logger::Severity::Info, beatIndex, laserValue[0], laserValue[1]);
+			playback.Update(mapTime,0);
 
 			laserValue[0] = 0.0f;
 			laserValue[1] = 0.0f;
@@ -287,10 +290,11 @@ Test("Beatmap.SingleFilter")
 			int32 lastTime = playback.GetLastTime();
 			int32 mapTime = song->GetPosition();
 			int32 beatIndex = 0;
-			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 4);
-			if(beatCount > 0)
-				Logf("> %d [%f] [%f]", Logger::Severity::Info, beatIndex, laserValue[0], laserValue[1]);
-			playback.Update(mapTime);
+			//TODO(skade) Tests
+			//int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 4);
+			//if(beatCount > 0)
+			//	Logf("> %d [%f] [%f]", Logger::Severity::Info, beatIndex, laserValue[0], laserValue[1]);
+			playback.Update(mapTime,0);
 
 			laserValue[0] = 0.0f;
 			laserValue[1] = 0.0f;

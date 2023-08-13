@@ -42,8 +42,10 @@ bool BeatmapPlayback::Reset(MapTime initTime, MapTime start)
 	return true;
 }
 
-void BeatmapPlayback::Update(MapTime newTime)
+void BeatmapPlayback::Update(MapTime newTime, int audioOffset)
 {
+	m_audioOffset = audioOffset; //TODO(skade) cleaner impl.
+	//newTime -= audioOffset;
 	MapTime delta = newTime - m_playbackTime;
 
 	if (m_isCalibration) {
@@ -88,7 +90,8 @@ void BeatmapPlayback::Update(MapTime newTime)
 
 	// Set new time
 	m_playbackTime = newTime;
-	m_currBeat = CountBeats(0, m_playbackTime, beatID);
+	m_currBeat = m_beatmap->GetMeasureIndFromMapTime(m_playbackTime+audioOffset);
+	//m_currBeat = CountBeats(0, m_playbackTime, beatID);
 
 	// Advance timing
 	Beatmap::TimingPointsIterator timingEnd = m_SelectTimingPoint(m_playbackTime);
@@ -489,13 +492,50 @@ const TimingPoint* BeatmapPlayback::GetTimingPointAt(MapTime time) const
 
 uint32 BeatmapPlayback::CountBeats(MapTime start, MapTime range, int32& startIndex, uint32 multiplier /*= 1*/) const
 {
+	//TODOs unusable, as doesnt consider bpm changes.
 	const TimingPoint& tp = GetCurrentTimingPoint();
 	int64 delta = (int64)start - (int64)tp.time;
 	double beatDuration = tp.GetWholeNoteLength() / tp.denominator;
 	int64 beatStart = (int64)floor((double)delta / (beatDuration / multiplier));
 	int64 beatEnd = (int64)floor((double)(delta + range) / (beatDuration / multiplier));
 	startIndex = ((int32)beatStart + 1) % tp.numerator;
+
 	return (uint32)Math::Max<int64>(beatEnd - beatStart, 0);
+
+	//TODOf do something like in beatmap GetMeasureIndFromMapTime
+
+	// Iterate through all timing points to consider bpm changes.
+	
+	//auto tps = m_beatmap->GetTimingPoints();
+	//MapTime end = start+range;
+	////MapTime tEnd = m_beatmap->GetEndTimingPoint();
+	//int64_t beats = 0;
+
+	//// find start idx
+	//uint32_t sIdx = 0;
+	//for (uint32_t i=0;i<tps.size();++i) {
+	//	if (tps[i].time <= start) {
+	//		sIdx = i;
+	//		break;
+	//	}
+	//}
+
+	////TODO ending time point included?
+	//for (uint32_t i=sIdx;i<tps.size()-1;++i) {
+	//	// Length of the current bpm section.
+	//	MapTime t = tps[i+1].time-tps[i].time;
+
+	//	MapTime ttn = tps[i].time-start;
+	//	if (ttn < range) {
+	//		// compute next section
+	//	} else {
+	//		// only this section needed
+	//		ttn = range;
+	//	}
+
+	//	double beatDuration = tps[i].GetWholeNoteLength() / tps[i].denominator;
+	//	beats += (int64)floor((double)t/(beatDuration/multiplier));
+	//}
 }
 
 float BeatmapPlayback::GetViewDistance(MapTime startTime, MapTime endTime) const

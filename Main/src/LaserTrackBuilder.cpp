@@ -38,10 +38,26 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 		MeshGenerators::SimpleVertex left, right;
 		float rf = (float)i/rows;
 		float rfs = rf*length;
+		float emo =yPos+rfs/(m_track->trackLength); // effective mod offset
+		
+		//TODO(skade) is bad by resizing GPU buffer.
+		if (emo > 1.f) {
+			if (verts.size() > 0) {
+				verts.push_back(verts.back());
+				verts.push_back(verts.back());
+			}
+			else {
+				MeshGenerators::SimpleVertex v;
+				v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+				verts.push_back(v);
+				verts.push_back(v);
+			}
+			continue;
+		}
 
 		Vector3 pos = t+Vector3(0.f,rfs,0.f);
 		
-		Transform m = m_track->EvaluateModTransform(pos,yPos+rfs/(m_track->trackLength),hold->index,Track::MA_HOLD);
+		Transform m = m_track->EvaluateModTransform(pos,emo,hold->index,Track::MA_HOLD);
 
 		float w = hold->index < 4 ? m_track->buttonWidth : m_track->fxbuttonWidth;
 
@@ -69,8 +85,8 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 	if (m_objectCache.Contains(laser)) {
 		newMesh = m_objectCache[laser];
 		// Dont recompute slams.
-		if ((laser->flags & LaserObjectState::flag_Instant) != 0)
-			return newMesh;
+		//if ((laser->flags & LaserObjectState::flag_Instant) != 0)
+		//	return newMesh;
 	}
 	else {
 		newMesh = MeshRes::Create(m_gl);
@@ -80,42 +96,53 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 	const float length = playback.ToViewDistance(laser->time, laser->duration);
 
+	//TODO(skade)f still kinda buggy with rotations.
 	if((laser->flags & LaserObjectState::flag_Instant) != 0) // Slam segment
 	{
 		float left, right, offsetT, offsetB, uvT, uvB;
 		left = laser->points[0] * effectiveWidth - effectiveWidth * 0.5f;
 		right = laser->points[1] * effectiveWidth - effectiveWidth * 0.5f;
 		float halfWidth = actualLaserWidth * 0.5f;
-		offsetT = -actualLaserWidth;
-		offsetB = -offsetT;
+		offsetT = -actualLaserWidth; // Offset Top
+		offsetB = -offsetT;          // Offset Bottom
 		uvB = 1.5f;
 		uvT = -0.5f;
 
-
-		if ((laser->flags & LaserObjectState::flag_Extended) != 0)
-		{
+		if ((laser->flags & LaserObjectState::flag_Extended) != 0) {
 			left = (laser->points[0] * 2.0f - 0.5f) * effectiveWidth - effectiveWidth * 0.5f;
 			right = (laser->points[1] * 2.0f - 0.5f) * effectiveWidth - effectiveWidth * 0.5f;
 		}
 
+		uint32_t idx = 1-laser->index+6;
+
 		// If corners should be placed, connecting the texture to the previous laser
 		bool swapped = false;
-
-
-		if(laser->points[0] > laser->points[1])
-		{
+		if(laser->points[0] > laser->points[1]) {
 			// <------
 			std::swap(left, right);
 			std::swap(offsetT, offsetB);
 			std::swap(uvB, uvT);
 			swapped = true;
 		}// else ------>
+		
+		//TODO(skade)
+		yPos = yPos+offsetB > 1.f ? 1.f-offsetB : yPos;
+		yPos = yPos+offsetT > 1.f ? 1.f-offsetT : yPos;
+		
+		//Vector3 bpos = Vector3(left,offsetB+yPos,0);
+		//Vector3 tpos = Vector3(right,offsetT+yPos,0);
+		Vector3 lpos = t+Vector3(left,0,0);
+		Vector3 rpos = t+Vector3(right,0,0);
+		Transform ml = m_track->EvaluateModTransform(lpos,yPos+offsetB,idx,Track::MA_LASER); // Bottom left
+		Transform mr = m_track->EvaluateModTransform(rpos,yPos+offsetT,idx,Track::MA_LASER); // Top right
 
 		// Generate positions for middle top and bottom
 		float slamLength = playback.ToViewDistance(laser->time, slamDuration) * laserLengthScale;
 		float halfLength = slamLength * 0.5;
-		Rect3D centerMiddle = Rect3D(left, slamLength + halfLength, right, -halfLength);
-
+		//Rect3D centerMiddle = Rect3D(left, slamLength + halfLength, right, -halfLength);
+		Rect3D centerMiddle = Rect3D(0, slamLength + halfLength, 0, -halfLength);
+		
+		// Center Piece Connecting left and right laser. aka Horizontal Part of slam segment.
 		Vector<MeshGenerators::SimpleVertex> verts =
 		{
 			{ { centerMiddle.Left() + offsetB, centerMiddle.Bottom(),  0.0f },{ uvB, 0.0f } }, // BL
@@ -129,12 +156,10 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 		// Generate left corner
 		{
-			Rect3D leftCenter = Rect3D(left - actualLaserWidth, centerMiddle.Top() - halfLength, left + halfWidth, centerMiddle.Bottom() + halfLength);
+			Rect3D leftCenter = Rect3D(- actualLaserWidth, centerMiddle.Top() - halfLength,halfWidth, centerMiddle.Bottom() + halfLength);
 
 			Vector<MeshGenerators::SimpleVertex> leftVerts;
-			if(swapped)
-			{
-
+			if(swapped) {
 				leftVerts =
 				{
 					{ { leftCenter.Right(), leftCenter.Top(),  0.0f },{ 1.0f, 0.0f } }, // BR
@@ -142,9 +167,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 					{ { leftCenter.Left(), leftCenter.Bottom() - halfLength,  0.0f },{ -0.5f, 1.0f } }, // TL
 				};
 
-			}
-			else
-			{
+			} else {
 				leftVerts =
 				{
 					{ { leftCenter.Left(), leftCenter.Bottom(),  0.0f },{ -0.5f, 0.0f } }, // BL
@@ -152,13 +175,15 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 					{ { leftCenter.Left(), leftCenter.Top() + halfLength,  0.0f },{ -0.5f, 1.0f } }, // TL
 				};
 			}
-			for (auto& v : leftVerts)
+			for (auto& v : leftVerts) {
+				v.pos = ml * v.pos;
 				verts.Add(v);
+			}
 		}
 
 		// Generate right corner
 		{
-			Rect3D rightCenter = Rect3D(right - halfWidth, centerMiddle.Top() - halfLength, right + actualLaserWidth, centerMiddle.Bottom() + halfLength);
+			Rect3D rightCenter = Rect3D(- halfWidth, centerMiddle.Top() - halfLength, actualLaserWidth, centerMiddle.Bottom() + halfLength);
 			Vector<MeshGenerators::SimpleVertex> rightVerts;
 			if(swapped)
 			{
@@ -178,10 +203,27 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 					{ { rightCenter.Left(), rightCenter.Top(),  0.0f },{ 0.0f, 0.0f } }, // BL
 				};
 			}
-
-			for (auto& v : rightVerts)
+			for (auto& v : rightVerts) {
+				v.pos = mr * v.pos;
 				verts.Add(v);
+			}
 		}
+
+		verts[0].pos = ml * verts[0].pos;
+		verts[1].pos = mr * verts[1].pos;
+		verts[2].pos = mr * verts[2].pos;
+		
+		verts[3].pos = ml * verts[3].pos;
+		verts[4].pos = mr * verts[4].pos;
+		verts[5].pos = ml * verts[5].pos;
+
+	//		{ { centerMiddle.Left() + offsetB, centerMiddle.Bottom(),  0.0f },{ uvB, 0.0f } }, // BL
+	//		{ { centerMiddle.Right() + offsetB, centerMiddle.Bottom(),  0.0f },{ uvB, 1.0f } }, // BR
+	//		{ { centerMiddle.Right() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 1.0f } }, // TR
+
+	//		{ { centerMiddle.Left() + offsetB, centerMiddle.Bottom(),  0.0f },{ uvB, 0.0f } }, // BL
+	//		{ { centerMiddle.Right() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 1.0f } }, // TR
+	//		{ { centerMiddle.Left() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 0.0f } }, // TL
 
 		newMesh->SetData(verts);
 		newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
@@ -235,19 +277,34 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			lp1 = lp1*2.f-.5f;
 		}
 
-		//TODO(skade) clamp to maximum trackLength
 		for (uint32_t i = 0; i <= rows; ++i) {
 			MeshGenerators::SimpleVertex left, right;
 			float rf = (float)i/rows;
 			float rfs = prevLength+rf*(scale*laserLengthScale-prevLength);
+			float tl = m_track->trackLength;
+			float emo = yPos+rfs/tl; // effective mod offset
+			
+			//TODO(skade) is bad by resizing GPU buffer.
+			if (emo > 1.f) {
+				if (verts.size() > 0) {
+					verts.push_back(verts.back());
+					verts.push_back(verts.back());
+				}
+				else {
+					MeshGenerators::SimpleVertex v;
+					v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+					verts.push_back(v);
+					verts.push_back(v);
+				}
+				continue;
+			}
 
 			float xposition = (lp0*(1.f-rf)+rf*lp1) * effectiveWidth - effectiveWidth * 0.5f;
 
 			Vector3 pos = t+Vector3(xposition,rfs,0.f);
 			
 			uint32_t idx = 1-laser->index+6;
-			float tl = m_track->trackLength;
-			Transform m = m_track->EvaluateModTransform(pos,yPos+rfs/tl,idx,Track::MA_LASER);
+			Transform m = m_track->EvaluateModTransform(pos,emo,idx,Track::MA_LASER);
 
 			left.pos = Vector3(-actualLaserWidth,0.f,0.f);
 			right.pos = Vector3(actualLaserWidth,0.f,0.f);
@@ -269,29 +326,39 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 	return newMesh;
 }
 
-Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, LaserObjectState* laser)
+Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, LaserObjectState* laser, Vector3 t, float yPos)
 {
 	//TODO(skade) evaluate Mods
 	assert(laser->prev == nullptr);
-	if(m_cachedEntries.Contains(laser))
-		return m_cachedEntries[laser];
+	Mesh newMesh;
 
-	Mesh newMesh = MeshRes::Create(m_gl);
+	if (m_cachedEntries.Contains(laser))
+		newMesh = m_cachedEntries[laser];
+	else
+		newMesh = MeshRes::Create(m_gl);
 
 	// Starting point of laser
 	float startingX = laser->points[0] * effectiveWidth - effectiveWidth * 0.5f;
 	if ((laser->flags & LaserObjectState::flag_Extended) != 0)
 		startingX = (laser->points[0] * 2.0f - 0.5f) * effectiveWidth - effectiveWidth * 0.5f;
 
-
-
 	// Length of the tail
 	float length = (float)laserEntryTextureSize.y / (float)laserEntryTextureSize.x * actualLaserWidth;
 
 	Vector<MeshGenerators::SimpleVertex> verts;
-	Rect3D pos = Rect3D(Vector2(startingX - actualLaserWidth, -length), Vector2(actualLaserWidth * 2, length));
+
+	uint32_t idx = 1-laser->index+6;
+	Vector3 p = t + Vector3(startingX,0,0);
+	yPos = std::min(1.f,yPos);
+	Transform m = m_track->EvaluateModTransform(p,yPos,idx,Track::MA_LASER);
+	
+	Rect3D pos = Rect3D(Vector2(- actualLaserWidth, -length), Vector2(actualLaserWidth * 2, length));
 	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(pos, uv, verts);
+
+	for (auto& v : verts) {
+		v.pos = m * v.pos;
+	}
 
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
@@ -300,13 +367,16 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	m_cachedEntries.Add(laser, newMesh);
 	return newMesh;
 }
-Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, LaserObjectState* laser)
+Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, LaserObjectState* laser, Vector3 t, float yPos)
 {
 	assert(laser->next == nullptr);
-	if(m_cachedExits.Contains(laser))
-		return m_cachedExits[laser];
-
-	Mesh newMesh = MeshRes::Create(m_gl);
+	
+	Mesh newMesh;
+	
+	if (m_cachedExits.Contains(laser))
+		newMesh = m_cachedExits[laser];
+	else
+		newMesh = MeshRes::Create(m_gl);
 
 	// Ending point of laser 
 	float startingX = laser->points[1] * effectiveWidth - effectiveWidth * 0.5f;
@@ -326,11 +396,20 @@ Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, Laser
 	{
 		prevLength = playback.ToViewDistance(laser->time, laser->duration) * laserLengthScale;
 	}
+	
+	uint32_t idx = 1-laser->index+6;
+	Vector3 p = t + Vector3(startingX,0,0);
+	yPos = std::min(1.f,yPos);
+	Transform m = m_track->EvaluateModTransform(p,yPos,idx,Track::MA_LASER);
 
 	Vector<MeshGenerators::SimpleVertex> verts;
-	Rect3D pos = Rect3D(Vector2(startingX - actualLaserWidth, prevLength), Vector2(actualLaserWidth * 2, length));
+	Rect3D pos = Rect3D(Vector2(- actualLaserWidth, prevLength), Vector2(actualLaserWidth * 2, length));
 	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(pos, uv, verts);
+
+	for (auto& v : verts) {
+		v.pos = m * v.pos;
+	}
 
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);

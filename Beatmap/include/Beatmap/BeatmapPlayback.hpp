@@ -177,7 +177,7 @@ private:
 
 	float m_barTime;
 	float m_beatTime;
-	uint32_t m_currBeat;
+	uint32_t m_currBeat = 0;
 
 	int m_audioOffset = 0;
 

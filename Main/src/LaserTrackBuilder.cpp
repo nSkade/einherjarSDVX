@@ -125,20 +125,23 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			swapped = true;
 		}// else ------>
 		
-		//TODO(skade)
-		yPos = yPos+offsetB > 1.f ? 1.f-offsetB : yPos;
-		yPos = yPos+offsetT > 1.f ? 1.f-offsetT : yPos;
-		
-		//Vector3 bpos = Vector3(left,offsetB+yPos,0);
-		//Vector3 tpos = Vector3(right,offsetT+yPos,0);
-		Vector3 lpos = t+Vector3(left,0,0);
-		Vector3 rpos = t+Vector3(right,0,0);
-		Transform ml = m_track->EvaluateModTransform(lpos,yPos+offsetB,idx,Track::MA_LASER); // Bottom left
-		Transform mr = m_track->EvaluateModTransform(rpos,yPos+offsetT,idx,Track::MA_LASER); // Top right
-
 		// Generate positions for middle top and bottom
 		float slamLength = playback.ToViewDistance(laser->time, slamDuration) * laserLengthScale;
 		float halfLength = slamLength * 0.5;
+	
+		float halfLength01 = playback.ToViewDistance(laser->time, slamDuration)/m_track->GetViewRange()*.5f;
+
+		//Vector3 bpos = Vector3(left,offsetB+yPos,0);
+		//Vector3 tpos = Vector3(right,offsetT+yPos,0);
+		Vector3 lposb = t+Vector3(left,0,0);
+		Vector3 rposb = t+Vector3(right,0,0);
+		Vector3 lpost = t+Vector3(left,0,0);
+		Vector3 rpost = t+Vector3(right,0,0);
+		Transform mlb = m_track->EvaluateModTransform(lposb,yPos-halfLength01,idx,Track::MA_LASER); // Bottom left
+		Transform mrb = m_track->EvaluateModTransform(rposb,yPos-halfLength01,idx,Track::MA_LASER); // Top right
+		Transform mlt = m_track->EvaluateModTransform(lpost,yPos+halfLength01,idx,Track::MA_LASER); // Bottom left
+		Transform mrt = m_track->EvaluateModTransform(rpost,yPos+halfLength01,idx,Track::MA_LASER); // Top right
+
 		//Rect3D centerMiddle = Rect3D(left, slamLength + halfLength, right, -halfLength);
 		Rect3D centerMiddle = Rect3D(0, slamLength + halfLength, 0, -halfLength);
 		
@@ -154,29 +157,43 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			{ { centerMiddle.Left() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 0.0f } }, // TL
 		};
 
+		verts[0].pos = mlb * verts[0].pos;
+		verts[1].pos = mrb * verts[1].pos;
+		verts[2].pos = mrt * verts[2].pos;
+		
+		verts[3].pos = mlb * verts[3].pos;
+		verts[4].pos = mrt * verts[4].pos;
+		verts[5].pos = mlt * verts[5].pos;
+
 		// Generate left corner
 		{
 			Rect3D leftCenter = Rect3D(- actualLaserWidth, centerMiddle.Top() - halfLength,halfWidth, centerMiddle.Bottom() + halfLength);
 
 			Vector<MeshGenerators::SimpleVertex> leftVerts;
 			if(swapped) {
+				Transform fm = m_track->EvaluateModTransform(lpost,yPos+halfLength01*.5,idx,Track::MA_LASER);
 				leftVerts =
 				{
-					{ { leftCenter.Right(), leftCenter.Top(),  0.0f },{ 1.0f, 0.0f } }, // BR
-					{ { leftCenter.Left(), leftCenter.Top(),  0.0f },{ -0.5f, 0.0f } }, // BL
-					{ { leftCenter.Left(), leftCenter.Bottom() - halfLength,  0.0f },{ -0.5f, 1.0f } }, // TL
+					{ { leftCenter.Right(), leftCenter.Top(),  0.0f },{ 1.0f, 0.0f } }, // TR
+					{ { leftCenter.Left(), leftCenter.Top(),  0.0f },{ -0.5f, 0.0f } }, // TL
+					{ { leftCenter.Left(), leftCenter.Bottom() - halfLength,  0.0f },{ -0.5f, 1.0f } }, // BL
 				};
-
+				leftVerts[0].pos = fm * leftVerts[0].pos;
+				leftVerts[1].pos = fm * leftVerts[1].pos;
+				leftVerts[2].pos = mlb * leftVerts[2].pos;
 			} else {
+				Transform fm = m_track->EvaluateModTransform(lposb,yPos-halfLength01*.5,idx,Track::MA_LASER);
 				leftVerts =
 				{
 					{ { leftCenter.Left(), leftCenter.Bottom(),  0.0f },{ -0.5f, 0.0f } }, // BL
 					{ { leftCenter.Right(), leftCenter.Bottom(),  0.0f },{ 1.0f, 0.0f } }, // BR
 					{ { leftCenter.Left(), leftCenter.Top() + halfLength,  0.0f },{ -0.5f, 1.0f } }, // TL
 				};
+				leftVerts[0].pos = fm * leftVerts[0].pos;
+				leftVerts[1].pos = fm * leftVerts[1].pos;
+				leftVerts[2].pos = mlt * leftVerts[2].pos;
 			}
 			for (auto& v : leftVerts) {
-				v.pos = ml * v.pos;
 				verts.Add(v);
 			}
 		}
@@ -187,35 +204,34 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			Vector<MeshGenerators::SimpleVertex> rightVerts;
 			if(swapped)
 			{
+				Transform fm = m_track->EvaluateModTransform(rposb,yPos-halfLength01*.5,idx,Track::MA_LASER);
 				rightVerts =
 				{
 					{ { rightCenter.Left(), rightCenter.Bottom(),  0.0f },{ 0.0f, 0.0f } }, // BL
 					{ { rightCenter.Right(), rightCenter.Bottom(),  0.0f },{ 1.5f, 1.0f } }, // BR
 					{ { rightCenter.Right(), rightCenter.Top() + halfLength,  0.0f },{ 1.5f, 1.0f } }, // TR
 				};
+				rightVerts[0].pos = fm * rightVerts[0].pos;
+				rightVerts[1].pos = fm * rightVerts[1].pos;
+				rightVerts[2].pos = mrt * rightVerts[2].pos;
 			}
 			else
 			{
+				Transform fm = m_track->EvaluateModTransform(rpost,yPos+halfLength01*.5,idx,Track::MA_LASER);
 				rightVerts =
 				{
-					{ { rightCenter.Right(), rightCenter.Bottom() - halfLength,  0.0f },{ 1.5f, 1.0f } }, // TR
-					{ { rightCenter.Right(), rightCenter.Top(),  0.0f },{ 1.5f, 1.0f } }, // BR
-					{ { rightCenter.Left(), rightCenter.Top(),  0.0f },{ 0.0f, 0.0f } }, // BL
+					{ { rightCenter.Right(), rightCenter.Bottom() - halfLength,  0.0f },{ 1.5f, 1.0f } }, // BR
+					{ { rightCenter.Right(), rightCenter.Top(),  0.0f },{ 1.5f, 1.0f } }, // TR
+					{ { rightCenter.Left(), rightCenter.Top(),  0.0f },{ 0.0f, 0.0f } }, // TL
 				};
+				rightVerts[0].pos = mrb * rightVerts[0].pos;
+				rightVerts[1].pos = fm * rightVerts[1].pos;
+				rightVerts[2].pos = fm * rightVerts[2].pos;
 			}
 			for (auto& v : rightVerts) {
-				v.pos = mr * v.pos;
 				verts.Add(v);
 			}
 		}
-
-		verts[0].pos = ml * verts[0].pos;
-		verts[1].pos = mr * verts[1].pos;
-		verts[2].pos = mr * verts[2].pos;
-		
-		verts[3].pos = ml * verts[3].pos;
-		verts[4].pos = mr * verts[4].pos;
-		verts[5].pos = ml * verts[5].pos;
 
 	//		{ { centerMiddle.Left() + offsetB, centerMiddle.Bottom(),  0.0f },{ uvB, 0.0f } }, // BL
 	//		{ { centerMiddle.Right() + offsetB, centerMiddle.Bottom(),  0.0f },{ uvB, 1.0f } }, // BR
@@ -348,17 +364,27 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	Vector<MeshGenerators::SimpleVertex> verts;
 
 	uint32_t idx = 1-laser->index+6;
-	Vector3 p = t + Vector3(startingX,0,0);
-	yPos = std::min(1.f,yPos);
-	Transform m = m_track->EvaluateModTransform(p,yPos,idx,Track::MA_LASER);
+	Vector3 pb = t + Vector3(startingX,0,0);
+	Vector3 pt = t + Vector3(startingX,0,0);
+
+	float len01 = length/m_track->trackLength;
+	Transform mb = m_track->EvaluateModTransform(pb,yPos-len01,idx,Track::MA_LASER);
+	Transform mt = m_track->EvaluateModTransform(pt,yPos,idx,Track::MA_LASER);
 	
 	Rect3D pos = Rect3D(Vector2(- actualLaserWidth, -length), Vector2(actualLaserWidth * 2, length));
 	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(pos, uv, verts);
 
-	for (auto& v : verts) {
-		v.pos = m * v.pos;
-	}
+	verts[0].pos = mt * verts[0].pos;
+	verts[1].pos = mb * verts[1].pos;
+	verts[2].pos = mt * verts[2].pos;
+	verts[3].pos = mt * verts[3].pos;
+	verts[4].pos = mb * verts[4].pos;
+	verts[5].pos = mb * verts[5].pos;
+
+	//for (auto& v : verts) {
+	//	v.pos = m * v.pos;
+	//}
 
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
@@ -398,18 +424,28 @@ Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, Laser
 	}
 	
 	uint32_t idx = 1-laser->index+6;
-	Vector3 p = t + Vector3(startingX,0,0);
-	yPos = std::min(1.f,yPos);
-	Transform m = m_track->EvaluateModTransform(p,yPos,idx,Track::MA_LASER);
+	Vector3 pb = t + Vector3(startingX,prevLength,0);
+	Vector3 pt = t + Vector3(startingX,prevLength,0);
+
+	float len01 = length/m_track->trackLength;
+	Transform mb = m_track->EvaluateModTransform(pb,yPos,idx,Track::MA_LASER);
+	Transform mt = m_track->EvaluateModTransform(pt,yPos+len01,idx,Track::MA_LASER);
 
 	Vector<MeshGenerators::SimpleVertex> verts;
-	Rect3D pos = Rect3D(Vector2(- actualLaserWidth, prevLength), Vector2(actualLaserWidth * 2, length));
+	Rect3D pos = Rect3D(Vector2(- actualLaserWidth, 0), Vector2(actualLaserWidth * 2, length));
 	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(pos, uv, verts);
 
-	for (auto& v : verts) {
-		v.pos = m * v.pos;
-	}
+	verts[0].pos = mt * verts[0].pos;
+	verts[1].pos = mb * verts[1].pos;
+	verts[2].pos = mt * verts[2].pos;
+	verts[3].pos = mt * verts[3].pos;
+	verts[4].pos = mb * verts[4].pos;
+	verts[5].pos = mb * verts[5].pos;
+
+	//for (auto& v : verts) {
+	//	v.pos = m * v.pos;
+	//}
 
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);

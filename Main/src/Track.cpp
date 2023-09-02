@@ -613,7 +613,9 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			switch (c)
 			{
 			case 0: // 4th
-				params.SetParameter("uColor",Vector3(238.f,107.f,33.f)/Vector3(255.f,255.f,255.f));
+				//TODOs hardly visiable with fx, create a new bt mesh with a smaller colored core and black white border
+				//params.SetParameter("uColor",Vector3(238.f,107.f,33.f)/Vector3(255.f,255.f,255.f));
+				params.SetParameter("uColor",Vector3(1.f,1.f,1.f));
 				break;
 			case 1: // 8th
 				params.SetParameter("uColor",Vector3(0.f,129.f,255.f)/Vector3(255.f,255.f,255.f));
@@ -1148,15 +1150,22 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 	float length = eOff-bOff;
 	float rOff = height-bOff;
 	
+	//TODOs make more efficient
 	// Make sure values are in expected bounds.
 	rOff = std::clamp(rOff,FLT_EPSILON,1.f);
-	length = std::max(length,FLT_EPSILON);
+	//length = std::max(length,FLT_EPSILON);
 	
+	length = rOff > length ? rOff : length;
+	
+	//float ass = rOff/length;
+	//assert(ass <= 1.f);
+	//assert(ass >= 0.f);
+
 	float s = 0.f;
 	switch (spline[idx].type)
 	{
 	case SIT_CUBIC: //TODO(skade) more freedom needed?
-		s = Interpolation::CubicBezier(Interpolation::Predefined::Linear).Sample(rOff);
+		s = Interpolation::CubicBezier(Interpolation::Predefined::Linear).Sample(rOff/length);
 		break;
 	case SIT_COSINE:
 		s = Interpolation::CosSpline(rOff/length);

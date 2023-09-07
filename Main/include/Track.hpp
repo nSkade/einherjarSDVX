@@ -169,6 +169,8 @@ public:
 	Mesh calibrationCritMesh;
 	Mesh calibrationDarkMesh;
 	Material trackMaterial; // Also used for buttons
+	Material trackMaterialOG;
+	MaterialParameterSet trackParamsCust;
 	Texture trackTexture;
 	Texture trackCoverTexture;
 	Texture trackTickTexture;
@@ -278,7 +280,8 @@ public:
 		MA_LASER = 4,
 		MA_TRACK = 8,
 		MA_LINE = 16,
-		MA_ALL = 32-1,
+		MA_BHE = 32,
+		MA_ALL = 64-1,
 	};
 
 	//TODO(skade) improve memory layout?
@@ -289,7 +292,7 @@ public:
 		uint32_t layer = 0; ///< ModType layer. Higher Layers getting applied on Top.
 		
 		std::vector<ModSpline> splines[MST_COUNT];
-		Transform gt; //TODO(skade) global transform apllied last currently unused.
+		//Transform gt; //TODO(skade) global transform apllied last currently unused.
 		uint8_t affectedLanes = 0; ///< If Bit is set lane is affected.
 		uint8_t affection = MA_ALL;
 		bool active = true;
@@ -342,6 +345,9 @@ public:
 
 	void SetDepthTest(ModAffection type, bool isDT);
 
+	void SetTrackMaterial(Material mat, MaterialParameterSet params, ModAffection af, ModLanes ml);
+	void ResetTrackMaterial(ModAffection af, ModLanes ml);
+
 private:
 	// Laser track generators
 	class LaserTrackBuilder* m_laserTrackBuilder;
@@ -386,6 +392,9 @@ private:
 	*/
 	uint8_t ButtonIndexToAffectedLane(uint8_t index) { return 1 << index; }
 
+	/**
+	 * @brief Re initializes GPU buffer, used when changing the track mesh quality.
+	*/
 	void UpdateTrackMeshData();
 
 	ModSplineType m_cMST = MST_X;

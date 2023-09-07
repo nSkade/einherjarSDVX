@@ -73,9 +73,10 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	hitEffectSize.y = track->scoreHitTexture->CalculateHeight(hitEffectSize.x) * yMult;
 	Color c = color.WithAlpha(GetRate() * (alphaScale + hiSpeedAlphaOffset));
 	c.w *= yMult / 2.f;
-	//track->DrawSprite(rq, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
 	if (buttonCode < 4)
 		track->DrawSpriteLane(rq, buttonCode, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
+	else
+		track->DrawSprite(rq, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
 }
 
 ButtonHitRatingEffect::ButtonHitRatingEffect(uint32 buttonCode, ScoreHitRating rating) : TimedEffect(0.3f), buttonCode(buttonCode), rating(rating)

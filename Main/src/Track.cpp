@@ -275,6 +275,9 @@ bool Track::AsyncFinalize()
 		bfx.track = this;
 	}
 
+	// Dont loose scope of Materials on change.
+	trackMaterialOG = trackMaterial;
+
 	return success;
 }
 void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
@@ -397,6 +400,7 @@ void Track::DrawBase(class RenderQueue& rq)
 	params.SetParameter("rCol", laserColors[1]);
 	params.SetParameter("hidden", m_trackHide);
 	params.SetParameter("sudden", m_trackHideSud);
+	params.insert(trackParamsCust.begin(),trackParamsCust.end());
 
 	bool mode_seven = true; //TODO make configurable
 	
@@ -481,7 +485,7 @@ void Track::DrawBase(class RenderQueue& rq)
 					centerSplitPos = Vector3({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f});
 				float lw = trackWidth/6.f;
 				Vector3 tickx = Vector3({-trackWidth * 0.5f + i*lw+lw*.5f,0.f,0.f});
-				Transform mt = EvaluateModTransform(tickx+tickPosition+centerSplitPos,fLocal,idx,MA_TRACK);
+				Transform mt = EvaluateModTransform(tickx+tickPosition+centerSplitPos,fLocal,idx,MA_BUTTON);
 				rq.Draw(tT * mt, splitTrackTickMesh[i], buttonMaterial, params);
 			}
 		}// else {
@@ -558,20 +562,20 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
 
 		Transform buttonTransform;
+		
+		Transform mt = EvaluateModTransform(buttonPos,position,mobj->button.index, MA_BUTTON);
 
 		float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
 		//TODO rewrite
 		if (mobj->button.index < 4) // bt button scale
-			scale = 0.2f + (1.5f) * position;
+			scale = 0.2f + (1.5f) * mt[13]/trackLength;
 		else //fx button scale
-			scale = 0.35f + (1.5f) * position;
+			scale = 0.35f + (1.5f) * mt[13]/trackLength;
 		buttonTransform = Transform::Scale({ xscale, scale, 1.0f }) * Transform::Translation({-width*.5f,-length*.5f,0.f}) * buttonTransform;
-		
-		//TODO(skade) Transform Spline better?
-		buttonTransform = EvaluateModTransform(buttonPos,position,mobj->button.index, MA_BUTTON) * buttonTransform;
+
 		//buttonTransform *= Transform::Translation(buttonPos);
 
-		buttonTransform = trackOrigin * buttonTransform;
+		buttonTransform = trackOrigin * mt * buttonTransform;
 
 		params.SetParameter("trackScale", 1.0f / trackLength);
 
@@ -909,6 +913,8 @@ void Track::DrawLaneLight(RenderQueue& rq)
 		p.SetParameter("mainTex", laneLightTexture);
 		p.SetParameter("timer", m_laneLightTimer);
 		p.SetParameter("speed", m_cModSpeed);
+		//TODO improve with beat/m_viewRange
+		//p.SetParameter("scroll", m_viewRange);
 
 		if (centerSplit != 0.0f || true)
 		{
@@ -1254,6 +1260,34 @@ void Track::SetDepthTest(ModAffection type, bool isDT)
 		case MA_TRACK:
 			trackMaterial->depthTest = isDT;
 			break;
+	default:
+		break;
+	}
+}
+
+void Track::SetTrackMaterial(Material mat, MaterialParameterSet params, ModAffection af, ModLanes ml) {
+	switch (af)
+	{
+	case MA_TRACK:
+		{
+			trackMaterial = mat;
+			trackParamsCust = params;
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+void Track::ResetTrackMaterial(ModAffection af, ModLanes ml) {
+	switch (af)
+	{
+	case MA_TRACK:
+		{
+			trackMaterial = trackMaterialOG;
+			trackParamsCust = MaterialParameterSet();
+		}
+		break;
 	default:
 		break;
 	}

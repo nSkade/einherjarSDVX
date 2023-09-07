@@ -43,6 +43,8 @@ public:
 
 	static Map<String, void*> FunctionMap;
 
+	Material GetMaterial() { return m_material; }
+	MaterialParameterSet GetParams() { return m_params; }
 
 protected:
 	Mesh m_mesh;

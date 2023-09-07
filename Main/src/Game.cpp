@@ -3238,6 +3238,8 @@ public:
 		bind->AddFunction("setModEnable"      , this,&Game_Impl::lsetModEnable);
 		bind->AddFunction("setTickLayer"      , this,&Game_Impl::lsetTickLayer);
 		bind->AddFunction("setDepthTest"      , this,&Game_Impl::lsetDepthTest);
+		bind->AddFunction("setTrackMaterial"  , this,&Game_Impl::lsetTrackMaterial);
+		bind->AddFunction("resetTrackMaterial", this,&Game_Impl::lresetTrackMaterial);
 		
 		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
 
@@ -3407,6 +3409,27 @@ public:
 		uint32_t i = luaL_checknumber(L,2);
 		bool e = lua_toboolean(L,3);
 		m_track->SetDepthTest((Track::ModAffection) i,e);
+		return 0;
+	}
+
+	int lsetTrackMaterial(lua_State* L) {
+		int n = lua_gettop(L); // number of arguments
+		ShadedMesh** sm = (ShadedMesh**) luaL_checkudata(L,2,"ShadedMesh");
+		Track::ModAffection af = (Track::ModAffection) luaL_checkinteger(L,3);
+		Track::ModLanes ml = Track::ML_ALL;
+		if (n==4)
+			ml = (Track::ModLanes) luaL_checkinteger(L,4);
+		m_track->SetTrackMaterial((*sm)->GetMaterial(),(*sm)->GetParams(),af,ml);
+		return 0;
+	}
+
+	int lresetTrackMaterial(lua_State* L) {
+		int n = lua_gettop(L); // number of arguments
+		Track::ModAffection af = (Track::ModAffection) luaL_checkinteger(L,2);
+		Track::ModLanes ml = Track::ML_ALL;
+		if (n==3)
+			ml = (Track::ModLanes) luaL_checkinteger(L,3);
+		m_track->ResetTrackMaterial(af,ml);
 		return 0;
 	}
 	
@@ -3934,6 +3957,7 @@ public:
 		pushIntToTable("MA_LS", Track::MA_LASER );
 		pushIntToTable("MA_TRK", Track::MA_TRACK );
 		pushIntToTable("MA_LIN", Track::MA_LINE  );
+		pushIntToTable("MA_BHE", Track::MA_BHE   );
 		pushIntToTable("MA_ALL", Track::MA_ALL   );
 
 		lua_setglobal(L, "mdv");

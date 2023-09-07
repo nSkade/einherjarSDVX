@@ -40,7 +40,8 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 		float rfs = rf*length;
 		float emo =yPos+rfs/(m_track->trackLength); // effective mod offset
 		
-		//TODO(skade) is bad by resizing GPU buffer.
+		//TODO(skade) improve
+		// We need to push back degenerated vertices until the buffer is full.
 		if (emo > 1.f) {
 			if (verts.size() > 0) {
 				verts.push_back(verts.back());

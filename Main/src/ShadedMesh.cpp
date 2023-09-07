@@ -276,7 +276,7 @@ int lScaleToLength(lua_State* L)
 
 	float s = luaL_checknumber(L, 2) / object->GetLength();
 	object->GetScale().y = s;
-    return 0;
+	return 0;
 }
 
 
@@ -575,7 +575,8 @@ int ShadedMesh::lNew(lua_State* L)
 		*place = new ShadedMesh();
 	}
 
-	lua_newtable(L);
+	luaL_newmetatable(L,"ShadedMesh");
+	//lua_newtable(L);
 
 	lua_pushcfunction(L, __index);
 	lua_setfield(L, -2, "__index");

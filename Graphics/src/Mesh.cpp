@@ -84,6 +84,7 @@ namespace Graphics
 			glBindVertexArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
+		//TODO(skade) implement setting mesh with glBufferSubData
 		
 		#ifdef EMBEDDED
 		void Draw() override

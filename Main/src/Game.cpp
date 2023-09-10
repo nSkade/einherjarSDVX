@@ -2707,10 +2707,14 @@ public:
 
 	void ReloadBackground()
 	{
-		if (m_background)
-			m_background->Init(false);
-		if (m_foreground)
-			m_foreground->Init(true);
+		if (m_background) {
+			delete m_background;
+			m_background = CreateBackground(this);
+		}
+		if (m_foreground) {
+			delete m_foreground;
+			m_foreground = CreateBackground(this,true);
+		}
 	}
 
 	void OnKeyReleased(SDL_Scancode code, int32 delta) override

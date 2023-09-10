@@ -90,8 +90,7 @@ void BeatmapPlayback::Update(MapTime newTime, int audioOffset)
 
 	// Set new time
 	m_playbackTime = newTime;
-	m_currBeat = m_beatmap->GetMeasureIndFromMapTime(m_playbackTime+audioOffset);
-	//m_currBeat = CountBeats(0, m_playbackTime, beatID);
+	m_currBeat = m_beatmap->GetMeasureIndFromMapTime(m_playbackTime);
 
 	// Advance timing
 	Beatmap::TimingPointsIterator timingEnd = m_SelectTimingPoint(m_playbackTime);

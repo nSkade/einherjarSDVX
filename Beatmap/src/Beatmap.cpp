@@ -152,7 +152,7 @@ int Beatmap::GetMeasureIndFromMapTime(MapTime time) const
 			continue;
 		}
 
-		return currMeasureCount + static_cast<int>(MEASURE_EPSILON + (time - m_timingPoints[i].time) / m_timingPoints[i].GetBarDuration());
+		return currMeasureCount + static_cast<int>((time - m_timingPoints[i].time) / m_timingPoints[i].GetBarDuration());
 	}
 
 	assert(false);

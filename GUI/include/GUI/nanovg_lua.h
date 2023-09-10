@@ -415,6 +415,13 @@ static int lTextAlign(lua_State* L /*int align*/)
 	g_guiState.textAlign = luaL_checkinteger(L, 1);
 	return 0;
 }
+//TODO(skade) create binding
+static int lDeleteImage(lua_State* L /*nvgImage*/) {
+	int handle = luaL_checkinteger(L,1);
+	g_guiState.vgImages[L].erase(handle);
+	nvgDeleteImage(g_guiState.vg,handle);
+	return 0;
+}
 static int lCreateImage(lua_State* L /*const char* filename, int imageflags */)
 {
 	const char* filename = luaL_checkstring(L, 1);
@@ -1090,13 +1097,15 @@ static int DisposeGUI(lua_State* state)
 	g_guiState.paintCache[state].clear();
 	g_guiState.paintCache.erase(state);
 
-	//TODO script does not reinitialize images, so deleting them causes a memory access violation.
-	// Still, not deleting them causes in some instances memory leaks
+	// old message
+		//TODO script does not reinitialize images, so deleting them causes a memory access violation.
+		// Still, not deleting them causes in some instances memory leaks
+
 	for(auto&& i : g_guiState.vgImages[state])
 	{
-		//nvgDeleteImage(g_guiState.vg, i);
+		nvgDeleteImage(g_guiState.vg, i);
 	}
-
+	g_guiState.vgImages[state] = Set<int>(); // clear set
 
 	Vector<int> keysToDelete;
 	for (auto anim : g_guiState.animations)

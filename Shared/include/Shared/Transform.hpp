@@ -44,6 +44,7 @@ public:
 	Vector4 operator*(const Vector4& other) const;
 	Vector3 operator*(const Vector3& other) const;
 	Transform& operator*=(const Transform& other);
+	Transform operator+(const Transform& other) const;
 
 	void ScaleTransform(const Vector3& scale);
 

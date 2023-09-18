@@ -168,9 +168,10 @@ public:
 	Mesh splitTrackCoverMesh[6];
 	Mesh calibrationCritMesh;
 	Mesh calibrationDarkMesh;
-	Material trackMaterial; // Also used for buttons
+	Material trackMaterial;
 	Material trackMaterialOG;
 	MaterialParameterSet trackParamsCust;
+	MaterialParameterSet buttonParamsCust;
 	Texture trackTexture;
 	Texture trackCoverTexture;
 	Texture trackTickTexture;
@@ -180,6 +181,7 @@ public:
 
 	/* Object graphics */
 	Mesh buttonMesh;
+	Mesh buttonMeshOG;
 	Texture buttonTexture;
 	Texture buttonHoldTexture;
 	Mesh fxbuttonMesh;
@@ -187,6 +189,7 @@ public:
 	Texture fxbuttonHoldTexture;
 	Material holdButtonMaterial;
 	Material buttonMaterial;
+	Material buttonMaterialOG;
 	Material trackCoverMaterial;
 	Texture laserTextures[2];
 	Texture laserTailTextures[4]; // Entry and exit textures, both sides
@@ -281,7 +284,8 @@ public:
 		MA_TRACK = 8,
 		MA_LINE = 16,
 		MA_BHE = 32,
-		MA_ALL = 64-1,
+		MA_TICK = 64,
+		MA_ALL = 128-1,
 	};
 
 	//TODO(skade) improve memory layout?
@@ -345,8 +349,18 @@ public:
 
 	void SetDepthTest(ModAffection type, bool isDT);
 
-	void SetTrackMaterial(Material mat, MaterialParameterSet params, ModAffection af, ModLanes ml);
-	void ResetTrackMaterial(ModAffection af, ModLanes ml);
+	enum TrackPipe {
+		TP_MATERIAL,
+		TP_PARAMS,
+		TP_MESH,
+	};
+
+	void SetTrackMaterial(Material mat, ModAffection af);
+	void SetTrackParameterSet(MaterialParameterSet params, ModAffection af);
+	void SetTrackMesh(Mesh mesh, ModAffection af);
+	void ResetTrackMaterial(ModAffection af);
+	void ResetTrackParameterSet(ModAffection af);
+	void ResetTrackMesh(ModAffection af);
 
 private:
 	// Laser track generators

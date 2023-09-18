@@ -11,6 +11,8 @@
 #include "Gauge.hpp"
 #include "Shared/LuaBindable.hpp"
 
+#include "GUI/nanovg_linAlg.h"
+
 /* Background template for fullscreen effects */
 class FullscreenBackground : public Background
 {
@@ -92,13 +94,9 @@ private:
 		fullscreenMaterial->opaque = false;
 
 		if (fullscreenMaterial->HasUniform("texFrameBuffer"))
-		{
 			frameBufferTexture = TextureRes::CreateFromFrameBuffer(g_gl, g_resolution);
-		}
 		else
-		{
 			frameBufferTexture = nullptr;
-		}
 
 		return true;
 	}
@@ -228,6 +226,7 @@ public:
 		bindable->AddFunction("SetParam2f", this, &TestBackground::SetParam2f);
 		bindable->AddFunction("SetParam3f", this, &TestBackground::SetParam3f);
 		bindable->AddFunction("SetParam4f", this, &TestBackground::SetParam4f);
+		bindable->AddFunction("SetParam4x4f", this, &TestBackground::SetParam4x4f);
 		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
 		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
 		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
@@ -243,6 +242,10 @@ public:
 		bindable->AddFunction("GetScreenCenter", this, &TestBackground::GetScreenCenter);
 		bindable->AddFunction("GetClearTransition", this, &TestBackground::GetClearTransition);
 
+		bindable->AddFunction("SetMaterialDepthTest", this, &TestBackground::SetMaterialDepthTest);
+		bindable->AddFunction("SetMaterialOpaque", this, &TestBackground::SetMaterialOpaque);
+		bindable->AddFunction("SetMaterialBlendMode", this, &TestBackground::SetMaterialBlendMode);
+
 		bindable->Push();
 		lua_settop(lua, 0);
 
@@ -250,6 +253,8 @@ public:
 		trackBindable->Push();
 		modsBindable = game->MakeModsLuaBindable(lua);
 		modsBindable->Push();
+
+		game->m_sharedGlobalsLua.addLuaState(lua);
 		
 		bool suc = m_init(path);
 		
@@ -469,6 +474,12 @@ public:
 		fullscreenMaterialParams.SetParameter(param, v);
 		return 0;
 	}
+	int SetParam4x4f(lua_State* L) {
+		String param(luaL_checkstring(L, 2));
+		Transform t = readMat4(L,3);
+		fullscreenMaterialParams.SetParameter(param, t);
+		return 0;
+	}
 	int DrawShader(lua_State *L)
 	{
 		for (auto &texParam : textures)
@@ -490,6 +501,27 @@ public:
 	{
 		lua_pushstring(L, *folderPath);
 		return 1;
+	}
+
+	int SetMaterialDepthTest(lua_State* L) {
+		bool enable = lua_toboolean(L,2);
+		if (fullscreenMaterial)
+			fullscreenMaterial->depthTest = enable;
+		return 0;
+	}
+
+	int SetMaterialOpaque(lua_State* L) {
+		bool enable = lua_toboolean(L,2);
+		if (fullscreenMaterial)
+			fullscreenMaterial->opaque = enable;
+		return 0;
+	}
+
+	int SetMaterialBlendMode(lua_State* L) {
+		MaterialBlendMode bm = (MaterialBlendMode) luaL_checkinteger(L,2);
+		if (fullscreenMaterial)
+			fullscreenMaterial->blendMode = bm;
+		return 0;
 	}
 
 	Material LoadBackgroundMaterial(const String &path)

@@ -131,7 +131,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 		float halfLength = slamLength * 0.5;
 	
 		float halfLength01 = playback.ToViewDistance(laser->time, slamDuration)/m_track->GetViewRange()*.5f;
-
+		
 		//Vector3 bpos = Vector3(left,offsetB+yPos,0);
 		//Vector3 tpos = Vector3(right,offsetT+yPos,0);
 		Vector3 lposb = t+Vector3(left,0,0);
@@ -242,6 +242,11 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 	//		{ { centerMiddle.Right() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 1.0f } }, // TR
 	//		{ { centerMiddle.Left() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 0.0f } }, // TL
 
+		if (yPos+halfLength01 > 1.f) {
+			for (auto& v : verts) {
+				v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+			}
+		}
 		newMesh->SetData(verts);
 		newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
 	}
@@ -387,6 +392,11 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	//	v.pos = m * v.pos;
 	//}
 
+	if (yPos > 1.f) {
+		for (auto& v : verts) {
+			v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		}
+	}
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
 
@@ -444,10 +454,12 @@ Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, Laser
 	verts[4].pos = mb * verts[4].pos;
 	verts[5].pos = mb * verts[5].pos;
 
-	//for (auto& v : verts) {
-	//	v.pos = m * v.pos;
-	//}
 
+	if (yPos+len01 > 1.f) {
+		for (auto& v : verts) {
+			v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		}
+	}
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
 

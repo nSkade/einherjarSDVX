@@ -1828,12 +1828,10 @@ bool Application::ScriptError(const String& name, lua_State* L)
 	return false;
 }
 
-
-lua_State *Application::LoadScript(const String &name, bool noError)
+lua_State* Application::LoadScript(lua_State* L, const String &name, bool noError)
 {
-	lua_State *s = luaL_newstate();
-	luaL_openlibs(s);
-	SetScriptPath(s);
+	luaL_openlibs(L);
+	SetScriptPath(L);
 
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
@@ -1854,17 +1852,23 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		}
 	}
 
-	SetLuaBindings(s);
-	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
+	SetLuaBindings(L);
+	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
 	{
-		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(s, -1));
+		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1));
 		if (!noError)
-			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(s, -1), 0);
-		lua_close(s);
+			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(L, -1), 0);
+		lua_close(L);
 		return nullptr;
 	}
 
-	return s;
+	return L;
+}
+
+lua_State *Application::LoadScript(const String &name, bool noError)
+{
+	lua_State *s = luaL_newstate();
+	return LoadScript(s,name,noError);
 }
 
 bool Application::ReloadScript(const String &name, lua_State *L)
@@ -2487,6 +2491,8 @@ void Application::SetLuaBindings(lua_State *state)
 
 		//TODO(skade) better names
 
+		pushFuncToTable("SetNVGmodMat", lsetModMat);
+		pushFuncToTable("SetNVGmodMatSkin", lsetModMatSkin);
 		pushFuncToTable("SetNVGprojMat", lsetProjMat);
 		pushFuncToTable("SetNVGprojMatSkin", lsetProjMatSkin);
 		pushFuncToTable("GetNVGprojMat", lgetProjMatChart);

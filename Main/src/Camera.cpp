@@ -383,20 +383,13 @@ Vector2 Camera::Project(const Vector3& pos)
 	return screenSpace.xy();
 }
 
-//TODO make better? cache projection somewhere?
+//TODO(skade) cache projection when camera gets updated instead of recalculating
 Transform Camera::CreateProjectionMatrix(bool clipped) {
-	int portrait = g_aspectRatio > 1 ? 0 : 1;
 
+	int portrait = g_aspectRatio > 1 ? 0 : 1;
+	float fov = fovs[portrait];
 	// Extension of clipping planes in outward direction
 	float viewRangeExtension = clipped ? 0.0f : 5.0f;
-
-	auto critDir = worldNoRoll.GetPosition().Normalized();
-	float rotToCrit = -atan2(critDir.y, -critDir.z) * Math::radToDeg;
-
-	float fov = fovs[portrait];
-	float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
-	
-	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
 
 	// Calculate clipping distances
 	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
@@ -405,49 +398,37 @@ Transform Camera::CreateProjectionMatrix(bool clipped) {
 	float radPitch = Math::degToRad * m_actualCameraPitch;
 	float endDist = -VectorMath::Dot(toTrackEnd, { 0, sinf(radPitch) ,cosf(radPitch) });
 	float beginDist = -VectorMath::Dot(toTrackBegin, { 0, sinf(radPitch) ,cosf(radPitch) });
-	float clipFar = Math::Max(endDist, beginDist);
-	float clipNear = Math::Min(endDist, beginDist);
+	float clipFar = 1000.f;//Math::Max(endDist, beginDist);
+	float clipNear = 0.01f;//Math::Min(endDist, beginDist);
 	
 	Transform t = ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, Math::Max(clipNear, 0.1f), clipFar + viewRangeExtension);
 	return t;
 }
 
-//TODO(skade) handle modMatrix with getProj lua better
 RenderState Camera::CreateRenderState(bool clipped)
 {
-	int portrait = g_aspectRatio > 1 ? 0 : 1;
-
-	// Extension of clipping planes in outward direction
-	float viewRangeExtension = clipped ? 0.0f : 5.0f;
-
 	RenderState rs = g_application->GetRenderStateBase();
-
+	Transform proj = CreateProjectionMatrix(clipped);
+	
 	auto critDir = worldNoRoll.GetPosition().Normalized();
 	float rotToCrit = -atan2(critDir.y, -critDir.z) * Math::radToDeg;
 
+	int portrait = g_aspectRatio > 1 ? 0 : 1;
 	float fov = fovs[portrait];
 	float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
+	
+	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
 	
 	Transform cameraTransform;
 	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
 	cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
 
-	// Calculate clipping distances
-	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
-	Vector3 toTrackBegin = (track->trackOrigin).TransformPoint(Vector3(0.0f, -1.f, 0.f));
-	
-	float radPitch = Math::degToRad * m_actualCameraPitch;
-	float endDist = -VectorMath::Dot(toTrackEnd, { 0, sinf(radPitch) ,cosf(radPitch) });
-	float beginDist = -VectorMath::Dot(toTrackBegin, { 0, sinf(radPitch) ,cosf(radPitch) });
-	float clipFar = Math::Max(endDist, beginDist);
-	float clipNear = Math::Min(endDist, beginDist);
-	
 	//rs.projectionTransform = Transform::Translation(Vector3(-g_center.x+0.5,-g_center.y+0.5,0.0)); //TODO(skade) g_center and g_scale probably obsolete with nvg3D
 	//rs.projectionTransform *= Transform::Scale(Vector3(g_scale)); //TODO(skade) this seems to cause a slight offset on nanovg critline and real critline
 	rs.cameraTransform = modTransform;
 	rs.cameraTransform *= modTransformSkin;
 	rs.cameraTransform *= cameraTransform;
-	rs.projectionTransform = ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, Math::Max(clipNear, 0.1f), clipFar + viewRangeExtension);
+	rs.projectionTransform = proj;
 
 	m_rsLast = rs;
 	return rs;

@@ -46,6 +46,9 @@ public:
 
 	Material GetMaterial() { return m_material; }
 	MaterialParameterSet GetParams() { return m_params; }
+	Mesh GetMesh() { return m_mesh; }
+
+	void SetIsScreenSpace(bool isSS) { m_isScreenSpace = isSS; }
 
 protected:
 	Mesh m_mesh;
@@ -56,6 +59,8 @@ protected:
 	Vector3 m_scale = Vector3(1.0,1.0,1.0);
 	Vector3 m_rotation = Vector3(0.0, 0.0, 0.0);
 	bool m_isWireframe = false;
+	bool m_isScreenSpace = true;
+	Texture framebufferTexture;
 };
 
 class ShadedMeshOnTrack : public ShadedMesh {
@@ -68,7 +73,6 @@ public:
 	static int lNew(struct lua_State* L, class Game* game);
 	void DrawOnTrack();
 	void lUseGameMesh(struct lua_State* L);
-
 
 	void SetLength(float l) { m_length = l; }
 	float GetLength() { return m_length; }

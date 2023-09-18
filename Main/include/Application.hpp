@@ -81,6 +81,7 @@ public:
 	bool ScriptError(const String& name, lua_State* L);
 
 	lua_State* LoadScript(const String& name, bool noError = false);
+	lua_State* LoadScript(lua_State* L, const String& name, bool noError = false);
 	bool ReloadScript(const String& name, lua_State* L);
 
 	void WarnGauge();

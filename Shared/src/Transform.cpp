@@ -133,6 +133,14 @@ Transform Transform::operator*(const Transform& other) const
 
 	return result;
 }
+Transform Transform::operator+(const Transform& other) const
+{
+	Transform res;
+	for (uint32_t i=0;i<16;++i)
+		res[i] = this->mat[i]+other.mat[i];
+	return res;
+
+}
 Transform Transform::operator*(const float other) const {
 	Transform res;
 	for (uint32_t i=0;i<16;++i)

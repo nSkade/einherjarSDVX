@@ -1,80 +1,82 @@
-#pragma once
-#include "nanovg.h"
-#include "lua.h"
-#include "lauxlib.h"
-#include "lualib.h"
-#include "Graphics/Font.hpp"
-#include "Graphics/RenderQueue.hpp"
-#include "Shared/Transform.hpp"
-#include "Shared/Files.hpp"
-#include "Shared/Thread.hpp"
-#include <atomic>
-#include <mutex>
+//#pragma once
+//#include "nanovg.h"
+//#include "lua.h"
+//#include "lauxlib.h"
+//#include "lualib.h"
+//#include "Graphics/Font.hpp"
+//#include "Graphics/RenderQueue.hpp"
+//#include "Shared/Transform.hpp"
+//#include "Shared/Files.hpp"
+//#include "Shared/Thread.hpp"
+//#include <atomic>
+//#include <mutex>
+//
+//struct Label
+//{
+//	Text text;
+//	int size;
+//	float scale;
+//	FontRes::TextOptions opt;
+//	Graphics::Font font;
+//	String content;
+//};
+//
+//
+//struct ImageAnimation
+//{
+//	int FrameCount;
+//	std::atomic<int32_t> CurrentFrame;
+//	int TimesToLoop;
+//	int LoopCounter;
+//	int w;
+//	int h;
+//	float SecondsPerFrame;
+//	float Timer;
+//	std::atomic<bool> Compressed;
+//	std::atomic<bool> LoadComplete;
+//	std::atomic<bool> Cancelled;
+//	std::mutex LoadMutex;
+//	Vector<Graphics::Image> Frames;
+//	Vector<Buffer> FrameData; //for storing the file contents of the compressed frames
+//	Image CurrentImage; //the current uncompressed frame in use
+//	Image NextImage;
+//	Thread* JobThread;
+//	lua_State* State;
+//};
+//
+//struct GUIState
+//{
+//	NVGcontext* vg;
+//	RenderQueue* rq;
+//	Transform t;
+//	Map<lua_State*, Map<int, Label>> textCache;
+//	Map<lua_State*, Map<int, NVGpaint>> paintCache;
+//	Map<lua_State*, int> nextTextId;
+//	Map<lua_State*, int> nextPaintId;
+//	Map<String, Graphics::Font> fontCahce;
+//	Map<lua_State*, Set<int>> vgImages;
+//	Graphics::Font currentFont;
+//	Vector4 fillColor;
+//	int textAlign;
+//	int fontSize;
+//	Material* fontMaterial;
+//	Material* fillMaterial;
+//	NVGcolor otrColor; //outer color
+//	NVGcolor inrColor; //inner color
+//	NVGcolor imageTint;
+//	float hueShift;
+//	Rect scissor;
+//	Vector2i resolution;
+//	Map<int, Ref<ImageAnimation>> animations;
+//	int scissorOffset;
+//	Vector<Transform> transformStack;
+//	Vector<int> nvgFonts;
+//
+//	Transform modMatChart;
+//	Transform modMatSkin;
+//};
 
-struct Label
-{
-	Text text;
-	int size;
-	float scale;
-	FontRes::TextOptions opt;
-	Graphics::Font font;
-	String content;
-};
-
-
-struct ImageAnimation
-{
-	int FrameCount;
-	std::atomic<int32_t> CurrentFrame;
-	int TimesToLoop;
-	int LoopCounter;
-	int w;
-	int h;
-	float SecondsPerFrame;
-	float Timer;
-	std::atomic<bool> Compressed;
-	std::atomic<bool> LoadComplete;
-	std::atomic<bool> Cancelled;
-	std::mutex LoadMutex;
-	Vector<Graphics::Image> Frames;
-	Vector<Buffer> FrameData; //for storing the file contents of the compressed frames
-	Image CurrentImage; //the current uncompressed frame in use
-	Image NextImage;
-	Thread* JobThread;
-	lua_State* State;
-};
-
-struct GUIState
-{
-	NVGcontext* vg;
-	RenderQueue* rq;
-	Transform t;
-	Map<lua_State*, Map<int, Label>> textCache;
-	Map<lua_State*, Map<int, NVGpaint>> paintCache;
-	Map<lua_State*, int> nextTextId;
-	Map<lua_State*, int> nextPaintId;
-	Map<String, Graphics::Font> fontCahce;
-	Map<lua_State*, Set<int>> vgImages;
-	Graphics::Font currentFont;
-	Vector4 fillColor;
-	int textAlign;
-	int fontSize;
-	Material* fontMaterial;
-	Material* fillMaterial;
-	NVGcolor otrColor; //outer color
-	NVGcolor inrColor; //inner color
-	NVGcolor imageTint;
-	float hueShift;
-	Rect scissor;
-	Vector2i resolution;
-	Map<int, Ref<ImageAnimation>> animations;
-	int scissorOffset;
-	Vector<Transform> transformStack;
-	Vector<int> nvgFonts;
-
-	Transform modMatChart;
-	Transform modMatSkin;
-};
+#include "guiState.h"
 
 GUIState g_guiState;
 
@@ -1097,16 +1099,13 @@ static int DisposeGUI(lua_State* state)
 	g_guiState.paintCache[state].clear();
 	g_guiState.paintCache.erase(state);
 
-	// old message
-		//TODO script does not reinitialize images, so deleting them causes a memory access violation.
-		// Still, not deleting them causes in some instances memory leaks
-
 	for(auto&& i : g_guiState.vgImages[state])
 	{
 		nvgDeleteImage(g_guiState.vg, i);
 	}
-	g_guiState.vgImages[state] = Set<int>(); // clear set
+	g_guiState.vgImages[state] = Set<int>();
 
+	//TODO(skade) needs seperation into lua states
 	Vector<int> keysToDelete;
 	for (auto anim : g_guiState.animations)
 	{
@@ -1183,20 +1182,37 @@ static int lHueShift(lua_State* L /*float hueShift*/) {
 //TODO better place
 #include "nanovg_linAlg.h"
 
+static void updateNVGprojMat() {
+	Transform t = (g_guiState.projMatChart*.5f+g_guiState.projMatSkin*.5f)*g_guiState.modMatChart*g_guiState.modMatSkin;
+	nvgSetProjMat(g_guiState.vg,&t[0]);
+}
+
 //TODO rename to NVG?
-static int lsetProjMat(lua_State* L) {
+static int lsetModMat(lua_State* L) {
 	Transform t = readMat4(L,1);
 	g_guiState.modMatChart = t;
-	t = t*g_guiState.modMatSkin;
-	nvgSetProjMat(g_guiState.vg,&t[0]);
+	updateNVGprojMat();
+	return 0;
+}
+
+static int lsetModMatSkin(lua_State* L) {
+	Transform t = readMat4(L,1);
+	g_guiState.modMatSkin = t;
+	updateNVGprojMat();
+	return 0;
+}
+
+static int lsetProjMat(lua_State* L) {
+	Transform t = readMat4(L,1);
+	g_guiState.projMatChart = t;
+	updateNVGprojMat();
 	return 0;
 }
 
 static int lsetProjMatSkin(lua_State* L) {
 	Transform t = readMat4(L,1);
-	g_guiState.modMatSkin = t;
-	t = g_guiState.modMatChart*t;
-	nvgSetProjMat(g_guiState.vg,&t[0]);
+	g_guiState.projMatSkin = t;
+	updateNVGprojMat();
 	return 0;
 }
 

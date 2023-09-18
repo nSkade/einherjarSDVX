@@ -32,6 +32,9 @@
 #include <ShadedMesh.hpp>
 
 //#include "Lua/luaMods.hpp"
+#include "GUI/guiState.h"
+
+extern struct GUIState g_guiState;
 
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
@@ -526,7 +529,13 @@ public:
 		//g_gameWindow->SetCursorVisible(false);
 
 		//Lua
-		m_lua = g_application->LoadScript("gameplay");
+		m_lua = luaL_newstate();
+
+		// Add Shared Table
+		m_sharedGlobalsLua.clearGlobals();
+		m_sharedGlobalsLua.addLuaState(m_lua);
+
+		g_application->LoadScript(m_lua,"gameplay");
 		if (!m_lua)
 			return false;
 
@@ -606,6 +615,18 @@ public:
 		{
 			m_background = CreateBackground(this);
 			m_foreground = CreateBackground(this, true);
+		}
+
+		m_camera.track = m_track;
+		// Assign nvg proj the standard camera projection.
+		{
+			Transform p = m_camera.CreateProjectionMatrix(false);
+			Vector3 pos = {0.0,0.0,getSSPoffset()};
+			Transform t = Transform::Translation(pos);
+			Transform pt = p*t;
+			
+			g_guiState.projMatChart = pt;
+			g_guiState.projMatSkin = pt;
 		}
 
 		// Do this here so we don't get input events while still loading
@@ -709,8 +730,6 @@ public:
 		m_scoring.SetInput(&g_input);
 		m_scoring.Reset(m_playOptions.range);
 
-		m_track->RemoveAllMods();
-
 		return true;
 	}
 
@@ -743,6 +762,7 @@ public:
 		const MapTime mapTimeDiff = m_lastMapTime - newTime;
 
 		m_camera = Camera();
+		m_camera.track = m_track;
 		
 		// Audio leadin
 		m_audioPlayback.SetEffectEnabled(0, false);
@@ -2691,7 +2711,7 @@ public:
 			Restart();
 		}
 		else if (code == SDL_SCANCODE_F10 && m_isPracticeMode) {
-			g_application->ReloadScript("gameplay", m_lua); //TODOs correctly reload skin
+			g_application->ReloadScript("gameplay", m_lua);
 			if (!ReloadChart())
 				Log("F11 Error reloading chart");
 		}
@@ -2707,6 +2727,7 @@ public:
 
 	void ReloadBackground()
 	{
+		m_track->RemoveAllMods();
 		if (m_background) {
 			delete m_background;
 			m_background = CreateBackground(this);
@@ -3242,8 +3263,8 @@ public:
 		bind->AddFunction("setModEnable"      , this,&Game_Impl::lsetModEnable);
 		bind->AddFunction("setTickLayer"      , this,&Game_Impl::lsetTickLayer);
 		bind->AddFunction("setDepthTest"      , this,&Game_Impl::lsetDepthTest);
-		bind->AddFunction("setTrackMaterial"  , this,&Game_Impl::lsetTrackMaterial);
-		bind->AddFunction("resetTrackMaterial", this,&Game_Impl::lresetTrackMaterial);
+		bind->AddFunction("setTrackPipe"  , this,&Game_Impl::lsetTrackPipe);
+		bind->AddFunction("resetTrackPipe", this,&Game_Impl::lresetTrackPipe);
 		
 		bind->AddFunction("toggleModLines"    , this,&Game_Impl::ltoggleModLines);
 
@@ -3255,6 +3276,8 @@ public:
 		bind->AddFunction("setMQTrackNeg"     , this,&Game_Impl::lsetMQTrackNeg);
 		bind->AddFunction("setMQHold"         , this,&Game_Impl::lsetMQHold);
 		bind->AddFunction("setMQLaser"        , this,&Game_Impl::lsetMQLaser);
+
+		bind->AddFunction("evaluateModTransform",this,&Game_Impl::levaluateModTransform);
 
 		return bind;
 	}
@@ -3291,6 +3314,8 @@ public:
 
 	//BEGIN TRACK MOD SPLINE
 	//TODO(skade) move out
+
+	//TODO(skade) replace int with respecting Track:: enums.
 
 	int ltoggleModLines(struct lua_State* L) {
 		int t = luaL_checknumber(L,2);
@@ -3416,25 +3441,55 @@ public:
 		return 0;
 	}
 
-	int lsetTrackMaterial(lua_State* L) {
-		int n = lua_gettop(L); // number of arguments
-		ShadedMesh** sm = (ShadedMesh**) luaL_checkudata(L,2,"ShadedMesh");
+	int lsetTrackPipe(lua_State* L) {
+		Track::TrackPipe p = (Track::TrackPipe) luaL_checkinteger(L,2);
 		Track::ModAffection af = (Track::ModAffection) luaL_checkinteger(L,3);
-		Track::ModLanes ml = Track::ML_ALL;
-		if (n==4)
-			ml = (Track::ModLanes) luaL_checkinteger(L,4);
-		m_track->SetTrackMaterial((*sm)->GetMaterial(),(*sm)->GetParams(),af,ml);
+		ShadedMesh** sm = (ShadedMesh**) luaL_checkudata(L,4,"ShadedMesh");
+		switch (p)
+		{
+		case Track::TP_MATERIAL:
+				m_track->SetTrackMaterial((*sm)->GetMaterial(),af);
+			break;
+		case Track::TP_PARAMS:
+				m_track->SetTrackParameterSet((*sm)->GetParams(),af);
+			break;
+		case Track::TP_MESH:
+				m_track->SetTrackMesh((*sm)->GetMesh(),af);
+			break;
+		default:
+			break;
+		}
 		return 0;
 	}
 
-	int lresetTrackMaterial(lua_State* L) {
-		int n = lua_gettop(L); // number of arguments
-		Track::ModAffection af = (Track::ModAffection) luaL_checkinteger(L,2);
-		Track::ModLanes ml = Track::ML_ALL;
-		if (n==3)
-			ml = (Track::ModLanes) luaL_checkinteger(L,3);
-		m_track->ResetTrackMaterial(af,ml);
+	int lresetTrackPipe(lua_State* L) {
+		Track::TrackPipe p = (Track::TrackPipe) luaL_checkinteger(L,3);
+		Track::ModAffection af = (Track::ModAffection) luaL_checkinteger(L,3);
+		switch (p)
+		{
+		case Track::TP_MATERIAL:
+				m_track->ResetTrackMaterial(af);
+			break;
+		case Track::TP_PARAMS:
+				m_track->ResetTrackParameterSet(af);
+			break;
+		case Track::TP_MESH:
+				m_track->ResetTrackMesh(af);
+			break;
+		default:
+			break;
+		}
 		return 0;
+	}
+
+	int levaluateModTransform(lua_State* L) {
+		Vector3 pos = readVec3(L,2);
+		float offset = luaL_checknumber(L,3);
+		Track::ModAffection ma = (Track::ModAffection) luaL_checkinteger(L,4);
+		int btx = luaL_checkinteger(L,5);
+		Transform t = m_track->EvaluateModTransform(pos,offset,btx,ma);
+		writeMat4(L,t);
+		return 1;
 	}
 	
 	//END TRACK MOD SPLINE
@@ -3461,14 +3516,21 @@ public:
 		return 1;
 	}
 
-	int lgetProjMat(lua_State* L) {
-		Transform p = m_camera.CreateProjectionMatrix(false);
+	//TODO(skade) better position
+	float getSSPoffset() {
+		// Offset screen space plane at z=0 so that it spans the whole screen.
 		const float degToRad = (1.0f / 180.0f) * 3.14159265359;
 		int portrait = g_aspectRatio > 1 ? 0 : 1;
 		float fov = m_camera.fovs[portrait];
 		float offset = fov/90.;
 		float cot = cos(fov*0.5*degToRad)/sin(fov*0.5*degToRad);
-		Vector3 pos = {0.0,0.0,-cot};
+		return -cot;
+	}
+	
+
+	int lgetProjMat(lua_State* L) {
+		Transform p = m_camera.CreateProjectionMatrix(false);
+		Vector3 pos = {0.0,0.0,getSSPoffset()};
 		Transform t = Transform::Translation(pos);
 		
 		Transform pt = p*t;
@@ -3950,8 +4012,8 @@ public:
 		pushFloatToTable("BT_W", Track::buttonWidth);
 		pushFloatToTable("FX_W", Track::fxbuttonWidth);
 		pushFloatToTable("LS_W", Track::laserWidth);
-		//pushFloatToTable("BT_H", m_track->buttonLength); //TODO put in update function
-		//pushFloatToTable("FX_H", m_track->fxbuttonLength); //TODO put in update function
+		pushFloatToTable("BT_H", m_track->buttonLength); //TODO put in update function?
+		pushFloatToTable("FX_H", m_track->fxbuttonLength); //TODO put in update function?
 		pushFloatToTable("TRACK_W", Track::trackWidth);
 		pushFloatToTable("TRACK_W_BT", Track::buttonTrackWidth);
 		pushFloatToTable("TRACK_W_OP", Track::opaqueTrackWidth);
@@ -3963,6 +4025,11 @@ public:
 		pushIntToTable("MA_LIN", Track::MA_LINE  );
 		pushIntToTable("MA_BHE", Track::MA_BHE   );
 		pushIntToTable("MA_ALL", Track::MA_ALL   );
+		pushIntToTable("MA_TACK", Track::MA_TICK  );
+		
+		pushIntToTable("TP_MATERIAL", Track::TP_MATERIAL);
+		pushIntToTable("TP_PARAMS", Track::TP_PARAMS);
+		pushIntToTable("TP_MESH", Track::TP_MESH);
 
 		lua_setglobal(L, "mdv");
 	}

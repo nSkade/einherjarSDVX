@@ -6,6 +6,12 @@
 #include "Track.hpp"
 #include "lua.hpp"
 
+#include "GUI/nanovg_linAlg.h"
+
+#include "GUI/guiState.h"
+
+extern struct GUIState g_guiState;
+
 ShadedMesh::ShadedMesh() {
 	m_material = g_application->LoadMaterial("guiTex");
 	m_material->opaque = false;
@@ -40,6 +46,16 @@ void ShadedMesh::Draw() {
 	t *= Transform::Rotation(m_rotation);
 	Vector2 center = g_application->GetCurrentGUIResolution()*g_center*(1.0-g_scale);
 	t = Transform::Translation(center) * t;
+
+	if (m_isScreenSpace) {
+		Transform rsp = g_application->GetRenderStateBase().projectionTransform;
+		Transform rspi = Transform::Inverse(rsp);
+		float aspectRatio = g_application->GetRenderStateBase().aspectRatio;
+		//TODO(skade) this is ass, we need rsp befor custom proj. Need proper rework for screen space, screen space proj and global space
+		Transform PT = rspi*(g_guiState.projMatChart*.5f+g_guiState.projMatSkin*.5f)*g_guiState.modMatChart*g_guiState.modMatSkin*Transform::Scale({aspectRatio*1.f,1.f,1.f})*Transform::Translation({0.f,0.f,1.f})*rsp;
+		t = PT*t;
+	}
+
 	rq->DrawScissored(g_application->GetCurrentGUIScissor() , t, m_mesh, m_material, m_params);
 }
 
@@ -53,7 +69,6 @@ void ShadedMeshOnTrack::DrawOnTrack() {
 	rq.Draw(t, m_mesh, m_material, m_params);
 	rq.Process();
 }
-
 
 void ShadedMesh::SetData(Vector<MeshGenerators::SimpleVertex>& data) {
 	m_mesh->SetData(data);
@@ -274,6 +289,14 @@ int lSetWireframe(lua_State* L)
 	return 0;
 }
 
+int lSetScreenSpace(lua_State* L)
+{
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	bool b = lua_toboolean(L, 2);
+	object->SetIsScreenSpace(b);
+	return 0;
+}
+
 int lScaleToLength(lua_State* L)
 {
 	ShadedMeshOnTrack* object;
@@ -484,6 +507,15 @@ int lSetParamVec4(lua_State* L)
 	return 0;
 }
 
+int lSetParamMat4(lua_State* L) {
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	String name = luaL_checkstring(L, 2);
+	Transform t = readMat4(L,3);
+	object->SetParam(name, t);
+	
+	return 0;
+}
+
 int __index(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	String fname = lua_tostring(L, 2);
@@ -498,6 +530,7 @@ int __index(lua_State* L) {
 	fmap.Add("SetParamVec2", lSetParamVec2);
 	fmap.Add("SetParamVec3", lSetParamVec3);
 	fmap.Add("SetParamVec4", lSetParamVec4);
+	fmap.Add("SetParamMat4", lSetParamMat4);
 	fmap.Add("SetData", lSetData);
 	fmap.Add("SetBlendMode", lSetBlendMode);
 	fmap.Add("SetPrimitiveType", lSetPrimitiveType);
@@ -510,6 +543,7 @@ int __index(lua_State* L) {
 	fmap.Add("SetRotation", lSetRotation);
 	fmap.Add("GetRotation", lGetRotation);
 	fmap.Add("SetWireframe", lSetWireframe);
+	fmap.Add("SetScreenSpace", lSetScreenSpace);
 
 	constMap.Add("BLEND_ADD",  (int)MaterialBlendMode::Additive);
 	constMap.Add("BLEND_MULT", (int)MaterialBlendMode::Multiply);

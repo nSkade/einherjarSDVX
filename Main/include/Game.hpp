@@ -6,6 +6,8 @@
 #include "GameFailCondition.hpp"
 #include "HitStat.hpp"
 
+#include "Lua/luaSharedGlobals.hpp"
+
 class Replay;
 class MultiplayerScreen;
 class ChallengeManager;
@@ -49,6 +51,8 @@ public:
 	static Game* CreatePractice(const String& mapPath, PlayOptions&& options);
 	static Game* CreatePractice(ChartIndex* chart, PlayOptions&& options);
 	static PlaybackOptions PlaybackOptionsFromSettings();
+
+	SharedGlobalsLua m_sharedGlobalsLua;
 
 	struct PlayOptions
 	{

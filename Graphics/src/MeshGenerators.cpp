@@ -94,6 +94,7 @@ namespace Graphics
 			out.Add(v);
 	}
 
+	//TODO(skade) optimize
 	Vector<MeshGenerators::SimpleVertex> MeshGenerators::Triangulate(Vector<MeshGenerators::SimpleVertex> verts) {
 		Vector<MeshGenerators::SimpleVertex> ret;
 		for (uint32_t i = 0; i < verts.size()-2; ++i) {

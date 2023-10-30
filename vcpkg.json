@@ -20,6 +20,7 @@
                 "lzo"
             ]
         },
-        "libiconv"
+        "libiconv",
+		"openssl"
     ]
 }

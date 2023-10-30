@@ -2497,6 +2497,8 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("SetNVGprojMatSkin", lsetProjMatSkin);
 		pushFuncToTable("GetNVGprojMat", lgetProjMatChart);
 		pushFuncToTable("GetNVGprojMatSkin", lgetProjMatSkin);
+		pushFuncToTable("GetNVGmodMat", lgetModMatChart);
+		pushFuncToTable("GetNVGmodMatSkin", lgetModMatSkin);
 
 		// linar algebra
 		pushFuncToTable("MultMatVec", lmultMatVec); // LAxMatVec

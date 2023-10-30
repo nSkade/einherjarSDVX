@@ -8,7 +8,10 @@ class Background
 public:
 	virtual ~Background() = default;
 	virtual bool Init(bool foreground) = 0;
-	virtual void Render(float deltaTime) = 0;
+	virtual void Render(float deltaTime, int fgl) = 0;
+
+	virtual bool hasFG() = 0;
+	virtual bool hasFFG() = 0;
 
 	class Game* game;
 };

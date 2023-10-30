@@ -1217,14 +1217,25 @@ static int lsetProjMatSkin(lua_State* L) {
 }
 
 static int lgetProjMatChart(lua_State* L) {
-	writeMat4(L,g_guiState.modMatChart);
+	writeMat4(L,g_guiState.projMatChart);
 	return 1;
 }
 
 static int lgetProjMatSkin(lua_State* L) {
+	writeMat4(L,g_guiState.projMatSkin);
+	return 1;
+}
+
+static int lgetModMatChart(lua_State* L) {
+	writeMat4(L,g_guiState.modMatChart);
+	return 1;
+}
+
+static int lgetModMatSkin(lua_State* L) {
 	writeMat4(L,g_guiState.modMatSkin);
 	return 1;
 }
+
 static int lTransform(lua_State* L)
 {
 	Transform t = readMat4(L,1);

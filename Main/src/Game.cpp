@@ -620,13 +620,14 @@ public:
 		m_camera.track = m_track;
 		// Assign nvg proj the standard camera projection.
 		{
-			Transform p = m_camera.CreateProjectionMatrix(false);
-			Vector3 pos = {0.0,0.0,getSSPoffset()};
-			Transform t = Transform::Translation(pos);
-			Transform pt = p*t;
+			//Transform p = m_camera.CreateProjectionMatrix(false);
+			//Vector3 pos = {0.0,0.0,getSSPoffset()};
+			//Transform t = Transform::Translation(pos);
+			//Transform pt = p*t;
+			Transform t = Transform();
 			
-			g_guiState.projMatChart = pt;
-			g_guiState.projMatSkin = pt;
+			g_guiState.projMatChart = t;
+			g_guiState.projMatSkin = t;
 		}
 
 		// Do this here so we don't get input events while still loading
@@ -935,7 +936,7 @@ public:
 		if (m_renderFastGui)
 		{
 			int portrait = g_aspectRatio <= 1.0 ? 1 : 0;
-			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+			Vector3 critPos = m_camera.Project3D(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
 			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
 			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
 
@@ -953,7 +954,7 @@ public:
 
 
 			
-			m_fastGui.Update(deltaTime, 1.0 - m_camera.pitchOffsets[portrait], leftPos, rightPos, critPos, m_scoring.GetTopGauge());
+			m_fastGui.Update(deltaTime, 1.0 - m_camera.pitchOffsets[portrait], leftPos, rightPos, critPos.xy(), m_scoring.GetTopGauge());
 		}
 	}
 
@@ -1024,11 +1025,13 @@ public:
 		m_camera.track = m_track;
 		m_camera.Tick(deltaTime,m_playback);
 		m_track->Tick(m_playback, deltaTime);
-		RenderState rs = m_camera.CreateRenderState(true);
+		RenderState rs = m_camera.CreateRenderState(false);
 
+		//TODO(skade) multiplying ScrollSpeed is not documented.
 		// Draw BG first
 		if (m_background)
-			m_background->Render(deltaTime * m_playback.GetScrollSpeed());
+			m_background->Render(deltaTime,0);
+			//m_background->Render(deltaTime * m_playback.GetScrollSpeed(),false);
 
 		// Main render queue
 		RenderQueue renderQueue(g_gl, rs);
@@ -1100,7 +1103,8 @@ public:
 		// Use new camera for scoring overlay
 		//	this is because otherwise some of the scoring elements would get clipped to
 		//	the track's near and far planes
-		rs = m_camera.CreateRenderState(false);
+		//rs = m_camera.CreateRenderState(false);
+		
 		RenderQueue hitEffectsRq(g_gl, rs);
 		RenderQueue scoringRq(g_gl, rs);
 
@@ -1267,9 +1271,16 @@ public:
 				NVG_FLUSH();
 
 			// Render foreground
-			if (m_foreground)
+			//TODO(skade) dont check this every frame, improve
+			bool bg_contains_fg = false;
+
+			// Check if bg.lua contains fg and use that instead.
+			if (m_background && m_background->hasFG()) {
+				m_background->Render(deltaTime,1);
+			}
+			else if (m_foreground)
 			{
-				m_foreground->Render(deltaTime);
+				m_foreground->Render(deltaTime,1);
 				glFlush();
 			}
 
@@ -1334,6 +1345,7 @@ public:
 						float speed = Math::Clamp((float)lua_tonumber(m_lua, lua_gettop(m_lua)), 0.0f, 1.0f);
 						//m_audioPlayback.SetPlaybackSpeed(speed); // mute
 						m_audioPlayback.SetVolume(speed); // was Math::Clamp(speed * 10.0f, 0.0f, 1.0f) ->
+						m_audioPlayback.SetMissVocalEffect(true);
 					}
 					lua_pop(m_lua, 1);
 					m_outroCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
@@ -1344,15 +1356,16 @@ public:
 				}
 				lua_settop(m_lua, 0);
 			}
+	
+			//TODO(skade) flush?
+			//	NVG_FLUSH();
+			if (m_background && m_background->hasFFG()) {
+				m_background->Render(deltaTime,2);
+			}
+			if (m_foreground && m_foreground->hasFFG()) {
+				m_foreground->Render(deltaTime,2);
+			}
 			
-		//TODO(skade) another foreground layer
-		//	NVG_FLUSH();
-		//	// Render foreground
-		//	if (m_foreground)
-		//	{
-		//		m_foreground->Render(deltaTime);
-		//		//glFlush();
-		//	}
 		}
 
 
@@ -3242,7 +3255,7 @@ public:
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
 		bind->AddFunction("GetHispeed",this,&Game_Impl::lGetHispeed);
 
-		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO(skade) deprecated //add support for nvg3dmat on shadedMesh
+		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO(skade) deprecated
 		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO(skade) deprecated
 
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
@@ -3250,12 +3263,15 @@ public:
 		bind->AddFunction("SetCamModMatSkin",this,&Game_Impl::lsetCamModMat);
 		bind->AddFunction("GetCamModMatSkin",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
+		bind->AddFunction("GetProjMatNVG",this,&Game_Impl::lgetProjMatNVG);
+		bind->AddFunction("GetCameraMat",this,&Game_Impl::lgetCameraMat);
 
 		//TODO(skade) capital begin / rework names
 		bind->AddFunction("addMod"            , this,&Game_Impl::laddMod);
 		bind->AddFunction("setEMod"           , this,&Game_Impl::lsetEMod);
 		bind->AddFunction("createSpline"      , this,&Game_Impl::lcreateSpline);
 		bind->AddFunction("setModSpline"      , this,&Game_Impl::lsetModSpline);
+		bind->AddFunction("setModSplineT"     , this,&Game_Impl::lsetModSplineT); //TODO(skade) test, probably breaks rn
 		bind->AddFunction("setSplineProperty" , this,&Game_Impl::lsetSplineProperty);
 		bind->AddFunction("setEModSplineType" , this,&Game_Impl::lsetEModSplineType);
 		bind->AddFunction("setModProperty"    , this,&Game_Impl::lsetModProperty);
@@ -3291,6 +3307,11 @@ public:
 	int lSetLaneHideSud(lua_State* L) {
 		float d = luaL_checknumber(L,2);
 		m_track->SetLaneHideSudD(d);
+		return 0;
+	}
+
+	int lClearFrameBuffer(lua_State* L) {
+
 		return 0;
 	}
 	
@@ -3346,6 +3367,52 @@ public:
 		int i = luaL_checknumber(L,2);
 		float v = luaL_checknumber(L,3);
 		m_track->SetModSpline(Track::MST_NONE,i,v);
+		return 0;
+	}
+
+	int lsetModSplineT(lua_State* L) {
+		int n = lua_gettop(L); // number of arguments
+		std::vector<std::pair<int,float>> vals;
+		if (!lua_istable(L, 2)) {
+			lua_pushstring(L, "incorrect argument");
+			lua_error(L);
+		}
+		if (n==2) {
+			// {index, offset}
+			int t1l = luaL_len(L,2);
+			for (uint32_t i=1;i<=t1l;i+=2) {
+				std::pair<int,float> p;
+				lua_rawgeti(L,2,i);
+				p.first = luaL_checknumber(L,-1);
+				lua_pop(L,1);
+				lua_rawgeti(L,2,i+1);
+				p.second = luaL_checknumber(L,-1);
+				lua_pop(L,1);
+				vals.push_back(p);
+			}
+		} else {
+			if (!lua_istable(L, 3)) {
+				lua_pushstring(L, "incorrect argument");
+				lua_error(L);
+			}
+			int t1l = luaL_len(L,2);
+			for (uint32_t i=1;i<=t1l;++i) {
+				lua_rawgeti(L,2,i);
+				int idx = luaL_checknumber(L,-1);
+				lua_pop(L,1);
+				vals.emplace_back(std::pair(idx,0.f));
+			}
+			int t2l = luaL_len(L,3);
+			for (uint32_t i=1;i<=t2l;++i) {
+				lua_rawgeti(L,3,i);
+				float v = luaL_checknumber(L,-1);
+				lua_pop(L,1);
+				vals[i-1].second = v;
+			}
+		}
+
+		for (uint32_t i=0;i<vals.size();++i)
+			m_track->SetModSpline(Track::MST_NONE,vals[i].first,vals[i].second);
 		return 0;
 	}
 
@@ -3526,15 +3593,26 @@ public:
 		float cot = cos(fov*0.5*degToRad)/sin(fov*0.5*degToRad);
 		return -cot;
 	}
-	
 
 	int lgetProjMat(lua_State* L) {
+		Transform p = m_camera.CreateProjectionMatrix(false);
+		writeMat4(L,p);
+		return 1;
+	}
+
+	int lgetProjMatNVG(lua_State* L) {
 		Transform p = m_camera.CreateProjectionMatrix(false);
 		Vector3 pos = {0.0,0.0,getSSPoffset()};
 		Transform t = Transform::Translation(pos);
 		
 		Transform pt = p*t;
 		writeMat4(L,pt);
+		return 1;
+	}
+
+	int lgetCameraMat(lua_State* L) {
+		Transform cm = m_camera.getCameraTransform();
+		writeMat4(L,cm);
 		return 1;
 	}
 
@@ -3878,7 +3956,7 @@ public:
 		{
 			lua_getfield(L, -1, "critLine");
 
-			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+			Vector3 critPos = m_camera.Project3D(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
 			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
 			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
 			Vector2 line = rightPos - leftPos;
@@ -3889,6 +3967,10 @@ public:
 
 			lua_pushstring(L, "y"); // y screen position
 			lua_pushnumber(L, critPos.y);
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "z"); // y screen position
+			lua_pushnumber(L, critPos.z);
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "rotation"); // rotation based on laser roll
@@ -3968,6 +4050,7 @@ public:
 			lua_settable(L, -3);
 		};
 		pushFloatToTable("gScale",g_scale);
+		pushFloatToTable("TRACK_H", m_track->trackLength);
 		lua_setglobal(L, "mdv");
 	}
 	void SetInitialModsLua(lua_State* L) override {
@@ -4025,7 +4108,7 @@ public:
 		pushIntToTable("MA_LIN", Track::MA_LINE  );
 		pushIntToTable("MA_BHE", Track::MA_BHE   );
 		pushIntToTable("MA_ALL", Track::MA_ALL   );
-		pushIntToTable("MA_TACK", Track::MA_TICK  );
+		pushIntToTable("MA_TICK", Track::MA_TICK  );
 		
 		pushIntToTable("TP_MATERIAL", Track::TP_MATERIAL);
 		pushIntToTable("TP_PARAMS", Track::TP_PARAMS);

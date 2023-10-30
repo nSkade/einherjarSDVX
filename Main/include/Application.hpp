@@ -125,6 +125,7 @@ public:
 
 	AutoplayInfo* autoplayInfo = nullptr;
 	Map<String, Ref<SharedTexture>> sharedTextures;
+	//Map<String, Ref<FrameBufferTexture>> frameBufferTextures; //TODO(skade)
 	
 
 private:
@@ -217,3 +218,9 @@ public:
 	int nvgTexture = 0;
 	Texture texture;
 };
+
+class FrameBufferTexure {
+public:
+	Texture texture;
+};
+

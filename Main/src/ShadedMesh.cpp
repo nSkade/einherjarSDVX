@@ -52,7 +52,12 @@ void ShadedMesh::Draw() {
 		Transform rspi = Transform::Inverse(rsp);
 		float aspectRatio = g_application->GetRenderStateBase().aspectRatio;
 		//TODO(skade) this is ass, we need rsp befor custom proj. Need proper rework for screen space, screen space proj and global space
-		Transform PT = rspi*(g_guiState.projMatChart*.5f+g_guiState.projMatSkin*.5f)*g_guiState.modMatChart*g_guiState.modMatSkin*Transform::Scale({aspectRatio*1.f,1.f,1.f})*Transform::Translation({0.f,0.f,1.f})*rsp;
+		Transform nvgp = g_guiState.projMatChart*.5f+g_guiState.projMatSkin*.5f;
+		if (nvgp[14] == 0.f) {
+			aspectRatio = 1.f;
+		}
+
+		Transform PT = rspi*(nvgp)*g_guiState.modMatChart*g_guiState.modMatSkin*Transform::Scale({aspectRatio*1.f,1.f,1.f})*Transform::Translation({0.f,0.f,1.f})*rsp;
 		t = PT*t;
 	}
 

@@ -42,7 +42,7 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 		
 		//TODO(skade) improve
 		// We need to push back degenerated vertices until the buffer is full.
-		if (emo > 1.f) {
+		if (emo > 1.f || (emo < -1. / m_track->trackLength)) {
 			if (verts.size() > 0) {
 				verts.push_back(verts.back());
 				verts.push_back(verts.back());
@@ -289,8 +289,8 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 		scale = length;
 		Vector<MeshGenerators::SimpleVertex> verts;
-		uint32_t rows = (scale*laserLengthScale-prevLength)/(m_track->trackLength)*quality+1; //TODO(skade)
-			
+		uint32_t rows = std::abs(scale*laserLengthScale-prevLength)/(m_track->trackLength)*quality+1; //TODO(skade)
+		
 		float lp0 = laser->points[0];
 		float lp1 = laser->points[1];
 
@@ -307,7 +307,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			float emo = yPos+rfs/tl; // effective mod offset
 			
 			//TODO(skade) is bad by resizing GPU buffer.
-			if (emo > 1.f) {
+			if (emo > 1.f || (emo < -1. / m_track->trackLength)) {
 				if (verts.size() > 0) {
 					verts.push_back(verts.back());
 					verts.push_back(verts.back());

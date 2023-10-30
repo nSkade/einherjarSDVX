@@ -46,7 +46,7 @@ public:
 	{
 		renderState = g_application->GetRenderStateBase();
 	}
-	virtual void Render(float deltaTime) override
+	virtual void Render(float deltaTime, int fgl) override
 	{
 		assert(fullscreenMaterial);
 
@@ -54,6 +54,14 @@ public:
 		RenderQueue rq(g_gl, renderState);
 		rq.Draw(Transform(), fullscreenMesh, fullscreenMaterial, fullscreenMaterialParams);
 		rq.Process();
+	}
+
+	bool hasFG() {
+		return this->hasFGbind;
+	}
+
+	bool hasFFG() {
+		return this->hasFFGbind;
 	}
 
 protected:
@@ -66,6 +74,8 @@ protected:
 	float clearTransition = 0.0f;
 	float offsyncTimer = 0.0f;
 	float speedMult = 1.0f;
+	bool hasFGbind = false;
+	bool hasFFGbind = false;
 	bool foreground = false;
 	bool errored = false;
 	Vector<String> defaultBGs;
@@ -122,7 +132,7 @@ public:
 			layer = kshLayer;
 		}
 		
-		//TODOs try to load chart BG first.
+		//TODO(skade) try to load chart BG first.
 		if (defaultBGs.Contains(layer))
 		{
 			//default bg: load from skin path
@@ -274,6 +284,17 @@ public:
 				suc = m_init(path);
 			}
 		}
+
+		lua_settop(lua, 0);
+		// Look for render_fg in bg and vice versa
+		lua_getglobal(lua, "render_fg");
+		if (lua_isfunction(lua, -1))
+			hasFGbind = true;
+		lua_settop(lua, 0);
+		lua_getglobal(lua, "render_ffg");
+		if (lua_isfunction(lua, -1))
+			hasFFGbind = true;
+		lua_settop(lua, 0);
 		
 		if (suc)
 			return true;
@@ -284,7 +305,7 @@ public:
 		path = Path::Normalize(path + fname);
 		return m_init(path);
 	}
-	virtual void Render(float deltaTime) override
+	virtual void Render(float deltaTime, int fgl) override
 	{
 		if (errored && game->IsPracticeMode()) {
 			this->Init(this->foreground);
@@ -293,6 +314,7 @@ public:
 			return;
 		UpdateRenderState(deltaTime);
 		game->SetGameplayLua(lua);
+		game->SetModsLua(lua);
 		const TimingPoint &tp = game->GetPlayback().GetCurrentTimingPoint();
 		timing.x = game->GetPlayback().GetBeatTime();
 		timing.z = game->GetPlayback().GetLastTime() / 1000.0f;
@@ -328,10 +350,18 @@ public:
 			fullscreenMaterialParams.SetParameter("texFrameBuffer", frameBufferTexture);
 		}
 
-		if (foreground)
+		//TODO(skade) cleanup
+		if (hasFGbind && fgl==1)
 			lua_getglobal(lua, "render_fg");
-		else
+		else if (!foreground && fgl==0)
 			lua_getglobal(lua, "render_bg");
+		else if (hasFFGbind && fgl==2)
+			lua_getglobal(lua, "render_ffg");
+		else {
+			// Requested BG layer func not found.
+			lua_settop(lua, 0);
+			return;
+		}
 
 		if (lua_isfunction(lua, -1))
 		{
@@ -488,7 +518,7 @@ public:
 		}
 
 		g_application->ForceRender();
-		FullscreenBackground::Render(0);
+		FullscreenBackground::Render(0,this->foreground);
 		return 0;
 	}
 	int SetSpeedMult(lua_State *L)

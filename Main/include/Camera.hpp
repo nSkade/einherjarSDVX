@@ -106,6 +106,7 @@ public:
 	float GetBackgroundSpin() const { return m_bgSpin; }
 
 	Vector2 Project(const Vector3& pos);
+	Vector3 Project3D(const Vector3& pos);
 
 	// Creates and returns the Camera projection.
 	//TODO cache result and check for changes.
@@ -139,6 +140,8 @@ public:
 	Transform critOrigin;
 	Transform modTransform; //TODO(skade) better name
 	Transform modTransformSkin; //TODO(skade) better name
+
+	Transform getCameraTransform();
 
 private:
 	float m_ClampRoll(float in) const;

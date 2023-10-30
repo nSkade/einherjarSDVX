@@ -383,6 +383,18 @@ Vector2 Camera::Project(const Vector3& pos)
 	return screenSpace.xy();
 }
 
+Vector3 Camera::Project3D(const Vector3& pos)
+{
+	Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
+	Vector3 screenSpace = m_rsLast.projectionTransform.TransformPoint(cameraSpace);
+	screenSpace.y = -screenSpace.y;
+	screenSpace *= 0.5f;
+	screenSpace += Vector3(0.5f);
+	screenSpace.x *= m_rsLast.viewportSize.x;
+	screenSpace.y *= m_rsLast.viewportSize.y;
+	return screenSpace;
+}
+
 //TODO(skade) cache projection when camera gets updated instead of recalculating
 Transform Camera::CreateProjectionMatrix(bool clipped) {
 
@@ -399,7 +411,7 @@ Transform Camera::CreateProjectionMatrix(bool clipped) {
 	float endDist = -VectorMath::Dot(toTrackEnd, { 0, sinf(radPitch) ,cosf(radPitch) });
 	float beginDist = -VectorMath::Dot(toTrackBegin, { 0, sinf(radPitch) ,cosf(radPitch) });
 	float clipFar = 1000.f;//Math::Max(endDist, beginDist);
-	float clipNear = 0.01f;//Math::Min(endDist, beginDist);
+	float clipNear = 0.1f;//Math::Min(endDist, beginDist);
 	
 	Transform t = ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, Math::Max(clipNear, 0.1f), clipFar + viewRangeExtension);
 	return t;
@@ -546,4 +558,8 @@ OldCameraShake::OldCameraShake(float duration) : duration(duration)
 OldCameraShake::OldCameraShake(float duration, float amplitude) : duration(duration), amplitude(amplitude)
 {
 	time = duration;
+}
+
+Transform Camera::getCameraTransform() {
+	return m_rsLast.cameraTransform;
 }

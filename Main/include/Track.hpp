@@ -324,6 +324,7 @@ public:
 	float GetModSplineValue(ModSplineType d, uint32_t idx);
 	float GetModSplineOffset(ModSplineType d, uint32_t idx);
 
+	void SetMQ(uint32_t q);
 	void SetMQLine(uint32_t q);
 	void SetMQTrack(uint32_t q);
 	void SetMQTrackNeg(uint32_t q);
@@ -421,10 +422,10 @@ private:
 	// Triangle Count below 300 dont impact Modern GPUs
 	// -> get as many Triangles without Impact.
 	// One Strip extends with 2 Tris: 2*128 = aprox 256
-	uint32_t m_meshQuality = 128;
+	uint32_t m_meshQuality = 128; //TODO(skade) fix pop in with 2
 
 	uint32_t m_mqTrack = m_meshQuality;
-	uint32_t m_mqTrackNeg = float(1.f/(10.f+1.f)*m_meshQuality); //TODOs trackLength instead of 10.f
+	uint32_t m_mqTrackNeg = std::ceilf(float(1.f/(10.f+1.f)*m_meshQuality)); //TODOs trackLength instead of 10.f
 	uint32_t m_mqHold = m_meshQuality;
 	uint32_t m_mqLaser = m_meshQuality;
 	uint32_t m_mqLine = m_meshQuality;

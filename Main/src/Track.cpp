@@ -1139,6 +1139,13 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 			break;
 		}
 	}
+
+	// binary search //TODO slower for small arrays, make option to toggle
+	//auto comp = [](const ModSpline& s, float h){ return s.offset < h; };
+	//auto it = std::lower_bound(spline.begin(), spline.end(), height, comp);
+	//if (it != spline.end()) {
+	//	idx = std::distance(spline.begin(), it);
+	//}
 	
 	float bOff = 0.f;
 	float eOff = 1.f;
@@ -1254,6 +1261,7 @@ Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_
 
 void Track::SetDepthTest(ModAffection type, bool isDT)
 {
+	//TODO(skade) &= rewrite
 	//TODO lane line support, support for lanelight, support for hitFX
 	switch (type)
 	{
@@ -1552,6 +1560,17 @@ void Track::RemoveAllMods() {
 }
 
 // Meshing qualities
+
+void Track::SetMQ(uint32_t q) {
+	m_mqTrack = q;
+	m_mqTrackNeg = std::ceilf(float(1.f/(10.f+1.f)*q)); //TODOs trackLength instead of 10.f
+	m_mqHold = q;
+	m_mqLaser = q;
+	m_mqLine = q;
+	for (uint32_t i=0;i<8;++i)
+		m_meshOffsets[i].resize(q);
+	UpdateTrackMeshData();
+}
 
 void Track::SetMQLine(uint32_t q) {
 	m_mqLine = q;

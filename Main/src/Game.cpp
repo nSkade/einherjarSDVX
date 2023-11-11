@@ -3287,6 +3287,7 @@ public:
 		bind->AddFunction("getModSpline"      , this,&Game_Impl::lgetModSpline);
 		bind->AddFunction("getModSplineOffset", this,&Game_Impl::lgetModSplineOffset); //TODO(skade) getSplineProperty instead
 
+		bind->AddFunction("setMQ"         , this,&Game_Impl::lsetMQ);
 		bind->AddFunction("setMQLine"         , this,&Game_Impl::lsetMQLine);
 		bind->AddFunction("setMQTrack"        , this,&Game_Impl::lsetMQTrack);
 		bind->AddFunction("setMQTrackNeg"     , this,&Game_Impl::lsetMQTrackNeg);
@@ -3471,6 +3472,12 @@ public:
 		return 0;
 	}
 
+	int lsetMQ(lua_State* L) {
+		int mq = luaL_checknumber(L,2);
+		m_track->SetMQ(mq);
+		return 0;
+	}
+
 	int lsetMQLine(lua_State* L) {
 		int mq = luaL_checknumber(L,2);
 		m_track->SetMQLine(mq);
@@ -3504,6 +3511,7 @@ public:
 	int lsetDepthTest(lua_State* L) {
 		uint32_t i = luaL_checknumber(L,2);
 		bool e = lua_toboolean(L,3);
+		//TODO(skade) pass number
 		m_track->SetDepthTest((Track::ModAffection) i,e);
 		return 0;
 	}

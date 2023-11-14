@@ -105,6 +105,7 @@ private:
 
 	// Current lane toggle status
 	bool m_hideLane = false;
+	bool m_renderParticles = true;
 
 	// Use m-mod and what m-mod speed
 	SpeedMods m_speedMod;
@@ -1032,6 +1033,7 @@ public:
 		if (m_background)
 			m_background->Render(deltaTime,0);
 			//m_background->Render(deltaTime * m_playback.GetScrollSpeed(),false);
+		//glFlush();
 
 		// Main render queue
 		RenderQueue renderQueue(g_gl, rs);
@@ -1133,7 +1135,7 @@ public:
 		hitEffectsRq.Process();
 		hitObjectsTrackCoverRq.Process();
 		scoringRq.Process();
-		glFlush();
+		//glFlush();
 
 		// Set laser follow particle visiblity
 		if (particleMaterial && basicParticleTexture)
@@ -1199,7 +1201,7 @@ public:
 			if (particleMaterial && basicParticleTexture)
 			{
 				RenderParticles(rs, deltaTime);
-				glFlush();
+				//glFlush();
 			}
 		}
 		else if (m_renderFastGui)
@@ -1218,7 +1220,7 @@ public:
 			if (particleMaterial && basicParticleTexture)
 			{
 				RenderParticles(rs, deltaTime);
-				glFlush();
+				//glFlush();
 			}
 		}
 		else
@@ -1257,10 +1259,10 @@ public:
 			NVG_FLUSH();
 
 			// Render particle effects last
-			if (particleMaterial && basicParticleTexture) 
+			if (m_renderParticles && particleMaterial && basicParticleTexture) 
 			{
 				RenderParticles(rs, deltaTime);
-				glFlush();
+				//glFlush();
 			}
 
 			// Render Critical Line Overlay
@@ -1277,11 +1279,12 @@ public:
 			// Check if bg.lua contains fg and use that instead.
 			if (m_background && m_background->hasFG()) {
 				m_background->Render(deltaTime,1);
+				//glFlush();
 			}
 			else if (m_foreground)
 			{
 				m_foreground->Render(deltaTime,1);
-				glFlush();
+				//glFlush();
 			}
 
 			// Render Lua HUD
@@ -1367,8 +1370,6 @@ public:
 			}
 			
 		}
-
-
 
 		if (m_practiceSetupDialog)
 			m_practiceSetupDialog->Render(deltaTime);
@@ -2726,7 +2727,7 @@ public:
 		else if (code == SDL_SCANCODE_F10 && m_isPracticeMode) {
 			g_application->ReloadScript("gameplay", m_lua);
 			if (!ReloadChart())
-				Log("F11 Error reloading chart");
+				Log("F10 Error reloading gameplay");
 		}
 		else if (code == SDL_SCANCODE_F11 && m_isPracticeMode) {
 			ReloadBackground();
@@ -2749,6 +2750,7 @@ public:
 			delete m_foreground;
 			m_foreground = CreateBackground(this,true);
 		}
+		g_application->fbTextures.clear();
 	}
 
 	void OnKeyReleased(SDL_Scancode code, int32 delta) override
@@ -3249,6 +3251,7 @@ public:
 
 	virtual LuaBindable* MakeModsLuaBindable(struct lua_State* L) {
 		auto* bind = new LuaBindable(L, "mod");
+		bind->AddFunction("RenderParticles",this,&Game_Impl::lSetRenderParticles); //TODO(skade) move to other bindable?
 		bind->AddFunction("LaneHide",this,&Game_Impl::lSetLaneHide);
 		bind->AddFunction("LaneHideSud",this,&Game_Impl::lSetLaneHideSud);
 
@@ -3297,6 +3300,12 @@ public:
 		bind->AddFunction("evaluateModTransform",this,&Game_Impl::levaluateModTransform);
 
 		return bind;
+	}
+
+	int lSetRenderParticles(lua_State* L) {
+		bool b = lua_toboolean(L,2);
+		m_renderParticles = b;
+		return 0;
 	}
 
 	int lSetLaneHide(lua_State* L) {

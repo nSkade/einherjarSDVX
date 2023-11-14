@@ -389,6 +389,49 @@ static int lGetSkinSetting(lua_State *L /*String key*/)
 	}
 }
 
+int lCreatefbTexture(lua_State* L) {
+	const auto key = luaL_checkstring(L, 1);
+	int32_t width = luaL_checknumber(L,2);
+	int32_t height = luaL_checknumber(L,3);
+
+	Texture t = TextureRes::CreateFromFrameBuffer(g_gl,{width,height});
+	g_application->fbTextures.Add(key,t);
+	return 0;
+}
+
+int lSetfbTexture(lua_State* L) {
+	const auto key = luaL_checkstring(L, 1);
+	int32_t x = luaL_checknumber(L,2);
+	int32_t y = luaL_checknumber(L,3);
+	g_application->fbTextures.at(key).get()->SetFromFrameBuffer({x,y});
+	return 0;
+}
+
+int lCreatefbTextureSkin(lua_State* L) {
+	const auto key = luaL_checkstring(L, 1);
+	int32_t width = luaL_checknumber(L,2);
+	int32_t height = luaL_checknumber(L,3);
+
+	Texture t = TextureRes::CreateFromFrameBuffer(g_gl,{width,height});
+	g_application->fbTexturesSkin.Add(key,t);
+	return 0;
+}
+
+int lSetfbTextureSkin(lua_State* L) {
+	const auto key = luaL_checkstring(L, 1);
+	int32_t x = luaL_checknumber(L,2);
+	int32_t y = luaL_checknumber(L,3);
+	g_application->fbTexturesSkin.at(key).get()->SetFromFrameBuffer({x,y});
+	return 0;
+}
+
+//TODO(skade) needed?
+//int lClearfbTexture(lua_State* L) {
+//	const auto key = luaL_checkstring(L, 1);
+//	g_application->fbTextures.at(key).get()->SetData();
+//	return 0;
+//}
+
 int lLoadSharedTexture(lua_State* L) {
 	Ref<SharedTexture> newTexture = Utility::MakeRef(new SharedTexture());
 

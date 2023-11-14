@@ -1564,6 +1564,8 @@ void Application::m_Cleanup()
 	}
 
 	sharedTextures.clear();
+	fbTextures.clear();
+	fbTexturesSkin.clear();
 	// Clear fonts before freeing library
 	for (auto &f : g_guiState.fontCahce)
 	{
@@ -1915,6 +1917,7 @@ void Application::ReloadSkin()
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
 	sharedTextures.clear();
+	fbTexturesSkin.clear();
 
 	for (auto &sample : m_samples)
 	{
@@ -2432,6 +2435,8 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("SetImageTint", lSetImageTint);
 		pushFuncToTable("LoadAnimation", lLoadAnimation);
 		pushFuncToTable("LoadSkinAnimation", lLoadSkinAnimation);
+		pushFuncToTable("CreatefbTexture", lCreatefbTexture);
+		pushFuncToTable("SetfbTexture", lSetfbTexture);
 		pushFuncToTable("LoadSharedTexture", lLoadSharedTexture);
 		pushFuncToTable("LoadSharedSkinTexture", lLoadSharedSkinTexture);
 		pushFuncToTable("GetSharedTexture", lGetSharedTexture);

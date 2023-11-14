@@ -125,8 +125,8 @@ public:
 
 	AutoplayInfo* autoplayInfo = nullptr;
 	Map<String, Ref<SharedTexture>> sharedTextures;
-	//Map<String, Ref<FrameBufferTexture>> frameBufferTextures; //TODO(skade)
-	
+	Map<String, Texture> fbTextures;
+	Map<String, Texture> fbTexturesSkin;
 
 private:
 	bool m_LoadConfig(String profileName = "");
@@ -218,9 +218,3 @@ public:
 	int nvgTexture = 0;
 	Texture texture;
 };
-
-class FrameBufferTexure {
-public:
-	Texture texture;
-};
-

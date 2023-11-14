@@ -117,7 +117,29 @@ int ShadedMesh::AddSharedTexture(const String& name, const String& key)
 	else {
 		return 1;
 	}
+}
 
+//TODO(skade) improve duplication
+int ShadedMesh::AddfbTexture(const String& name, const String& key) {
+	if (g_application->fbTextures.Contains(key)) {
+		auto& t = g_application->fbTextures.at(key);
+		m_textures.Add(name, t);
+		SetParam(name, t);
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+int ShadedMesh::AddfbTextureSkin(const String& name, const String& key) {
+	if (g_application->fbTexturesSkin.Contains(key)) {
+		auto& t = g_application->fbTexturesSkin.at(key);
+		m_textures.Add(name, t);
+		SetParam(name, t);
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 void ShadedMesh::SetBlendMode(const MaterialBlendMode& mode)
@@ -416,6 +438,17 @@ int lAddSharedTexture(lua_State* L) {
 	return 0;
 }
 
+int lAddfbTexture(lua_State* L) {
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	auto key = luaL_checkstring(L, 3);
+	if (object->AddfbTexture(luaL_checkstring(L, 2),key)) //Returns 1 on error
+	{
+		return luaL_error(L, "Could not find shared texture with key: '%s'", key);
+	}
+
+	return 0;
+}
+
 int lSetBlendMode(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	MaterialBlendMode mode = (MaterialBlendMode)luaL_checkinteger(L, 2);
@@ -531,6 +564,7 @@ int __index(lua_State* L) {
 	fmap.Add("AddTexture", lAddTexture);
 	fmap.Add("AddSkinTexture", lAddSkinTexture);
 	fmap.Add("AddSharedTexture", lAddSharedTexture);
+	fmap.Add("AddfbTexture", lAddfbTexture);
 	fmap.Add("SetParam", lSetParam);
 	fmap.Add("SetParamVec2", lSetParamVec2);
 	fmap.Add("SetParamVec3", lSetParamVec3);

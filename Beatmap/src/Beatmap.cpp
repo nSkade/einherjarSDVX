@@ -100,7 +100,8 @@ inline static int GetBarCount(const TimingPoint& a, const TimingPoint&  b)
 
 	if (std::abs(barCount - static_cast<double>(barCountInt)) >= MEASURE_EPSILON)
 	{
-		Logf("A timing point at %d contains non-integer # of bars: %g", Logger::Severity::Debug, a.time, barCount);
+		//TODO(skade) correct?
+		//Logf("A timing point at %d contains non-integer # of bars: %g", Logger::Severity::Debug, a.time, barCount);
 		if (barCount > barCountInt) ++barCountInt;
 	}
 

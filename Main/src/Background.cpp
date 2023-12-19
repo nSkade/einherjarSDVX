@@ -19,6 +19,22 @@ class FullscreenBackground : public Background
 public:
 	~FullscreenBackground()
 	{
+		if (lua) {
+			// check for cleanup function and call on exit
+			lua_settop(lua, 0);
+			lua_getglobal(lua, "cleanup");
+			if (lua_isfunction(lua, -1))
+			{
+				if (lua_pcall(lua, 0, 0, 0) != 0)
+				{
+					//TODO(skade) check lua_tostring nullptr before constructing String
+					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(lua, -1));
+					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(lua, -1), 0);
+					errored = true;
+				}
+			}
+			lua_settop(lua, 0);
+		}
 		if (bindable)
 		{
 			delete bindable;
@@ -29,6 +45,7 @@ public:
 			delete trackBindable;
 			trackBindable = nullptr;
 		}
+		//TODO(skade) delete modsBindable?
 		if (lua)
 		{
 			g_application->DisposeLua(lua);

@@ -921,11 +921,11 @@ public:
 					m_paused = true;
 				}
 
-				bool btp = g_input.GetButton(Input::Button::BT_0) ||
-						   g_input.GetButton(Input::Button::BT_1) ||
-						   g_input.GetButton(Input::Button::BT_2) ||
-						   g_input.GetButton(Input::Button::BT_3);
-				if (btp) scroll *= 3;
+				if (g_input.GetButton(Input::Button::BT_0)) scroll *= 3;
+				if (g_input.GetButton(Input::Button::BT_1)) scroll *= 6;
+				if (g_input.GetButton(Input::Button::BT_2)) scroll *= 6;
+				if (g_input.GetButton(Input::Button::BT_3)) scroll *= 3;
+
 				m_lastMapTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 500), 0, m_endTime);
 				JumpTo(m_lastMapTime);
 			}
@@ -3547,7 +3547,7 @@ public:
 	}
 
 	int lresetTrackPipe(lua_State* L) {
-		Track::TrackPipe p = (Track::TrackPipe) luaL_checkinteger(L,3);
+		Track::TrackPipe p = (Track::TrackPipe) luaL_checkinteger(L,2);
 		Track::ModAffection af = (Track::ModAffection) luaL_checkinteger(L,3);
 		switch (p)
 		{
@@ -3575,7 +3575,119 @@ public:
 		writeMat4(L,t);
 		return 1;
 	}
-	
+
+	//TODO(skade) seperate render queues and draw commands to be called seperable
+	int lrenderTrack(lua_State* L) {
+		int n = lua_gettop(L);
+		Track::ModAffection ma = Track::MA_ALL;
+		Track::ModLanes ml = Track::ML_ALL;
+		if (n==2)
+			ma = (Track::ModAffection) luaL_checkinteger(L,2);
+		else {
+			ml = (Track::ModLanes) luaL_checkinteger(L,2);
+			ma = (Track::ModAffection) luaL_checkinteger(L,3);
+		}
+
+		RenderState rs = m_camera.CreateRenderState(false);
+		// Main render queue
+		RenderQueue renderQueue(g_gl, rs);
+
+		// Get objects in range
+		m_currentObjectSet.clear();
+		m_playback.GetObjectsInViewRange(m_track->GetViewRange(), m_currentObjectSet);
+
+		// Sort objects to draw
+		// fx holds -> bt holds -> fx chips -> bt chips
+		m_currentObjectSet.Sort([](const TObjectState<void>* a, const TObjectState<void>* b)
+		{
+			auto ObjectRenderPriorty = [](const TObjectState<void>* a)
+			{
+				if (a->type == ObjectType::Single)
+					return (((ButtonObjectState*)a)->index < 4) ? 1 : 2;
+				if (a->type == ObjectType::Hold)
+					return (((ButtonObjectState*)a)->index < 4) ? 3 : 4;
+				return 0;
+			};
+			uint32 renderPriorityA = ObjectRenderPriorty(a);
+			uint32 renderPriorityB = ObjectRenderPriorty(b);
+			return renderPriorityA > renderPriorityB;
+		});
+
+		//TODO: Set as bool on the button object during parsing(?)
+		std::unordered_set<MapTime> chipFXTimes[2];
+		for (const auto& obj : m_currentObjectSet) {
+			if (obj->type == ObjectType::Single) {
+				auto b = (ButtonObjectState*)obj;
+				if (b->index > 3) {
+					chipFXTimes[b->index - 4].insert(b->time);
+				}
+			}
+		}
+
+		RenderQueue fxHoldObjectsRq(g_gl, rs);
+		RenderQueue hitObjectsTrackCoverRq(g_gl, rs);
+
+		/// TODO: Performance impact analysis.
+		//m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
+
+		// Draw the base track + time division ticks
+		m_track->DrawBase(renderQueue);
+
+		//draw LaneLight
+		m_track->DrawLaneLight(renderQueue);
+
+		for(auto& object : m_currentObjectSet)
+		{
+			// TODO(itszn) use something better than m_permanentlyHiddenObjects
+			if(m_hiddenObjects.find(object) == m_hiddenObjects.end() && m_permanentlyHiddenObjects.find(object) == m_permanentlyHiddenObjects.end())
+			{
+				MultiObjectState* mobj = (MultiObjectState*)object;
+				if (object->type == ObjectType::Hold && (mobj->button.index == 4 || mobj->button.index == 5))
+					m_track->DrawObjectState(fxHoldObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+				else
+					m_track->DrawObjectState(hitObjectsTrackCoverRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+			}
+		}
+
+		if(m_showCover)
+			m_track->DrawTrackCover(hitObjectsTrackCoverRq);
+		m_track->DrawLineMesh(renderQueue);
+
+		if (m_renderFastGui || m_renderDebugHUD)
+			m_track->DrawCalibrationCritLine(hitObjectsTrackCoverRq);
+		
+		RenderQueue hitEffectsRq(g_gl, rs);
+		RenderQueue scoringRq(g_gl, rs);
+
+		// Copy over laser position and extend info
+		for(uint32 i = 0; i < 2; i++)
+		{
+			if(m_scoring.IsLaserHeld(i))
+			{
+				m_track->laserPositions[i] = m_scoring.laserTargetPositions[i];
+				m_track->lasersAreExtend[i] = m_scoring.lasersAreExtend[i];
+			}
+			else
+			{
+				m_track->laserPositions[i] = m_scoring.laserPositions[i];
+				m_track->lasersAreExtend[i] = m_scoring.lasersAreExtend[i];
+			}
+			m_track->laserPositions[i] = m_scoring.laserPositions[i];
+			m_track->laserPointerOpacity[i] = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[i] / 0.5f - 1.0f, 0, 1));
+		}
+		m_track->DrawHitEffects(hitEffectsRq);
+		m_track->DrawOverlays(scoringRq);
+		
+		//TODO(skade) skip if flag not set?
+		// Render queues
+		renderQueue.Process();
+		fxHoldObjectsRq.Process();
+		hitEffectsRq.Process();
+		hitObjectsTrackCoverRq.Process();
+		scoringRq.Process();
+		return 0;
+	}
+
 	//END TRACK MOD SPLINE
 
 	#include "GUI/nanovg_linAlg.h"

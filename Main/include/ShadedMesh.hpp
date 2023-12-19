@@ -13,6 +13,7 @@ public:
 	void AddSkinTexture(const String& name, const String& file);
 	int AddSharedTexture(const String& name, const String& key);
 	int AddfbTexture(const String& name, const String& key);
+	int AddfbTextureSkin(const String& name, const String& key);
 	void SetBlendMode(const MaterialBlendMode& mode);
 	void SetPrimitiveType(const PrimitiveType& type);
 	void SetOpaque(bool opaque);

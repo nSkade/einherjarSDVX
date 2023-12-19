@@ -179,7 +179,7 @@ bool Track::AsyncFinalize()
 
 	// Track and sprite material (all transparent)
 	trackMaterial->opaque = false;
-	trackMaterial->depthTest = true;
+	trackMaterial->depthTest = false;
 	spriteMaterial->opaque = false;
 
 	// Laser object material, allows coloring and sampling laser edge texture
@@ -471,7 +471,7 @@ void Track::DrawBase(class RenderQueue& rq)
 		float fLocal = f / m_viewRange;
 		Vector3 tickPosition = Vector3(0.0f, trackLength * fLocal - trackTickLength * 0.5f, 0.0f); // Skade-code 0.0f -> -buttonTrackWidth / 5.6
 		Transform tT = trackOrigin;
-		if (centerSplit != 0.0f || true) {
+		if (fLocal <= 1.f && fLocal >= -1.f) { //if (centerSplit != 0.0f || true) {
 			
 			for (uint32_t i=0;i<6;++i) {
 				uint32_t idx = i-1;
@@ -513,7 +513,6 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 	if(obj->type == ObjectType::Single)
 	{
-		bool isHold = obj->type == ObjectType::Hold; //TODO(skade)
 		MultiObjectState* mobj = (MultiObjectState*)obj;
 		MaterialParameterSet params;
 		Material mat = buttonMaterial;
@@ -536,13 +535,13 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 				xposition += 0.5 * centerSplit * buttonWidth;
 				fxIdx = 1;
 			}
-			if (!isHold && chipFXTimes[fxIdx].count(mobj->time)) {
+			if (chipFXTimes[fxIdx].count(mobj->time)) {
 				xscale = m_btOverFxScale;
 				xposition += width * ((1.0 - xscale) / 2.0);
 			}
 			length = buttonLength;
 			params.SetParameter("hasSample", mobj->button.hasSample);
-			params.SetParameter("mainTex", isHold ? buttonHoldTexture : buttonTexture);
+			params.SetParameter("mainTex", buttonTexture);
 			mesh = buttonMesh;
 		
 		} else { // FX Button
@@ -555,7 +554,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			}
 			length = fxbuttonLength;
 			params.SetParameter("hasSample", mobj->button.hasSample);
-			params.SetParameter("mainTex", isHold ? fxbuttonHoldTexture : fxbuttonTexture);
+			params.SetParameter("mainTex", fxbuttonTexture);
 			mesh = fxbuttonMesh;
 		}
 
@@ -1034,7 +1033,7 @@ void Track::SetViewRange(float newRange)
 {
 	if(newRange != m_viewRange)
 	{
-		m_viewRange = newRange;
+		m_viewRange = std::max(.5f,newRange); //TODO(skade) clamp view range to minimum to avoid bugs at the end of a chart?
 
 		// Update view range
 		float newLaserLengthScale = trackLength / (m_viewRange * laserSpeedOffset);
@@ -1153,12 +1152,16 @@ float Track::EvaluateSpline(const std::vector<ModSpline>& spline, float height)
 	float eVal = 0.f;
 	
 	if (idx == 0) { // interpolate with 0 offset on start
+		bVal = spline[idx].value;  //TODO(skade) correct?
+		bOff = spline[idx].offset; //TODO(skade) correct?
 		eVal = spline[idx].value;
 		eOff = spline[idx].offset;
 	}
 	else if (idx == spline.size()) { // interpolate with 0 offset on end
 		bVal = spline[idx-1].value;
 		bOff = spline[idx-1].offset;
+		eVal = spline[idx-1].value;  //TODO(skade) correct?
+		eOff = spline[idx-1].offset; //TODO(skade) correct?
 		idx = idx-1; // Take for spline interpolation type the begin spline for now.
 	}
 	else { // interpolate between 2 spline
@@ -1217,11 +1220,11 @@ Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_
 	for (uint32_t i = 0; i < mods.size(); ++i) {
 		Mod* m = mods[i];
 
+		//TODO(skade) precalculate by sorting on activation and layer change (seperate vectors)
 		if (!(af & m->affection))
 			continue;
 		if (!(m->affectedLanes & lane) || !m->active)
 			continue;
-
 		// Check for the requested layer.
 		if (m->layer < layer)
 			continue;
@@ -1519,6 +1522,9 @@ void Track::AddMod(std::string modName, ModType type) {
 
 	// Set hash value to find mod easier.
 	m_mods[nm->id] = nm;
+#ifdef _DEBUG
+	nm->name = modName;
+#endif
 }
 
 void Track::RemoveMod(std::string modName) {

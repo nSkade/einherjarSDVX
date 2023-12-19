@@ -292,6 +292,9 @@ public:
 	struct Mod
 	{
 		uint32_t id = 0;
+#ifdef _DEBUG
+		std::string name = std::string();
+#endif
 		ModType type = MT_TRANS;
 		uint32_t layer = 0; ///< ModType layer. Higher Layers getting applied on Top.
 		

@@ -228,6 +228,8 @@ DefineEnum(GameConfigKeys,
 		RandomizeChart,
 		MissVocalFX,
 		OldSlamShake,
+		NormalizeAudio,
+		NormalizeAudioVolume,
 		
 		BackupGauge,
 		

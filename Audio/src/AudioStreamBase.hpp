@@ -77,4 +77,6 @@ public:
 	virtual uint32 GetSampleRate() const override;
 	virtual void PreRenderDSPs(Vector<DSP *> &DSPs) override;
 	virtual void Process(float *out, uint32 numSamples) override;
+
+	virtual void Normalize(float volume = 1.f) override;
 };

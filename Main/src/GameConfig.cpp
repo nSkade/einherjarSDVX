@@ -67,6 +67,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MasterVolume, 1.0f);
 	Set(GameConfigKeys::MissVocalFX, true); //TODO(skade) handle
 	Set(GameConfigKeys::OldSlamShake, false);
+	Set(GameConfigKeys::NormalizeAudio, true);
+	Set(GameConfigKeys::NormalizeAudioVolume, 1.2f);
 	Set(GameConfigKeys::FXVolume, 1.0f);
 	Set(GameConfigKeys::SlamVolume, 1.0f);
 	Set(GameConfigKeys::ScreenX, -1);

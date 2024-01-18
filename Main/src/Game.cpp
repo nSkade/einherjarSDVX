@@ -463,7 +463,8 @@ public:
 			return false;
 
 		// Load beatmap audio
-		if(!m_audioPlayback.Init(m_playback, m_chartRootPath, g_gameConfig.GetBool(GameConfigKeys::PrerenderEffects)))
+		if(!m_audioPlayback.Init(m_playback, m_chartRootPath, g_gameConfig.GetBool(GameConfigKeys::PrerenderEffects),
+								g_gameConfig.GetBool(GameConfigKeys::NormalizeAudio),g_gameConfig.GetFloat(GameConfigKeys::NormalizeAudioVolume)))
 			return false;
 
 		m_songOffset = 0;

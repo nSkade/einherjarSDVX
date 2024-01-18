@@ -172,6 +172,8 @@ public:
 	Material trackMaterialOG;
 	MaterialParameterSet trackParamsCust;
 	MaterialParameterSet buttonParamsCust;
+	MaterialParameterSet holdButtonParamsCust;
+	MaterialParameterSet laserParamsCust;
 	Texture trackTexture;
 	Texture trackCoverTexture;
 	Texture trackTickTexture;
@@ -188,12 +190,14 @@ public:
 	Texture fxbuttonTexture;
 	Texture fxbuttonHoldTexture;
 	Material holdButtonMaterial;
+	Material holdButtonMaterialOG;
 	Material buttonMaterial;
 	Material buttonMaterialOG;
 	Material trackCoverMaterial;
 	Texture laserTextures[2];
 	Texture laserTailTextures[4]; // Entry and exit textures, both sides
 	Material laserMaterial;
+	Material laserMaterialOG;
 	Material blackLaserMaterial;
 	Texture laserAlertTextures[2];
 	Texture whiteTexture;
@@ -431,7 +435,7 @@ private:
 	uint32_t m_mqTrackNeg = std::ceilf(float(1.f/(10.f+1.f)*m_meshQuality)); //TODOs trackLength instead of 10.f
 	uint32_t m_mqHold = m_meshQuality;
 	uint32_t m_mqLaser = m_meshQuality;
-	uint32_t m_mqLine = m_meshQuality;
+	uint32_t m_mqLine = 2;
 
 	// Evaluated Mod Values for Meshes. (Line,Track etc.) //TODO(skade) rename not yOffsets but values
 	std::vector<Transform> m_meshOffsets[8];

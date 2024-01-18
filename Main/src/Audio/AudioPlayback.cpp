@@ -17,7 +17,7 @@ AudioPlayback::~AudioPlayback()
 	m_CleanupDSP(m_missVocalDSP);
 	m_CleanupDSPfx(m_missVocalDSPfx);
 }
-bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootPath, bool preRender)
+bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootPath, bool preRender, bool nrmAudio, float nrmAudioVol)
 {
 	// Cleanup exising DSP's
 	m_currentHoldEffects[0] = nullptr;
@@ -50,6 +50,8 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 		Logf("Failed to load any audio for beatmap \"%s\"", Logger::Severity::Error, audioPath);
 		return false;
 	}
+	if (nrmAudio)
+		m_music->Normalize(nrmAudioVol);
 
 	m_musicVolume = mapSettings.musicVolume;
 	m_music->SetVolume(m_musicVolume);
@@ -71,11 +73,13 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 				// Initially mute normal track if fx is enabled
 				m_music->SetVolume(0.0f);
 			}
+			if (nrmAudio)
+				m_fxtrack->Normalize(nrmAudioVol);
 		}
 	}
 
 	// create miss vocal DSP
-	// TODO opt cleanup maybe in another function
+	//TODO(skade) opt cleanup maybe in another function
 	m_missVocalEffect = m_beatmap->GetEffect(EffectType::VocalFilter);
 	Ref<AudioStream> audioTrack = m_GetDSPTrack();
 	m_missVocalDSP = m_missVocalEffect.CreateDSP(TimingPoint(),0.0f, audioTrack->GetAudioSampleRate(),1.0f);

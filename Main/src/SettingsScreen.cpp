@@ -753,6 +753,9 @@ protected:
 		}
 
 		ToggleSetting(GameConfigKeys::MissVocalFX, "MissVocalFX");
+		ToggleSetting(GameConfigKeys::NormalizeAudio, "NormalizeAudio");
+		FloatSetting(GameConfigKeys::NormalizeAudioVolume, "NormalizeAudioVolume", 0.f, 2.f);
+		ToggleSetting(GameConfigKeys::NormalizeAudio, "NormalizeAudio");
 		
 		SectionHeader("Render");
 

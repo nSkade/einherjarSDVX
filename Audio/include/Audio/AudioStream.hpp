@@ -20,4 +20,6 @@ public:
 	// Sets the playback position in milliseconds
 	// negative time alowed, which will produce no audio for a certain amount of time
 	virtual void SetPosition(int32 pos) = 0;
+
+	virtual void Normalize(float volume = 1.f) = 0;
 };

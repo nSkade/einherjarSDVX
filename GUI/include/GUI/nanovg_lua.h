@@ -588,7 +588,7 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	if (scale.x == 0 || scale.y == 0)
 		return 0;
 
-	//TODO tr into ehj class
+	//TODO(skade) tr into ehj class
 	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
 	nvgCurrentTransform(g_guiState.vg, tr);
 	g_ot = g_guiState.t;
@@ -635,6 +635,17 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	}
 	Vector2 center = Vector2(g_guiState.resolution)*g_center*(1.0-g_scale);
 	textTransform = Transform::Translation(center) * textTransform;
+
+	Transform rsp = g_application->GetRenderStateBase().projectionTransform;
+	Transform rspi = Transform::Inverse(rsp);
+	float aspectRatio = g_application->GetRenderStateBase().aspectRatio;
+	//TODO(skade) this is ass, we need rsp befor custom proj. Need proper rework for screen space, screen space proj and global space
+	Transform nvgp = g_guiState.projMatChart*.5f+g_guiState.projMatSkin*.5f;
+	if (nvgp[14] == 0.f) {
+		aspectRatio = 1.f;
+	}
+	Transform PT = rspi*(nvgp)*g_guiState.modMatChart*g_guiState.modMatSkin*Transform::Scale({aspectRatio*1.f,1.f,1.f})*Transform::Translation({0.f,0.f,1.f})*rsp;
+	textTransform = PT*textTransform;
 
 	MaterialParameterSet params;
 	params.SetParameter("color", g_guiState.fillColor);

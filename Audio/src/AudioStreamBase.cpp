@@ -246,3 +246,16 @@ void AudioStreamBase::Process(float *out, uint32 numSamples)
 
 	m_lock.unlock();
 }
+
+void AudioStreamBase::Normalize(float volume)
+{
+	uint64_t pcm_len = GetPCMCount();
+	float* pcm = GetPCM();
+	float max = 0.f;
+	for (uint32_t i=0;i<pcm_len*2;++i) {
+		max = std::fmax(max,pcm[i]);
+	}
+	for (uint32_t i=0;i<pcm_len*2;++i) {
+		pcm[i] = pcm[i]/max*volume;
+	}
+}

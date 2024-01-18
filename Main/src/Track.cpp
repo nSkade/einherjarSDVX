@@ -279,6 +279,8 @@ bool Track::AsyncFinalize()
 	trackMaterialOG = trackMaterial;
 	buttonMeshOG = buttonMesh;
 	buttonMaterialOG = buttonMaterial;
+	holdButtonMaterialOG = holdButtonMaterial;
+	laserMaterialOG = laserMaterial;
 
 	return success;
 }
@@ -724,6 +726,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		//buttonTransform *= Transform::Translation(buttonPos);
 		//buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		params.SetParameter("trackScale", trackScale);
+		params.insert(holdButtonParamsCust.begin(),holdButtonParamsCust.end());
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
 	else if (obj->type == ObjectType::Laser) // Draw laser
@@ -772,6 +775,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 			// Set laser color
 			laserParams.SetParameter("color", laserColors[laser->index]);
+			laserParams.insert(laserParamsCust.begin(),laserParamsCust.end());
 
 			if(mesh)
 				rq.Draw(laserTransform, mesh, laserMaterial, laserParams);
@@ -1290,10 +1294,17 @@ void Track::SetDepthTest(ModAffection type, bool isDT)
 void Track::SetTrackMaterial(Material mat, ModAffection af) {
 	switch (af)
 	{
+	case MA_BUTTON:
+		buttonMaterial = mat;
+		break;
+	case MA_HOLD:
+		holdButtonMaterial = mat;
+		break;
+	case MA_LASER:
+		laserMaterial = mat;
+		break;
 	case MA_TRACK:
-		{
-			trackMaterial = mat;
-		}
+		trackMaterial = mat;
 		break;
 	default:
 		break;
@@ -1303,11 +1314,17 @@ void Track::SetTrackMaterial(Material mat, ModAffection af) {
 void Track::SetTrackParameterSet(MaterialParameterSet params, ModAffection af) {
 	switch (af)
 	{
-	case MA_TRACK:
-			trackParamsCust = params;
-		break;
 	case MA_BUTTON:
 			buttonParamsCust = params;
+		break;
+	case MA_HOLD:
+			holdButtonParamsCust = params;
+		break;
+	case MA_LASER:
+			laserParamsCust = params;
+		break;
+	case MA_TRACK:
+			trackParamsCust = params;
 		break;
 	default:
 		break;
@@ -1318,9 +1335,7 @@ void Track::SetTrackMesh(Mesh mesh, ModAffection af) {
 	switch (af)
 	{
 	case MA_BUTTON:
-		{
-			buttonMesh = mesh;
-		}
+		buttonMesh = mesh;
 		break;
 	default:
 		break;
@@ -1330,15 +1345,17 @@ void Track::SetTrackMesh(Mesh mesh, ModAffection af) {
 void Track::ResetTrackMaterial(ModAffection af) {
 	switch (af)
 	{
-	case MA_TRACK:
-		{
-			trackMaterial = trackMaterialOG;
-		}
-		break;
 	case MA_BUTTON:
-		{
-			buttonMaterial = buttonMaterialOG;
-		}
+		buttonMaterial = buttonMaterialOG;
+		break;
+	case MA_HOLD:
+		holdButtonMaterial = holdButtonMaterialOG;
+		break;
+	case MA_LASER:
+		laserMaterial = laserMaterialOG;
+		break;
+	case MA_TRACK:
+		trackMaterial = trackMaterialOG;
 		break;
 	default:
 		break;
@@ -1348,15 +1365,17 @@ void Track::ResetTrackMaterial(ModAffection af) {
 void Track::ResetTrackParameterSet(ModAffection af) {
 	switch (af)
 	{
-	case MA_TRACK:
-		{
-			trackParamsCust = MaterialParameterSet();
-		}
-		break;
 	case MA_BUTTON:
-		{
-			buttonParamsCust = MaterialParameterSet();
-		}
+		buttonParamsCust = MaterialParameterSet();
+		break;
+	case MA_HOLD:
+		holdButtonParamsCust = MaterialParameterSet();
+		break;
+	case MA_LASER:
+		laserParamsCust = MaterialParameterSet();
+		break;
+	case MA_TRACK:
+		trackParamsCust = MaterialParameterSet();
 		break;
 	default:
 		break;
@@ -1367,9 +1386,7 @@ void Track::ResetTrackMesh(ModAffection af) {
 	switch (af)
 	{
 	case MA_BUTTON:
-		{
-			buttonMesh = buttonMeshOG;
-		}
+		buttonMesh = buttonMeshOG;
 		break;
 	default:
 		break;
@@ -1558,11 +1575,16 @@ void Track::RemoveAllMods() {
 
 	// Remove all Track Pipes
 	//TODO(skade) improve
-	this->buttonMaterial = this->buttonMaterialOG;
 	this->buttonMesh = this->buttonMeshOG;
-	this->trackMaterial = this->trackMaterialOG;
-	this->buttonParamsCust = MaterialParameterSet();
-	this->trackParamsCust = MaterialParameterSet();
+
+	buttonMaterial = buttonMaterialOG;
+	holdButtonMaterial = holdButtonMaterialOG;
+	laserMaterial = laserMaterialOG;
+	trackMaterial = trackMaterialOG;
+	buttonParamsCust = MaterialParameterSet();
+	holdButtonParamsCust = MaterialParameterSet();
+	laserParamsCust = MaterialParameterSet();
+	trackParamsCust = MaterialParameterSet();
 }
 
 // Meshing qualities
@@ -1572,7 +1594,7 @@ void Track::SetMQ(uint32_t q) {
 	m_mqTrackNeg = std::ceilf(float(1.f/(10.f+1.f)*q)); //TODOs trackLength instead of 10.f
 	m_mqHold = q;
 	m_mqLaser = q;
-	m_mqLine = q;
+	//m_mqLine = q;
 	for (uint32_t i=0;i<8;++i)
 		m_meshOffsets[i].resize(q);
 	UpdateTrackMeshData();

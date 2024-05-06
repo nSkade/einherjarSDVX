@@ -11,11 +11,18 @@ AudioPlayback::AudioPlayback()
 }
 AudioPlayback::~AudioPlayback()
 {
+	ClearAllEffects();
+	m_CleanupDSP(m_missVocalDSP);
+	m_CleanupDSPfx(m_missVocalDSPfx);
+}
+void AudioPlayback::ClearAllEffects() {
 	m_CleanupDSP(m_buttonDSPs[0]);
 	m_CleanupDSP(m_buttonDSPs[1]);
 	m_CleanupDSP(m_laserDSP);
-	m_CleanupDSP(m_missVocalDSP);
-	m_CleanupDSPfx(m_missVocalDSPfx);
+
+	m_buttonDSPs[0] = nullptr;
+	m_buttonDSPs[1] = nullptr;
+	m_laserDSP = nullptr;
 }
 bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootPath, bool preRender, bool nrmAudio, float nrmAudioVol)
 {

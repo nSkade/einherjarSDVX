@@ -143,6 +143,8 @@ public:
 
 	Transform getCameraTransform();
 
+	void SetSpinSpeed(float s) { m_modSpinSpeed = s; }
+
 private:
 	float m_ClampRoll(float in) const;
 	// x offset
@@ -204,4 +206,6 @@ private:
 	OldCameraShake m_OldshakeEffect;
 	// Base position with shake effects applied after a frame
 	float m_shakeOffset = 0.f;
+
+	float m_modSpinSpeed = 1.f;
 };

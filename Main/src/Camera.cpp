@@ -468,7 +468,7 @@ void Camera::SetSpin(float direction, uint32 duration, uint8 type, class Beatmap
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 
 	m_spinDirection = direction;
-	m_spinDuration = (duration / 192.0f) * (currentTimingPoint.beatDuration) * 4;
+	m_spinDuration = (duration / 192.0f) * (currentTimingPoint.beatDuration) * 4 * m_modSpinSpeed;
 	m_spinStart = playback.GetLastTime();
 	m_spinType = type;
 }
@@ -479,7 +479,7 @@ void Camera::SetXOffsetBounce(float direction, uint32 duration, uint32 amplitude
 
 	m_spinDirection = direction;
 	// since * 2 and stuff
-	m_spinDuration = 0.5f * (duration / 192.0f) * (currentTimingPoint.beatDuration) * 4;
+	m_spinDuration = 0.5f * (duration / 192.0f) * (currentTimingPoint.beatDuration) * 4 * m_modSpinSpeed;
 	m_spinStart = playback.GetLastTime();
 	m_spinType = SpinStruct::SpinType::Bounce;
 

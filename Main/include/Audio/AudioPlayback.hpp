@@ -34,6 +34,7 @@ class AudioPlayback : Unique
 public:
 	AudioPlayback();
 	~AudioPlayback();
+	void ClearAllEffects();
 	// Loads audio for beatmap
 	//	specify the root path for the map in order to let this class find the audio files
 	bool Init(class BeatmapPlayback &playback, const String &mapRootPath, bool preRender, bool nrmAudio = false, float nrmAudioVol = 1.f);

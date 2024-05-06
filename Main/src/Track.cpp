@@ -629,25 +629,36 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 				//TODOs hardly visiable with fx, create a new bt mesh with a smaller colored core and black white border
 				//params.SetParameter("uColor",Vector3(238.f,107.f,33.f)/Vector3(255.f,255.f,255.f));
 				params.SetParameter("uColor",Vector3(1.f,1.f,1.f));
+				params.SetParameter("uTiming",(int) 4);
 				break;
 			case 1: // 8th
 				params.SetParameter("uColor",Vector3(0.f,129.f,255.f)/Vector3(255.f,255.f,255.f));
+				params.SetParameter("uTiming",(int) 8);
 				break;
 			case 2: // 12th
 				params.SetParameter("uColor",Vector3(185.f,75.f,232.f)/Vector3(255.f,255.f,255.f));
+				params.SetParameter("uTiming",(int) 12);
 				break;
 			case 3: // 16th
 				params.SetParameter("uColor",Vector3(115.f,205.f,52.f)/Vector3(255.f,255.f,255.f));
+				params.SetParameter("uTiming",(int) 16);
 				break;
 			case 4: // 32th
 				params.SetParameter("uColor",Vector3(237.f,185.f,3.f)/Vector3(255.f,255.f,255.f));
+				params.SetParameter("uTiming",(int) 32);
 				break;
 			default: // 64th+
 				params.SetParameter("uColor",Vector3(26.f,217.f,153.f)/Vector3(255.f,255.f,255.f));
+				params.SetParameter("uTiming",(int) 64);
 				break;
 			}
-		} else
+		}
+		else {
 			params.SetParameter("uColor",Vector3(1.f,1.f,1.f));
+			params.SetParameter("uTiming",(int) 0);
+		}
+		params.SetParameter("uIndex",mobj->button.index);
+		
 		params.insert(buttonParamsCust.begin(),buttonParamsCust.end());
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
@@ -726,6 +737,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		//buttonTransform *= Transform::Translation(buttonPos);
 		//buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		params.SetParameter("trackScale", trackScale);
+		params.SetParameter("uIndex", mobj->button.index);
 		params.insert(holdButtonParamsCust.begin(),holdButtonParamsCust.end());
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
@@ -775,6 +787,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 			// Set laser color
 			laserParams.SetParameter("color", laserColors[laser->index]);
+			laserParams.SetParameter("uIndex",laser->index);
 			laserParams.insert(laserParamsCust.begin(),laserParamsCust.end());
 
 			if(mesh)

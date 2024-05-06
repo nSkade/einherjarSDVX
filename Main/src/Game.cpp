@@ -74,6 +74,7 @@ private:
 	bool m_introCompleted = false;
 	bool m_outroCompleted = false;
 	bool m_paused = false;
+	bool m_practiceJumpedBack = false;
 	bool m_triggerPause = false; // Whether to trigger a pause on next first gameplay tick
 	bool m_triggerEnd = false; // Whether the end of the chart is reached
 	bool m_ended = false;
@@ -763,6 +764,8 @@ public:
 		}
 
 		const MapTime mapTimeDiff = m_lastMapTime - newTime;
+		if (newTime < m_lastMapTime)
+			m_practiceJumpedBack = true;
 
 		m_camera = Camera();
 		m_camera.track = m_track;
@@ -770,7 +773,6 @@ public:
 		// Audio leadin
 		m_audioPlayback.SetEffectEnabled(0, false);
 		m_audioPlayback.SetEffectEnabled(1, false);
-
 
 		m_lastMapTime = newTime;
 		InitPlaybacks(newTime);
@@ -816,6 +818,7 @@ public:
 
 		m_particleSystem->Reset();
 		m_audioPlayback.SetVolume(1.0f);
+		m_audioPlayback.ClearAllEffects();
 
 		//unhide notes
 		m_hiddenObjects.clear();
@@ -927,8 +930,8 @@ public:
 				if (g_input.GetButton(Input::Button::BT_2)) scroll *= 6;
 				if (g_input.GetButton(Input::Button::BT_3)) scroll *= 3;
 
-				m_lastMapTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 500), 0, m_endTime);
-				JumpTo(m_lastMapTime);
+				MapTime newTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 500), 0, m_endTime);
+				JumpTo(newTime);
 			}
 		}
 
@@ -1967,6 +1970,7 @@ public:
 		m_scoring.FinishGame();
 		m_ended = true;
 		m_track->RemoveAllMods();
+		m_camera.SetSpinSpeed(1.f);
 	}
 	void OnScoreScreenLoaded(IAsyncLoadableApplicationTickable* tickable)
 	{
@@ -2713,8 +2717,15 @@ public:
 			m_renderDebugHUD = !m_renderDebugHUD;
 		}
 		else if (code == SDL_SCANCODE_F8) {
+			bool was_paused = m_paused;
+			m_audioPlayback.Pause();
+			m_paused = true;
 			g_gameWindow->ShowMessageBox("Congratulations!!!\n",
 			"!!!Congratulations!!! You found the Function Key of the number 8 on your Typing device !!!Congratulations!!!\n\nPress OK to calim your Prize now!!!", 1);
+			if (!was_paused) {
+				m_audioPlayback.Play();
+				m_paused = false;
+			}
 		}
 		else if(code == SDL_SCANCODE_TAB)
 		{
@@ -2743,6 +2754,7 @@ public:
 	void ReloadBackground()
 	{
 		m_track->RemoveAllMods();
+		m_camera.SetSpinSpeed(1.f);
 		if (m_background) {
 			delete m_background;
 			m_background = CreateBackground(this);
@@ -2816,6 +2828,13 @@ public:
 				}
 				else
 				{
+					// Reload Chart if jumped back in time
+					//TODO(skade) shouldnt be needed, mod template should hande this case for us
+					if (m_practiceJumpedBack) {
+						ReloadBackground();
+						m_practiceJumpedBack = false;
+					}
+
 					m_playOnDialogClose = !m_paused;
 					m_audioPlayback.TogglePause();
 					m_paused = m_audioPlayback.IsPaused();
@@ -3258,6 +3277,7 @@ public:
 
 		bind->AddFunction("SetHispeed",this,&Game_Impl::lSetHispeed);
 		bind->AddFunction("GetHispeed",this,&Game_Impl::lGetHispeed);
+		bind->AddFunction("SetSpinSpeed",this,&Game_Impl::lSetSpinSpeed);
 
 		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO(skade) deprecated
 		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO(skade) deprecated
@@ -3334,6 +3354,10 @@ public:
 	int lGetHispeed(struct lua_State* L) {
 		lua_pushnumber(L, m_hispeed);
 		return 1;
+	}
+	int lSetSpinSpeed(struct lua_State* L) {
+		m_camera.SetSpinSpeed(luaL_checknumber(L,2));
+		return 0;
 	}
 	int lehjGScale(struct lua_State* L) {
 		g_scale = luaL_checknumber(L,2);

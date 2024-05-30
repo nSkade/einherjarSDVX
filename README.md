@@ -1,4 +1,8 @@
-# einherjarSDVX
+<p align="center">
+  <img src="Main/icon.ico" />
+</p>
+<h3 align="center">einherjarSDVX</h3>
+
 is an experimental fork of [Unnamed SDVX clone](https://github.com/Drewol/unnamed-sdvx-clone), which aims to improve Modchart freedom.
 
 ### Current features:
@@ -13,13 +17,16 @@ is an experimental fork of [Unnamed SDVX clone](https://github.com/Drewol/unname
 	- Track, Hold and Laser support
 	- Toggle Specific Lanes
 	- no limitations in degrees of freedom (layered Translation, Rotation, Scale)
-- reworked Practice Mode for chart editing preview
-	- reload lua bg and chart on the fly (F11)
+- framebuffer textures
+- customizable gameplay materials
+- 3D nanovg camera transform
 - realtime audio spectrum
 - additional audio effects:
 	- vocal filter
-	
 - minor quality of life improvements
+	- reworked Practice Mode for chart editing preview
+		- reload lua bg and chart on the fly (F11)
+  	- audio normalization
 	- repeat key on hold in navigation
 	- more command line options:
 		- ```-console``` view log in cmd

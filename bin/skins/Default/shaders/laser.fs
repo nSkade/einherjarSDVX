@@ -92,6 +92,6 @@ void main()
     target = mainColor * color;
     float brightness = (target.x + target.y + target.z) / 3.0;
     target.xyz = target.xyz * (0.0 + objectGlow * 1.2);
-    target *= hide();
+    //target *= hide();
 }
 #endif

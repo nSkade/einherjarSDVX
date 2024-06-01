@@ -1,29 +1,16 @@
 #ifdef EMBEDDED
-varying vec2 fsTex;
+varying	vec2 fsTex;
 #else
-#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_separate_shader_objects :	enable
 layout(location=1) in vec2 fsTex;
-layout(location=0) out vec4 target;
+layout(location=0) out vec4	target;
 #endif
 
-uniform sampler2D mainTex;
-uniform float hiddenCutoff;
-uniform float hiddenFadeWindow;
-uniform float suddenCutoff;
-uniform float suddenFadeWindow;
-
-// The OpenGL standard leave the case when `edge0 >= edge1` undefined,
-// so this function was made to remove the ambiguity when `edge0 >= edge1`.
-// Note that the case when `edge0 > edge1` should be avoided.
-float smoothstep_fix(float edge0, float edge1, float x)
-{
-    if(edge0 >= edge1)
-    {
-        return x < edge0 ? 0.0 : x > edge1 ? 1.0 : 0.5;
-    }
-
-    return smoothstep(edge0, edge1, x);
-}
+uniform	sampler2D mainTex;
+uniform	float hiddenCutoff;
+uniform	float hiddenFadeWindow;
+uniform	float suddenCutoff;
+uniform	float suddenFadeWindow;
 
 void main()
 {	
@@ -32,16 +19,35 @@ void main()
 	#else
 	target = texture(mainTex, vec2(fsTex.x, fsTex.y * 2.0));
 	
-	float off = 1.0 - (fsTex.y * 2.0);
-    if (hiddenCutoff < suddenCutoff) {
-        float hidden = 1.0 - smoothstep_fix(hiddenCutoff - hiddenFadeWindow, hiddenCutoff, off);
-        float sudden = smoothstep_fix(suddenCutoff, suddenCutoff + suddenFadeWindow, off);
-        target.a = min(hidden + sudden, 1.0);
-    }
-    else {
-        float hidden = 1.0 - smoothstep_fix(hiddenCutoff, hiddenCutoff + hiddenFadeWindow, off);
-        float sudden = smoothstep_fix(suddenCutoff - suddenFadeWindow, suddenCutoff, off);
-        target.a = hidden * sudden;
-    }
+	float off =	1.0	- (fsTex.y * 2.0);
+
+	if(hiddenCutoff	< suddenCutoff)
+	{
+		float hiddenCutoffFade = hiddenCutoff -	hiddenFadeWindow;
+		if (off	> hiddenCutoffFade && off <	hiddenCutoff) {
+			target.a = target.a	* max(0.0, (hiddenCutoff - off)	/ hiddenFadeWindow);
+		}
+		
+		if (off	< suddenCutoff && off >	hiddenCutoff) {
+			target.a = 0.0;
+		}
+
+		float suddenCutoffFade = suddenCutoff +	suddenFadeWindow;
+		if (off	< suddenCutoffFade && off >	suddenCutoff) {
+			target.a = target.a	* max(0.0, (off	- suddenCutoff)	/ suddenFadeWindow);
+		}
+	}
+	else
+	{
+		float hiddenCutoffFade = hiddenCutoff +	hiddenFadeWindow;
+		if (off	> hiddenCutoff)	{
+			target.a = target.a	* max(0.0, (hiddenCutoffFade - off)	/ hiddenFadeWindow);
+		}
+
+		float suddenCutoffFade = suddenCutoff -	suddenFadeWindow;
+		if (off	< suddenCutoff)	{
+			target.a = target.a	* max(0.0, (off	- suddenCutoffFade)	/ suddenFadeWindow);
+		}
+	}
 	#endif
 }

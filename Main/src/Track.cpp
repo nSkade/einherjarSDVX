@@ -740,6 +740,156 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		params.SetParameter("uIndex", mobj->button.index);
 		params.insert(holdButtonParamsCust.begin(),holdButtonParamsCust.end());
 		rq.Draw(buttonTransform, mesh, mat, params);
+
+		//TODO(skade) test, draw additional button at begining
+		{
+			MultiObjectState* mobj = (MultiObjectState*)obj;
+			MaterialParameterSet params;
+			Material mat = buttonMaterial;
+			Mesh mesh;
+			float xscale = 1.0f;
+			float width;
+			float xposition;
+			float zposition = 0.f;
+			float length;
+			float currentObjectGlow = active ? objectGlow : 0.3f;
+			int currentObjectGlowState = active ? 2 + objectGlowState : 0;
+
+			if(mobj->button.index < 4) { // Normal button
+				width = buttonWidth;
+				xposition = buttonTrackWidth * -0.5f + width * mobj->button.index + width*.5f;
+				int fxIdx = 0;
+				if (mobj->button.index < 2) {
+					xposition -= 0.5 * centerSplit * buttonWidth;
+				} else {
+					xposition += 0.5 * centerSplit * buttonWidth;
+					fxIdx = 1;
+				}
+				if (chipFXTimes[fxIdx].count(mobj->time)) {
+					xscale = m_btOverFxScale;
+					xposition += width * ((1.0 - xscale) / 2.0);
+				}
+				length = buttonLength;
+				params.SetParameter("hasSample", mobj->button.hasSample);
+				params.SetParameter("mainTex", buttonTexture);
+				mesh = buttonMesh;
+			
+			} else { // FX Button
+				width = fxbuttonWidth;
+				xposition = buttonTrackWidth * -0.5f + fxbuttonWidth *(mobj->button.index - 4)+width*.5f;
+				if (mobj->button.index < 5) {
+					xposition -= 0.5f * centerSplit * buttonWidth;
+				} else {
+					xposition += 0.5f * centerSplit * buttonWidth;
+				}
+				length = fxbuttonLength;
+				params.SetParameter("hasSample", mobj->button.hasSample);
+				params.SetParameter("mainTex", fxbuttonTexture);
+				mesh = fxbuttonMesh;
+			}
+
+			params.SetParameter("trackPos", position);
+
+			Vector3 buttonPos = Vector3(xposition, trackLength * position, zposition);
+
+			Transform buttonTransform;
+			
+			Transform mt = EvaluateModTransform(buttonPos,position,mobj->button.index, MA_BUTTON);
+
+			float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
+			float bscale = 1.0f;
+			//TODO(skade) binding to modify the 1.5f
+			if (mobj->button.index < 4) { // bt button scale
+				bscale = 0.2f;
+				scale = 1.f+(1.5f) * mt[13]/trackLength/bscale;
+			}
+			else { //fx button scale
+				bscale = 0.35f;
+				scale = 1.f+(1.5f) * mt[13]/trackLength/bscale;
+			}
+
+			buttonTransform = Transform::Scale({xscale,bscale,1.f})*Transform::Translation({-width*.5f,-length*.5f,0.f});// * buttonTransform;
+			buttonTransform = Transform::Scale({ 1.f, scale, 1.0f }) * mt * buttonTransform;
+			// Only multiply scaling part.
+			buttonTransform[13] /= scale;
+			buttonTransform = trackOrigin * buttonTransform;
+
+			params.SetParameter("trackScale", 1.0f / trackLength);
+
+			//TODO(skade) make settable with spline.
+			params.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
+			params.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
+			params.SetParameter("suddenCutoff", suddenCutoff); // Sudden cutoff (% of track)
+			params.SetParameter("suddenFadeWindow", suddenFadewindow); // Sudden cutoff (% of track)
+
+			//TODO(skade) mod binding
+			bool skipFX = mobj->button.index < 4; //TODO make option
+
+			if (skipFX) {
+				
+				int32 barTime = playback.GetTimingPointAt(obj->time)->time;
+				double beatD = playback.GetTimingPointAt(obj->time)->GetBarDuration();
+				double inBeat = std::fmod(obj->time-barTime,beatD);
+				double beatP = ((double) inBeat)/beatD;
+				double tolerance = 0.01;
+				
+				int c = 5; // case
+				for (uint32_t i = 0; i < 6; ++i) {
+					int o = 0; // offset after 12th for pow
+					int th; // 4,8,12,16...
+					if (i > 2)
+						o = 1;
+					th = std::pow(2,i+2-o);
+					if (i==2)
+						th = 12;
+					double iv = 1./th;
+					double m = std::fmod(beatP,iv);
+					if (m <= tolerance || std::abs(m-iv) <= tolerance) {
+						c = i;
+						break;
+					}
+				}
+
+				//TODO(skade) mod binding
+				switch (c)
+				{
+				case 0: // 4th
+					//TODOs hardly visiable with fx, create a new bt mesh with a smaller colored core and black white border
+					//params.SetParameter("uColor",Vector3(238.f,107.f,33.f)/Vector3(255.f,255.f,255.f));
+					params.SetParameter("uColor",Vector3(1.f,1.f,1.f));
+					params.SetParameter("uTiming",(int) 4);
+					break;
+				case 1: // 8th
+					params.SetParameter("uColor",Vector3(0.f,129.f,255.f)/Vector3(255.f,255.f,255.f));
+					params.SetParameter("uTiming",(int) 8);
+					break;
+				case 2: // 12th
+					params.SetParameter("uColor",Vector3(185.f,75.f,232.f)/Vector3(255.f,255.f,255.f));
+					params.SetParameter("uTiming",(int) 12);
+					break;
+				case 3: // 16th
+					params.SetParameter("uColor",Vector3(115.f,205.f,52.f)/Vector3(255.f,255.f,255.f));
+					params.SetParameter("uTiming",(int) 16);
+					break;
+				case 4: // 32th
+					params.SetParameter("uColor",Vector3(237.f,185.f,3.f)/Vector3(255.f,255.f,255.f));
+					params.SetParameter("uTiming",(int) 32);
+					break;
+				default: // 64th+
+					params.SetParameter("uColor",Vector3(26.f,217.f,153.f)/Vector3(255.f,255.f,255.f));
+					params.SetParameter("uTiming",(int) 64);
+					break;
+				}
+			}
+			else {
+				params.SetParameter("uColor",Vector3(1.f,1.f,1.f));
+				params.SetParameter("uTiming",(int) 0);
+			}
+			params.SetParameter("uIndex",mobj->button.index);
+			
+			params.insert(buttonParamsCust.begin(),buttonParamsCust.end());
+			rq.Draw(buttonTransform, mesh, mat, params);
+		}
 	}
 	else if (obj->type == ObjectType::Laser) // Draw laser
 	{

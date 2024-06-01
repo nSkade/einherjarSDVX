@@ -1,0 +1,11 @@
+#version 330
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(location=0) out vec4 target;
+
+uniform vec3 uColor;
+
+void main()
+{	
+	target = vec4(uColor,1.);
+}

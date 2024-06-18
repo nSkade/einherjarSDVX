@@ -742,6 +742,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		rq.Draw(buttonTransform, mesh, mat, params);
 
 		//TODO(skade) test, draw additional button at begining
+		if (!mobj->hold.prev)
 		{
 			MultiObjectState* mobj = (MultiObjectState*)obj;
 			MaterialParameterSet params;
@@ -1415,6 +1416,7 @@ Vector3 Track::EvaluateMods(const std::vector<Mod*>& mods, float yOffset, uint8_
 Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_t btx, uint8_t af)
 {
 	//TODOs much room for performance improvements here.
+	//TODO(skade) compress empty layers to avoid unnecessary matrix mul
 	Transform mt;
 	for (uint32_t i=0;i<m_maxLayerSize;++i) {
 		Vector3 scale, rot, trans; // scale starts in EvaluateMods with 1.

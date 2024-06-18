@@ -403,6 +403,7 @@ int lSetfbTexture(lua_State* L) {
 	const auto key = luaL_checkstring(L, 1);
 	int32_t x = luaL_checknumber(L,2);
 	int32_t y = luaL_checknumber(L,3);
+	x += g_guiState.scissorOffset;
 	g_application->fbTextures.at(key).get()->SetFromFrameBuffer({x,y});
 	return 0;
 }

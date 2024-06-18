@@ -612,14 +612,6 @@ public:
 		if (m_multiplayer != nullptr)
 			m_multiplayer->GetTCP().PushFunctions(m_lua);
 
-		// Background 
-		/// TODO: Load this async
-		if (!g_gameConfig.GetBool(GameConfigKeys::DisableBackgrounds))
-		{
-			m_background = CreateBackground(this);
-			m_foreground = CreateBackground(this, true);
-		}
-
 		m_camera.track = m_track;
 		// Assign nvg proj the standard camera projection.
 		{
@@ -645,13 +637,21 @@ public:
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 		g_input.OnButtonReleased.Add(this, &Game_Impl::m_OnButtonReleased);
 
-
 		m_track->hitEffectAutoplay |= m_scoring.autoplayInfo.IsAutoplayButtons();
 		m_track->hitEffectAutoplay |= m_scoring.autoplayInfo.IsReplayingButtons();
 
 		if (GetPlaybackOptions().random || GetPlaybackOptions().mirror)
 		{
 			m_beatmap->Shuffle((int)(1000 * g_application->GetAppTime()), GetPlaybackOptions().random, GetPlaybackOptions().mirror);
+		}
+
+		// Background 
+		/// TODO: Load this async
+		m_currentTiming = &m_playback.GetCurrentTimingPoint();
+		if (!g_gameConfig.GetBool(GameConfigKeys::DisableBackgrounds))
+		{
+			m_background = CreateBackground(this);
+			m_foreground = CreateBackground(this, true);
 		}
 
 		if (m_practiceSetupDialog)
@@ -2755,6 +2755,7 @@ public:
 	{
 		m_track->RemoveAllMods();
 		m_camera.SetSpinSpeed(1.f);
+		g_application->fbTextures.clear();
 		if (m_background) {
 			delete m_background;
 			m_background = CreateBackground(this);
@@ -2763,7 +2764,6 @@ public:
 			delete m_foreground;
 			m_foreground = CreateBackground(this,true);
 		}
-		g_application->fbTextures.clear();
 	}
 
 	void OnKeyReleased(SDL_Scancode code, int32 delta) override
@@ -2772,9 +2772,7 @@ public:
 			return;
 
 		if (code == SDL_SCANCODE_F5)
-		{
 			m_restartTriggerTimeSet = false;
-		}
 	}
 
 	void TriggerManualExit()
@@ -3960,11 +3958,6 @@ public:
 	}
 	void SetGameplayLua(lua_State* L) override
 	{
-		Gauge* gauge = m_scoring.GetTopGauge();
-
-		if (gauge == nullptr) //if gauge is null, assume something is wrong
-			return;
-
 		//set lua
 		lua_getglobal(L, "gameplay");
 
@@ -4059,7 +4052,8 @@ public:
 		lua_pushnumber(L, m_currentTiming->GetBPM());
 		lua_settable(L, -3);
 		// gauge
-		{
+		Gauge* gauge = m_scoring.GetTopGauge();
+		if (gauge) {
 			Gauge* gauge = m_scoring.GetTopGauge();
 			lua_getfield(L, -1, "gauge");
 

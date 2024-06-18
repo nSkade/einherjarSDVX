@@ -312,6 +312,22 @@ public:
 		if (lua_isfunction(lua, -1))
 			hasFFGbind = true;
 		lua_settop(lua, 0);
+
+		game->SetGameplayLua(lua);
+		game->SetModsLua(lua);
+		// call init function when available
+		lua_getglobal(lua, "init");
+		if (lua_isfunction(lua, -1))
+		{
+			if (lua_pcall(lua, 0, 0, 0) != 0)
+			{
+				//TODO(skade) check lua_tostring nullptr before constructing String
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(lua, -1), 0);
+				errored = true;
+			}
+		}
+		lua_settop(lua, 0);
 		
 		if (suc)
 			return true;
@@ -367,7 +383,6 @@ public:
 			fullscreenMaterialParams.SetParameter("texFrameBuffer", frameBufferTexture);
 		}
 
-		//TODO(skade) cleanup
 		if (hasFGbind && fgl==1)
 			lua_getglobal(lua, "render_fg");
 		else if (!foreground && fgl==0)
@@ -382,7 +397,7 @@ public:
 
 		if (lua_isfunction(lua, -1))
 		{
-			lua_pushnumber(lua, deltaTime); //TODO(skade) push table where bg and skin read and write data
+			lua_pushnumber(lua, deltaTime);
 			if (lua_pcall(lua, 1, 0, 0) != 0)
 			{
 				//TODO(skade) check lua_tostring nullptr before constructing String

@@ -136,12 +136,21 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 		float slamLength01 = slamLength/m_track->trackLength;
 		float halfLength01 = slamLength01*.5;
 
+		float osl = slamLength;
+		float ohl = halfLength;
+		float osl01 = slamLength01;
+		float ohl01 = halfLength01;
+
 		if (yPos+halfLength01 + slamLength01 > 1.f && yPos-halfLength01 < 1.f) {
 			// snap top to end
+			// slam length from pos to end (capped)
 			float slamLength01c = 1.f-yPos-halfLength01; //TODO(skade) fix
+			//float slamLength01c = 1.f-(yPos-halfLength01); //TODO(skade) fix
 			slamLength = slamLength/slamLength01*slamLength01c;
 			slamLength01 = slamLength01c;
 		}
+
+		//TODO(skade) laser scale on fix on max bpm
 
 		//Vector3 bpos = Vector3(left,offsetB+yPos,0);
 		//Vector3 tpos = Vector3(right,offsetT+yPos,0);

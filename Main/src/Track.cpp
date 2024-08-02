@@ -448,16 +448,22 @@ void Track::DrawBase(class RenderQueue& rq)
 			splitTrackMesh[i]->SetData(msmd);
 		}
 		
+		params.SetParameter("uIndex",0);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
 		params.SetParameter("uColor",Vector3(255.f,157.f,45.f)/Vector3(255.f)*4.f);
+		params.SetParameter("uIndex",1);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
 		params.SetParameter("uColor",Vector3(255.f,123.f,206.f)/Vector3(255.f)*4.f);
+		params.SetParameter("uIndex",2);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[2], trackMaterial, params);
 		params.SetParameter("uColor",Vector3(0.f,143.f,255.f)/Vector3(255.f)*4.f);
+		params.SetParameter("uIndex",3);
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[3], trackMaterial, params);
 		params.SetParameter("uColor",Vector3(37.f,227.f,89.f)/Vector3(255.f)*4.f);
+		params.SetParameter("uIndex",4);
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[4], trackMaterial, params);
 		params.SetParameter("uColor",Vector3(1.f));
+		params.SetParameter("uIndex",5);
 		rq.Draw(transform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[5], trackMaterial, params);
 	} else {
 		rq.Draw(transform, trackMesh, trackMaterial, params);
@@ -738,6 +744,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		//buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		params.SetParameter("trackScale", trackScale);
 		params.SetParameter("uIndex", mobj->button.index);
+		params.SetParameter("trackPos", position);
+		params.SetParameter("length", length);
 		params.insert(holdButtonParamsCust.begin(),holdButtonParamsCust.end());
 		rq.Draw(buttonTransform, mesh, mat, params);
 

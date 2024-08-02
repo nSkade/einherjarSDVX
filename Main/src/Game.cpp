@@ -4237,8 +4237,8 @@ public:
 		pushIntToTable("MST_X",  Track::MST_X);
 		pushIntToTable("MST_Y",  Track::MST_Y);
 		pushIntToTable("MST_Z",  Track::MST_Z);
-		pushIntToTable("MT_S",  Track::MT_SCALE);
-		pushIntToTable("MT_R",  Track::MT_ROT);
+		pushIntToTable("MT_S",   Track::MT_SCALE);
+		pushIntToTable("MT_R",   Track::MT_ROT);
 		pushIntToTable("MT_T",   Track::MT_TRANS);
 		pushFloatToTable("BT_W", Track::buttonWidth);
 		pushFloatToTable("FX_W", Track::fxbuttonWidth);
@@ -4251,12 +4251,12 @@ public:
 		
 		pushIntToTable("MA_BT",  Track::MA_BUTTON);
 		pushIntToTable("MA_HLD", Track::MA_HOLD  );
-		pushIntToTable("MA_LS", Track::MA_LASER );
+		pushIntToTable("MA_LS",  Track::MA_LASER );
 		pushIntToTable("MA_TRK", Track::MA_TRACK );
 		pushIntToTable("MA_LIN", Track::MA_LINE  );
 		pushIntToTable("MA_BHE", Track::MA_BHE   );
 		pushIntToTable("MA_ALL", Track::MA_ALL   );
-		pushIntToTable("MA_TICK", Track::MA_TICK  );
+		pushIntToTable("MA_TICK",Track::MA_TICK  );
 		
 		pushIntToTable("TP_MATERIAL", Track::TP_MATERIAL);
 		pushIntToTable("TP_PARAMS", Track::TP_PARAMS);

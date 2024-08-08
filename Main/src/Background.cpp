@@ -117,7 +117,9 @@ private:
 		}
 		String matPath = path + ".fs";
 
-		CheckedLoad(fullscreenMaterial = LoadBackgroundMaterial(matPath));
+		//TODO(skade)
+		//CheckedLoad(fullscreenMaterial = LoadBackgroundMaterial(matPath));
+		fullscreenMaterial = LoadBackgroundMaterial(matPath);
 		fullscreenMaterial->opaque = false;
 
 		if (fullscreenMaterial->HasUniform("texFrameBuffer"))
@@ -592,14 +594,46 @@ public:
 		String pathV = Path::Absolute(String("skins/" + skin + "/shaders/") + "background" + ".vs");
 		String pathF = Path::Absolute(path);
 		String pathG = Path::Absolute(String("skins/" + skin + "/shaders/") + "background" + ".gs");
-		Material ret = MaterialRes::Create(g_gl, pathV, pathF);
-		// Additionally load geometry shader
-		if (Path::FileExists(pathG))
-		{
-			Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
-			assert(gshader);
-			ret->AssignShader(ShaderType::Geometry, gshader);
+		//Material ret = MaterialRes::Create(g_gl, pathV, pathF);
+
+		//// Additionally load geometry shader
+		//if (Path::FileExists(pathG))
+		//{
+		//	Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
+		//	assert(gshader);
+		//	ret->AssignShader(ShaderType::Geometry, gshader);
+		//}
+
+		//TODO(skade)
+		Material ret;
+		while (!ret) {
+			ret = MaterialRes::Create(g_gl, pathV, pathF);
+			// Additionally load geometry shader
+			if (Path::FileExists(pathG)) {
+				Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
+				assert(gshader);
+				ret->AssignShader(ShaderType::Geometry, gshader);
+			}
+			if (!ret) {
+				bool vsE = Path::FileExists(pathV);
+				bool fsE = Path::FileExists(pathF);
+				if (!vsE || !fsE) {
+					if (!vsE) {
+						std::string errorMsg = pathV;
+						errorMsg += " does not exist, Exiting...";
+						g_gameWindow->ShowMessageBox("Shader Error",errorMsg, 0);
+					} else if (!fsE) {
+						std::string errorMsg = pathF;
+						errorMsg += " does not exist, Exiting...";
+						g_gameWindow->ShowMessageBox("Shader Error",errorMsg, 0);
+					}
+					exit(-1);
+					//TODOf(skade) reload corresponding lua code, make sure ret = null doesnt break anything else
+				}
+				g_gameWindow->ShowMessageBox("Shader Error", pathV + " or "+pathF + "\n Confirm to reload Shaders", 0);
+			}
 		}
+
 		return ret;
 	}
 

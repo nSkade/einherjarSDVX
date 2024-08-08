@@ -1719,20 +1719,38 @@ Material Application::LoadMaterial(const String &name, const String &path)
 	pathV = Path::Absolute(pathV);
 	pathF = Path::Absolute(pathF);
 	pathG = Path::Absolute(pathG);
-	Material ret = MaterialRes::Create(g_gl, pathV, pathF);
-	// Additionally load geometry shader
-	if (Path::FileExists(pathG))
-	{
-		Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
-		assert(gshader);
-		ret->AssignShader(ShaderType::Geometry, gshader);
+
+	//TODO(skade) SPOT LoadBackgroundMaterial
+	//TODO(skade) reload BG to consider wrong shader path (shader not found)
+	Material ret;
+	while (!ret) {
+		ret = MaterialRes::Create(g_gl, pathV, pathF);
+		// Additionally load geometry shader
+		if (Path::FileExists(pathG)) {
+			Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
+			assert(gshader);
+			ret->AssignShader(ShaderType::Geometry, gshader);
+		}
+		if (!ret) {
+			bool vsE = Path::FileExists(pathV);
+			bool fsE = Path::FileExists(pathF);
+			if (!vsE || !fsE) {
+				std::string errorMsg = path+name;
+				if (!vsE)
+					errorMsg += " .vs";
+				if (!fsE)
+					errorMsg += " .fs";
+				errorMsg += " does not exist, Exiting...";
+				g_gameWindow->ShowMessageBox("Shader Error",errorMsg, 0);
+				exit(-1);
+				//TODOf(skade) reload corresponding lua code, make sure ret = null doesnt break anything else
+			}
+			g_gameWindow->ShowMessageBox("Shader Error", path + " " + name+".vs or "+name+".fs\n Confirm to reload Shaders", 0);
+		}
 	}
-	if (!ret)
-		g_gameWindow->ShowMessageBox("Shader Error", "Could not load shaders "+path+name+".vs and "+path+name+".fs", 0);
 	assert(ret);
 	return ret;
 }
-//TODO(skade) make it possible to load materials from currents song background folder
 Material Application::LoadMaterial(const String &name)
 {
 	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));

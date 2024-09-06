@@ -278,6 +278,8 @@ public:
 		MT_SCALE,
 		MT_ROT,
 		MT_TRANS,
+		MT_SKEW1, // first order skew  skew in smallest other dim (x->y->z)
+		MT_SKEW2, // second order skew
 		MT_COUNT,
 	};
 

@@ -104,8 +104,11 @@ namespace Graphics
 				{
 					glEnable(GL_DEPTH_TEST);
 					glDepthFunc(GL_LESS);
+					if (!mat->depthMask)
+						glDepthMask(GL_FALSE);
 				} else {
 					glDisable(GL_DEPTH_TEST);
+					glDepthMask(GL_TRUE);
 				}
 			};
 

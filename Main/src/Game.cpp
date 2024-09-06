@@ -1141,6 +1141,11 @@ public:
 		scoringRq.Process();
 		//glFlush();
 
+		//TODO(skade) improve?
+		if (m_background && m_background->hasFG()) {
+			m_background->Render(deltaTime,3);
+		}
+
 		// Set laser follow particle visiblity
 		if (particleMaterial && basicParticleTexture)
 		{
@@ -4240,6 +4245,8 @@ public:
 		pushIntToTable("MT_S",   Track::MT_SCALE);
 		pushIntToTable("MT_R",   Track::MT_ROT);
 		pushIntToTable("MT_T",   Track::MT_TRANS);
+		pushIntToTable("MT_K1",   Track::MT_SKEW1);
+		pushIntToTable("MT_K2",   Track::MT_SKEW2);
 		pushFloatToTable("BT_W", Track::buttonWidth);
 		pushFloatToTable("FX_W", Track::fxbuttonWidth);
 		pushFloatToTable("LS_W", Track::laserWidth);

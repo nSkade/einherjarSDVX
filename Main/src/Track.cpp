@@ -803,7 +803,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 			Transform buttonTransform;
 			
-			Transform mt = EvaluateModTransform(buttonPos,position,mobj->button.index, MA_BUTTON);
+			Transform mt = EvaluateModTransform(buttonPos,position,mobj->button.index, MA_HOLD);
 
 			float scale = 1.0f; // Skade-code 1.0f -> 0.4f + position
 			float bscale = 1.0f;
@@ -1434,7 +1434,20 @@ Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_
 		if (i==m_tickLayer)
 			trans += tickPosition;
 
-		mt = Transform::Translation(trans)*Transform::Rotation(rot)*Transform::Scale(scale) * mt;
+		Transform skewM;
+		{ // skew
+			Vector3 s1 = EvaluateMods(m_modv[MT_SKEW1],yOffset,btx,af,i);
+			Vector3 s2 = EvaluateMods(m_modv[MT_SKEW2],yOffset,btx,af,i);
+			skewM = {
+				   1, s1.x,s2.x, 0,
+				s1.y,    1,s2.y, 0,
+				s1.z, s2.z,  1, 0,
+				   0,    0,  0, 1,
+			};
+		}
+
+		//TODO(skade) prewrite params in single mat4
+		mt = Transform::Translation(trans)*Transform::Rotation(rot) * skewM * Transform::Scale(scale) * mt;
 	}
 	return mt;
 }

@@ -18,6 +18,7 @@ public:
 	void SetPrimitiveType(const PrimitiveType& type);
 	void SetOpaque(bool opaque);
 	void SetDepthTest(bool dt);
+	void SetDepthMask(bool dt);
 
 	void SetPos(float x, float y, float z)
 	{

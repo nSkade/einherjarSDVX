@@ -162,6 +162,11 @@ void ShadedMesh::SetDepthTest(bool dt)
 	m_material->depthTest = dt;
 }
 
+void ShadedMesh::SetDepthMask(bool dt)
+{
+	m_material->depthMask = dt;
+}
+
 int lSetData(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	Vector<MeshGenerators::SimpleVertex> newData;
@@ -477,6 +482,13 @@ int lSetDepthTest(lua_State* L) {
 	return 0;
 }
 
+int lSetDepthMask(lua_State* L) {
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	bool opaque = lua_toboolean(L, 2);
+	object->SetDepthMask(opaque);
+	return 0;
+}
+
 int lSetParam(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	if (lua_isinteger(L, 3)) {
@@ -575,6 +587,7 @@ int __index(lua_State* L) {
 	fmap.Add("SetPrimitiveType", lSetPrimitiveType);
 	fmap.Add("SetOpaque", lSetOpaque);
 	fmap.Add("SetDepthTest", lSetDepthTest);
+	fmap.Add("SetDepthMask", lSetDepthMask);
 	fmap.Add("SetPosition", lSetPos);
 	fmap.Add("GetPosition", lGetPos);
 	fmap.Add("SetScale", lSetScale);

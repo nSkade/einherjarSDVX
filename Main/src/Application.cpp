@@ -2537,6 +2537,9 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("GetTransMat", lgetTransMat);
 		pushFuncToTable("GetScaleMat", lgetScaleMat);
 		pushFuncToTable("GetInverse", lgetInverse);
+
+		//TODO(skade) gl functions
+		//pushFuncToTable("")
 		
 		lua_setglobal(state, "gfx");
 	}

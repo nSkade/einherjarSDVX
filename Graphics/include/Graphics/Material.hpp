@@ -81,6 +81,7 @@ namespace Graphics
 		static Ref<MaterialRes> Create(class OpenGL* gl, const String& vsPath, const String& fsPath);
 
 		bool depthTest = false;
+		bool depthMask = true;
 		bool opaque = true;
 		MaterialBlendMode blendMode = MaterialBlendMode::Normal;
 

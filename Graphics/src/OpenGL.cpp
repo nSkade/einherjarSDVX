@@ -88,8 +88,8 @@ namespace Graphics
 		m_impl->context = SDL_GL_CreateContext(sdlWnd);
 		if(!m_impl->context)
 		{
-            Logf("Failed to create OpenGL context: %s", Logger::Severity::Error, SDL_GetError());
-            return false;
+			Logf("Failed to	create OpenGL context: %s",	Logger::Severity::Error, SDL_GetError());
+			return false;
 		}
 
 		if (SDL_GL_MakeCurrent(sdlWnd, m_impl->context) < 0)

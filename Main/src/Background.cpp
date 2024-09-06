@@ -91,8 +91,9 @@ protected:
 	float clearTransition = 0.0f;
 	float offsyncTimer = 0.0f;
 	float speedMult = 1.0f;
-	bool hasFGbind = false;
-	bool hasFFGbind = false;
+	bool hasFGbind = false;  // standard foreground layer (in bg)
+	bool hasFFGbind = false; // layer after everything
+	bool hasBFGbind = false; // layer before critline + combo, after track + notes
 	bool foreground = false;
 	bool errored = false;
 	Vector<String> defaultBGs;
@@ -313,6 +314,9 @@ public:
 		lua_getglobal(lua, "render_ffg");
 		if (lua_isfunction(lua, -1))
 			hasFFGbind = true;
+		lua_getglobal(lua, "render_ffg");
+		if (lua_isfunction(lua, -1))
+			hasBFGbind = true;
 		lua_settop(lua, 0);
 
 		game->SetGameplayLua(lua);
@@ -385,12 +389,15 @@ public:
 			fullscreenMaterialParams.SetParameter("texFrameBuffer", frameBufferTexture);
 		}
 
+		//TODO(skade) improve
 		if (hasFGbind && fgl==1)
 			lua_getglobal(lua, "render_fg");
 		else if (!foreground && fgl==0)
 			lua_getglobal(lua, "render_bg");
 		else if (hasFFGbind && fgl==2)
 			lua_getglobal(lua, "render_ffg");
+		else if (hasBFGbind && fgl==3)
+			lua_getglobal(lua, "render_bfg");
 		else {
 			// Requested BG layer func not found.
 			lua_settop(lua, 0);

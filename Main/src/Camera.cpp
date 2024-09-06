@@ -404,12 +404,13 @@ Transform Camera::CreateProjectionMatrix(bool clipped) {
 	float viewRangeExtension = clipped ? 0.0f : 5.0f;
 
 	// Calculate clipping distances
-	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
-	Vector3 toTrackBegin = (track->trackOrigin).TransformPoint(Vector3(0.0f, -1.f, 0.f));
+	//Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
+	//Vector3 toTrackBegin = (track->trackOrigin).TransformPoint(Vector3(0.0f, -1.f, 0.f));
 	
-	float radPitch = Math::degToRad * m_actualCameraPitch;
-	float endDist = -VectorMath::Dot(toTrackEnd, { 0, sinf(radPitch) ,cosf(radPitch) });
-	float beginDist = -VectorMath::Dot(toTrackBegin, { 0, sinf(radPitch) ,cosf(radPitch) });
+	//float radPitch = Math::degToRad * m_actualCameraPitch;
+	//float endDist = -VectorMath::Dot(toTrackEnd, { 0, sinf(radPitch) ,cosf(radPitch) });
+	//float beginDist = -VectorMath::Dot(toTrackBegin, { 0, sinf(radPitch) ,cosf(radPitch) });
+
 	float clipFar = 1000.f;//Math::Max(endDist, beginDist);
 	float clipNear = 0.1f;//Math::Min(endDist, beginDist);
 	

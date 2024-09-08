@@ -1,5 +1,7 @@
 #pragma once
 
+extern struct GUIState g_guiState;
+
 /*
 	Camera shake effect.
 	VVD scales slam shakes using the following formula: slamLength (0 to 1) * 15px.
@@ -105,8 +107,11 @@ public:
 	// Gets the spin angle for the background shader
 	float GetBackgroundSpin() const { return m_bgSpin; }
 
-	Vector2 Project(const Vector3& pos);
-	Vector3 Project3D(const Vector3& pos);
+	// project point to screen space for nvg use, omits mod mat as usually handled by nvg
+	Vector3 Project(const Vector3& pos);
+
+	// project point to screen space for shaded mesh use, includes mod mat
+	Vector3 ProjectSM(const Vector3& pos);
 
 	// Creates and returns the Camera projection.
 	//TODO cache result and check for changes.

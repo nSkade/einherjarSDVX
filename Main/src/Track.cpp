@@ -59,9 +59,12 @@ bool Track::AsyncLoad()
 	// Load hit effect colors
 	Image hitColorPalette;
 	CheckedLoad(hitColorPalette = ImageRes::Create(Path::Absolute("skins/" + skin + "/textures/hitcolors.png")));
-	assert(hitColorPalette->GetSize().x >= 5);
-	for(uint32 i = 0; i < 5; i++)
+	for(uint32 i = 0; i < 4; i++)
 		hitColors[i] = hitColorPalette->GetBits()[i];
+	if (hitColorPalette->GetSize().x <= 4)
+		hitColors[4] = hitColorPalette->GetBits()[3];
+	else
+		hitColors[4] = hitColorPalette->GetBits()[4];
 
 	// mip-mapped and anisotropicaly filtered track textures
 	loader->AddTexture(trackTexture, "track.png");
@@ -103,7 +106,16 @@ bool Track::AsyncLoad()
 	loader->AddMaterial(blackLaserMaterial, "blackLaser");
 	loader->AddMaterial(trackOverlay, "overlay");
 
-	loader->AddMaterial(m_lineMaterial, "lineT");
+	//TODO(skade)
+	{ // lineT
+		bool exist = true;
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/lineT.vs"));
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/lineT.fs"));
+		if (exist)
+			loader->AddMaterial(m_lineMaterial, "lineT");
+		else
+			m_hasLineT = false;
+	}
 
 	return loader->Load();
 }
@@ -124,10 +136,18 @@ bool Track::AsyncFinalize()
 	}
 
 	//laneLight
-	laneLightMaterial = g_application->LoadMaterial("laneLight");
-	laneLightMaterial->blendMode = MaterialBlendMode::Additive;
-	laneLightMaterial->opaque = false;
-	laneLightTexture = g_application->LoadTexture("laneLight.png");
+	{ // lanelight
+		bool exist = true;
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "shaders/laneLight.vs"));
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "shaders/laneLight.fs"));
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "textures/laneLight.png"));
+		if (exist) {
+			laneLightMaterial = g_application->LoadMaterial("laneLight");
+			laneLightMaterial->blendMode = MaterialBlendMode::Additive;
+			laneLightMaterial->opaque = false;
+			laneLightTexture = g_application->LoadTexture("laneLight.png");
+		}
+	}
 	
 	// Set Texture states
 	trackTexture->SetMipmaps(false);
@@ -1138,7 +1158,7 @@ void Track::DrawCalibrationCritLine(RenderQueue& rq)
 
 void Track::DrawLineMesh(RenderQueue& rq)
 {
-	if (!drawModLines)
+	if (!m_hasLineT || !m_drawModLines)
 		return;
 
 	for (uint32_t i = 0; i < 8; ++i) {

@@ -4,6 +4,8 @@
 #include "Track.hpp"
 #include "GameConfig.hpp"
 
+#include "GUI/guiState.h"
+
 const float ZOOM_POW = 1.65f;
 
 Camera::Camera()
@@ -372,18 +374,48 @@ void Camera::SetFancyHighwayTilt(bool fancyHighWaySetting)
 	}
 }
 
-Vector2 Camera::Project(const Vector3& pos)
+Vector3 Camera::Project(const Vector3& pos)
 {
-	Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
+	Transform cameraTransform;
+	{ // crit transform without cam mods
+		auto critDir = worldNoRoll.GetPosition().Normalized();
+		float rotToCrit = -atan2(critDir.y, -critDir.z) * Math::radToDeg;
+		int portrait = g_aspectRatio > 1 ? 0 : 1;
+		float fov = fovs[portrait];
+		float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
+		m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
+		m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
+		cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
+	}
+	Vector3 cameraSpace = cameraTransform.TransformPoint(pos);
+
+	//TODO(skade) g_guiState global
+	//Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
 	Vector3 screenSpace = m_rsLast.projectionTransform.TransformPoint(cameraSpace);
 	screenSpace.y = -screenSpace.y;
 	screenSpace *= 0.5f;
-	screenSpace += Vector2(0.5f, 0.5f);
-	screenSpace *= m_rsLast.viewportSize;
-	return screenSpace.xy();
+	screenSpace += Vector3(0.5f);
+	screenSpace.x *= m_rsLast.viewportSize.x;
+	screenSpace.y *= m_rsLast.viewportSize.y;
+
+	{ //TODO(skade) test to project back into nvg space
+//		Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
+//		Vector3 screenSpace = m_rsLast.projectionTransform.TransformPoint(cameraSpace);
+//
+//		// Transform into nvg space
+//		Transform PT = (g_guiState.projMatChart*.5f+g_guiState.projMatSkin*.5f)*g_guiState.modMatChart*g_guiState.modMatSkin;
+//
+//		screenSpace = Transform::Inverse(PT).TransformPoint(screenSpace);
+//		screenSpace.y = -screenSpace.y;
+//		screenSpace *= 0.5f;
+//		screenSpace += Vector3(0.5f);
+//		screenSpace.x *= m_rsLast.viewportSize.x;
+//		screenSpace.y *= m_rsLast.viewportSize.y;
+	}
+	return screenSpace;
 }
 
-Vector3 Camera::Project3D(const Vector3& pos)
+Vector3 Camera::ProjectSM(const Vector3& pos)
 {
 	Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
 	Vector3 screenSpace = m_rsLast.projectionTransform.TransformPoint(cameraSpace);

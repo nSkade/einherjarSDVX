@@ -1383,12 +1383,12 @@ void Application::m_Tick()
 // Checks and clears OpenGL errors
 static void CheckGLErrors(const std::string_view label)
 {
-	//TODO(skade) supress errors for now
+	//TODO(skade) fix errors
 #ifdef _DEBUG
 	GLenum glErr;
 	while ((glErr = glGetError()) != GL_NO_ERROR)
 	{
-		Logf("OpenGL error %s: %p", Logger::Severity::Debug, label.data(), glErr);
+		Logf("OpenGL error %s: %d", Logger::Severity::Debug, label.data(), glErr);
 	}
 #endif
 }

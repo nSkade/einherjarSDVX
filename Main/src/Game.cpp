@@ -941,13 +941,13 @@ public:
 		if (m_renderFastGui)
 		{
 			int portrait = g_aspectRatio <= 1.0 ? 1 : 0;
-			Vector3 critPos = m_camera.Project3D(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
-			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
-			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
+			Vector3 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0))).xy();
+			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0))).xy();
 
 			for (size_t i = 0; i < 2; i++)
 			{
-#define TPOINT(name, y) Vector2 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[i] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
+#define TPOINT(name, y) Vector3 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[i] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
 				TPOINT(cPos, 0);
 #undef TPOINT
 
@@ -3378,7 +3378,7 @@ public:
 
 	int ltoggleModLines(struct lua_State* L) {
 		int t = luaL_checknumber(L,2);
-		m_track->drawModLines = t != 0;
+		m_track->m_drawModLines = t != 0;
 		return 0;
 	}
 
@@ -4107,88 +4107,186 @@ public:
 		// When the game's paused, the critline's coordinates are messed up.
 		if(!m_paused)
 		{
-			lua_getfield(L, -1, "critLine");
+			{ // critline
+				lua_getfield(L, -1, "critLine");
 
-			Vector3 critPos = m_camera.Project3D(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
-			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
-			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
-			Vector2 line = rightPos - leftPos;
+				Vector3 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+				Vector3 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
+				Vector3 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
+				Vector3 line = rightPos - leftPos;
 
-			lua_pushstring(L, "x"); // x screen position
-			lua_pushnumber(L, critPos.x);
-			lua_settable(L, -3);
-
-			lua_pushstring(L, "y"); // y screen position
-			lua_pushnumber(L, critPos.y);
-			lua_settable(L, -3);
-
-			lua_pushstring(L, "z"); // y screen position
-			lua_pushnumber(L, critPos.z);
-			lua_settable(L, -3);
-
-			lua_pushstring(L, "rotation"); // rotation based on laser roll
-			lua_pushnumber(L, -atan2f(line.y, line.x));
-			lua_settable(L, -3);
-
-			lua_pushstring(L, "xOffset");
-			lua_pushnumber(L, -m_camera.GetCritLineRoll() * 360);
-			lua_settable(L, -3);
-
-			//track x critline corners
-			lua_getfield(L, -1, "line");
-			{
-				lua_pushstring(L, "x1");
-				lua_pushnumber(L, leftPos.x);
-				lua_settable(L, -3);
-				lua_pushstring(L, "y1");
-				lua_pushnumber(L, leftPos.y);
+				lua_pushstring(L, "x"); // x screen position
+				lua_pushnumber(L, critPos.x);
 				lua_settable(L, -3);
 
-				lua_pushstring(L, "x2");
-				lua_pushnumber(L, rightPos.x);
-				lua_settable(L, -3);
-				lua_pushstring(L, "y2");
-				lua_pushnumber(L, rightPos.y);
-				lua_settable(L, -3);
-			}
-			lua_pop(L, 1);
-
-			auto setCursorData = [&](int ci)
-			{
-				lua_geti(L, -1, ci);
-
-#define TPOINT(name, y) Vector2 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[ci] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
-				TPOINT(cPos, 0);
-				TPOINT(cPosUp, 1);
-				TPOINT(cPosDown, -1);
-#undef TPOINT
-
-				Vector2 cursorAngleVector = cPosUp - cPosDown;
-				float distFromCritCenter = (critPos - cPos).Length() * (m_scoring.laserPositions[ci] < 0.5 ? -1 : 1);
-
-				float skewAngle = -atan2f(cursorAngleVector.y, cursorAngleVector.x) + 3.1415 / 2;
-				float alpha = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[ci] / 0.5f - 1.0f, 0, 1));
-
-				lua_pushstring(L, "pos");
-				lua_pushnumber(L, distFromCritCenter * (m_scoring.lasersAreExtend[ci] ? 2 : 1));
+				lua_pushstring(L, "y"); // y screen position
+				lua_pushnumber(L, critPos.y);
 				lua_settable(L, -3);
 
-				lua_pushstring(L, "alpha");
-				lua_pushnumber(L, alpha);
+				lua_pushstring(L, "z"); // y screen position
+				lua_pushnumber(L, critPos.z);
 				lua_settable(L, -3);
 
-				lua_pushstring(L, "skew");
-				lua_pushnumber(L, skewAngle);
+				lua_pushstring(L, "rotation"); // rotation based on laser roll
+				lua_pushnumber(L, -atan2f(line.y, line.x));
 				lua_settable(L, -3);
 
+				lua_pushstring(L, "xOffset");
+				lua_pushnumber(L, -m_camera.GetCritLineRoll() * 360);
+				lua_settable(L, -3);
+
+				//track x critline corners
+				lua_getfield(L, -1, "line");
+				{
+					lua_pushstring(L, "x1");
+					lua_pushnumber(L, leftPos.x);
+					lua_settable(L, -3);
+					lua_pushstring(L, "y1");
+					lua_pushnumber(L, leftPos.y);
+					lua_settable(L, -3);
+					lua_pushstring(L, "y1");
+					lua_pushnumber(L, leftPos.y);
+					lua_settable(L, -3);
+
+					lua_pushstring(L, "x2");
+					lua_pushnumber(L, rightPos.x);
+					lua_settable(L, -3);
+					lua_pushstring(L, "y2");
+					lua_pushnumber(L, rightPos.y);
+					lua_settable(L, -3);
+					lua_pushstring(L, "z2");
+					lua_pushnumber(L, rightPos.y);
+					lua_settable(L, -3);
+				}
 				lua_pop(L, 1);
-			};
 
-			lua_getfield(L, -1, "cursors");
-			setCursorData(0);
-			setCursorData(1);
+				auto setCursorData = [&](int ci)
+				{
+					lua_geti(L, -1, ci);
 
-			lua_pop(L, 2); // cursors, critLine
+	#define TPOINT(name, y) Vector3 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[ci] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
+					TPOINT(cPos, 0);
+					TPOINT(cPosUp, 1);
+					TPOINT(cPosDown, -1);
+	#undef TPOINT
+
+					Vector3 cursorAngleVector = cPosUp - cPosDown;
+					float distFromCritCenter = (critPos - cPos).Length() * (m_scoring.laserPositions[ci] < 0.5 ? -1 : 1);
+
+					float skewAngle = -atan2f(cursorAngleVector.y, cursorAngleVector.x) + 3.1415 / 2;
+					float alpha = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[ci] / 0.5f - 1.0f, 0, 1));
+
+					lua_pushstring(L, "pos");
+					lua_pushnumber(L, distFromCritCenter * (m_scoring.lasersAreExtend[ci] ? 2 : 1));
+					lua_settable(L, -3);
+
+					lua_pushstring(L, "alpha");
+					lua_pushnumber(L, alpha);
+					lua_settable(L, -3);
+
+					lua_pushstring(L, "skew");
+					lua_pushnumber(L, skewAngle);
+					lua_settable(L, -3);
+
+					lua_pop(L, 1);
+				};
+
+				lua_getfield(L, -1, "cursors");
+				setCursorData(0);
+				setCursorData(1);
+
+				lua_pop(L, 2); // cursors, critLine
+			}
+			{ // critline coordinates for shaded meshes
+				lua_getfield(L, -1, "critLineSM");
+
+				Vector3 critPos = m_camera.ProjectSM(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+				Vector3 leftPos = m_camera.ProjectSM(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
+				Vector3 rightPos = m_camera.ProjectSM(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
+				Vector3 line = rightPos - leftPos;
+
+				lua_pushstring(L, "x"); // x screen position
+				lua_pushnumber(L, critPos.x);
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "y"); // y screen position
+				lua_pushnumber(L, critPos.y);
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "z"); // y screen position
+				lua_pushnumber(L, critPos.z);
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "rotation"); // rotation based on laser roll
+				lua_pushnumber(L, -atan2f(line.y, line.x));
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "xOffset");
+				lua_pushnumber(L, -m_camera.GetCritLineRoll() * 360);
+				lua_settable(L, -3);
+
+				//track x critline corners
+				lua_getfield(L, -1, "line");
+				{
+					lua_pushstring(L, "x1");
+					lua_pushnumber(L, leftPos.x);
+					lua_settable(L, -3);
+					lua_pushstring(L, "y1");
+					lua_pushnumber(L, leftPos.y);
+					lua_settable(L, -3);
+					lua_pushstring(L, "y1");
+					lua_pushnumber(L, leftPos.y);
+					lua_settable(L, -3);
+
+					lua_pushstring(L, "x2");
+					lua_pushnumber(L, rightPos.x);
+					lua_settable(L, -3);
+					lua_pushstring(L, "y2");
+					lua_pushnumber(L, rightPos.y);
+					lua_settable(L, -3);
+					lua_pushstring(L, "z2");
+					lua_pushnumber(L, rightPos.y);
+					lua_settable(L, -3);
+				}
+				lua_pop(L, 1);
+
+				auto setCursorData = [&](int ci)
+				{
+					lua_geti(L, -1, ci);
+
+	#define TPOINT(name, y) Vector3 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[ci] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
+					TPOINT(cPos, 0);
+					TPOINT(cPosUp, 1);
+					TPOINT(cPosDown, -1);
+	#undef TPOINT
+
+					Vector3 cursorAngleVector = cPosUp - cPosDown;
+					float distFromCritCenter = (critPos - cPos).Length() * (m_scoring.laserPositions[ci] < 0.5 ? -1 : 1);
+
+					float skewAngle = -atan2f(cursorAngleVector.y, cursorAngleVector.x) + 3.1415 / 2;
+					float alpha = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[ci] / 0.5f - 1.0f, 0, 1));
+
+					lua_pushstring(L, "pos");
+					lua_pushnumber(L, distFromCritCenter * (m_scoring.lasersAreExtend[ci] ? 2 : 1));
+					lua_settable(L, -3);
+
+					lua_pushstring(L, "alpha");
+					lua_pushnumber(L, alpha);
+					lua_settable(L, -3);
+
+					lua_pushstring(L, "skew");
+					lua_pushnumber(L, skewAngle);
+					lua_settable(L, -3);
+
+					lua_pop(L, 1);
+				};
+
+				lua_getfield(L, -1, "cursors");
+				setCursorData(0);
+				setCursorData(1);
+
+				lua_pop(L, 2); // cursors, critLine
+			}
 		}
 
 		lua_setglobal(L, "gameplay");
@@ -4323,22 +4421,42 @@ public:
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
 		lua_settable(L, -3);
-		lua_pushstring(L, "critLine");
-		lua_newtable(L);
-		lua_pushstring(L, "cursors");
-		lua_newtable(L);
 		{
+			lua_pushstring(L, "critLine");
 			lua_newtable(L);
-			lua_seti(L, -2, 0);
+			lua_pushstring(L, "cursors");
+			lua_newtable(L);
+			{
+				lua_newtable(L);
+				lua_seti(L, -2, 0);
 
+				lua_newtable(L);
+				lua_seti(L, -2, 1);
+			}
+			lua_settable(L, -3); // cursors -> critLine
+			lua_pushstring(L, "line");
 			lua_newtable(L);
-			lua_seti(L, -2, 1);
+			lua_settable(L, -3); // line -> critLine
+			lua_settable(L, -3); // critLine -> gameplay
 		}
-		lua_settable(L, -3); // cursors -> critLine
-		lua_pushstring(L, "line");
-		lua_newtable(L);
-		lua_settable(L, -3); // line -> critLine
-		lua_settable(L, -3); // critLine -> gameplay
+		{
+			lua_pushstring(L, "critLineSM");
+			lua_newtable(L);
+			lua_pushstring(L, "cursors");
+			lua_newtable(L);
+			{
+				lua_newtable(L);
+				lua_seti(L, -2, 0);
+
+				lua_newtable(L);
+				lua_seti(L, -2, 1);
+			}
+			lua_settable(L, -3); // cursors -> critLine
+			lua_pushstring(L, "line");
+			lua_newtable(L);
+			lua_settable(L, -3); // line -> critLine
+			lua_settable(L, -3); // critLine -> gameplay
+		}
 
 		lua_pushstring(L, "multiplayer");
 		lua_pushboolean(L, m_multiplayer != nullptr);

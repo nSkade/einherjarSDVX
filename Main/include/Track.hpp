@@ -179,6 +179,8 @@ public:
 	Texture trackTickTexture;
 
 	Mesh m_lineMesh[8];
+
+	bool m_hasLineT = true;
 	Material m_lineMaterial;
 
 	/* Object graphics */
@@ -340,7 +342,7 @@ public:
 	void SetMQLaser(uint32_t q);
 	void SetMQHold(uint32_t q);
 
-	bool drawModLines = false;
+	bool m_drawModLines = false;
 	uint32_t m_tickLayer = 0; ///< Layer where Track relative Position gets applied.
 
 	/**

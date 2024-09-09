@@ -76,10 +76,12 @@ namespace Graphics
 //		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 //		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 //#else
-//		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-//		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-//		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		//SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 //#endif
+// 
+//		//TODO(skade) nvg gl 3 should be compatible with 4.6
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
@@ -102,6 +104,11 @@ namespace Graphics
 #ifdef _WIN32
 		glewExperimental = true;
 		glewInit();
+		GLenum glErr;
+		while ((glErr = glGetError()) != GL_NO_ERROR)
+		{
+			Logf("OpenGL error %s: %d", Logger::Severity::Debug, "expected glewInit error", glErr);
+		}
 #else
 
 		// macOS and embedded doesnt need glew
@@ -146,7 +153,7 @@ namespace Graphics
 		// Create pipeline for the program
 		glGenProgramPipelines(1, &m_mainProgramPipeline);
 		glBindProgramPipeline(m_mainProgramPipeline);
-		glEnable(GL_TEXTURE_2D);
+		//TODO(skade) remove glEnable(GL_TEXTURE_2D);
 		glEnable(GL_MULTISAMPLE);
 #endif
 

@@ -135,12 +135,11 @@ bool Track::AsyncFinalize()
 		trackCoverMaterial->opaque = false;
 	}
 
-	//laneLight
 	{ // lanelight
 		bool exist = true;
-		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "shaders/laneLight.vs"));
-		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "shaders/laneLight.fs"));
-		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "textures/laneLight.png"));
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/shaders/laneLight.vs"));
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/shaders/laneLight.fs"));
+		exist &= Path::FileExists(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/textures/laneLight.png"));
 		if (exist) {
 			laneLightMaterial = g_application->LoadMaterial("laneLight");
 			laneLightMaterial->blendMode = MaterialBlendMode::Additive;
@@ -1447,27 +1446,51 @@ Transform Track::EvaluateModTransform(Vector3 tickPosition,float yOffset, uint8_
 	//TODO(skade) compress empty layers to avoid unnecessary matrix mul
 	Transform mt;
 	for (uint32_t i=0;i<m_maxLayerSize;++i) {
-		Vector3 scale, rot, trans; // scale starts in EvaluateMods with 1.
-		scale = EvaluateMods(m_modv[MT_SCALE],yOffset,btx,af,i,true);
-		rot = EvaluateMods(m_modv[MT_ROT],yOffset,btx,af,i);
-		trans = EvaluateMods(m_modv[MT_TRANS],yOffset,btx,af,i);
-		if (i==m_tickLayer)
-			trans += tickPosition;
 
-		Transform skewM;
-		{ // skew
-			Vector3 s1 = EvaluateMods(m_modv[MT_SKEW1],yOffset,btx,af,i);
-			Vector3 s2 = EvaluateMods(m_modv[MT_SKEW2],yOffset,btx,af,i);
-			skewM = {
-				   1, s1.x,s2.x, 0,
-				s1.y,    1,s2.y, 0,
-				s1.z, s2.z,  1, 0,
-				   0,    0,  0, 1,
-			};
-		}
+		//TODO(skade) remove
+		//Vector3 scale, rot, trans; // scale starts in EvaluateMods with 1.
+		//scale = EvaluateMods(m_modv[MT_SCALE],yOffset,btx,af,i,true);
+		//rot = EvaluateMods(m_modv[MT_ROT],yOffset,btx,af,i);
+		//trans = EvaluateMods(m_modv[MT_TRANS],yOffset,btx,af,i);
+		//if (i==m_tickLayer)
+		//	trans += tickPosition;
+
+		//Vector3 s1 = EvaluateMods(m_modv[MT_SKEW1],yOffset,btx,af,i);
+		//Vector3 s2 = EvaluateMods(m_modv[MT_SKEW2],yOffset,btx,af,i);
+
+		//Transform skewM;
+		//{ // skew
+		//	Vector3 s1 = EvaluateMods(m_modv[MT_SKEW1],yOffset,btx,af,i);
+		//	Vector3 s2 = EvaluateMods(m_modv[MT_SKEW2],yOffset,btx,af,i);
+		//	skewM = {
+		//		   1, s1.x,s2.x, 0,
+		//		s1.y,    1,s2.y, 0,
+		//		s1.z, s2.z,  1, 0,
+		//		   0,    0,  0, 1,
+		//	};
+		//}
 
 		//TODO(skade) prewrite params in single mat4
-		mt = Transform::Translation(trans)*Transform::Rotation(rot) * skewM * Transform::Scale(scale) * mt;
+		//mt = Transform::Translation(trans)*Transform::Rotation(rot) * skewM * Transform::Scale(scale) * mt;
+
+		Vector3 s, rot, t; // scale starts in EvaluateMods with 1.
+		s = EvaluateMods(m_modv[MT_SCALE],yOffset,btx,af,i,true);
+		rot = EvaluateMods(m_modv[MT_ROT],yOffset,btx,af,i);
+		t = EvaluateMods(m_modv[MT_TRANS],yOffset,btx,af,i);
+		if (i==m_tickLayer)
+			t += tickPosition;
+
+		Transform r = Transform::Rotation(rot);
+		Vector3 k1 = EvaluateMods(m_modv[MT_SKEW1],yOffset,btx,af,i);
+		Vector3 k2 = EvaluateMods(m_modv[MT_SKEW2],yOffset,btx,af,i);
+
+		//TODO(skade) simd glm better?
+		mt = Transform({
+			s.x * (r[0] + r[4]*k1.y + r[8]*k1.z),s.x * (r[1] + r[5]*k1.y + r[9]*k1.z) ,s.x * (r[2] + r[6]*k1.y + r[10]*k1.z),0.,
+			s.y * (r[4] + r[0]*k1.x + r[8]*k2.z),s.y * (r[5] + r[1]*k1.x + r[9]*k2.z) ,s.y * (r[6] + r[2]*k1.x + r[10]*k2.z),0.,
+			s.z * (r[8] + r[4]*k2.y + r[0]*k2.x),s.z * (r[9] + r[5]*k2.y + r[1]*k2.x) ,s.z * (r[10] + r[6]*k2.y + r[2]*k2.x),0.,
+			t.x,t.y,t.z,1.,
+		}) * mt;
 	}
 	return mt;
 }

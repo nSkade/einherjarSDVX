@@ -70,6 +70,19 @@ Vector2i g_resolution;
 
 static float g_avgRenderDelta = 0.0f;
 
+// Checks and clears OpenGL errors
+static void CheckGLErrors(const std::string_view label)
+{
+	//TODO(skade) fix errors
+#ifdef _DEBUG
+	GLenum glErr;
+	while ((glErr = glGetError()) != GL_NO_ERROR)
+	{
+		Logf("OpenGL error %s: %d", Logger::Severity::Debug, label.data(), glErr);
+	}
+#endif
+}
+
 Application::Application()
 {
 	// Enforce single instance
@@ -1147,6 +1160,9 @@ bool Application::m_Init()
 			Log("Failed to create OpenGL context", Logger::Severity::Error);
 			return false;
 		}
+
+		CheckGLErrors("main gl init");
+
 #ifdef EMBEDDED
 #ifdef _DEBUG
 		g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
@@ -1378,19 +1394,6 @@ void Application::m_Tick()
 		m_activeLightPlugin->Tick(m_deltaTime);
 	}
 
-}
-
-// Checks and clears OpenGL errors
-static void CheckGLErrors(const std::string_view label)
-{
-	//TODO(skade) fix errors
-#ifdef _DEBUG
-	GLenum glErr;
-	while ((glErr = glGetError()) != GL_NO_ERROR)
-	{
-		Logf("OpenGL error %s: %d", Logger::Severity::Debug, label.data(), glErr);
-	}
-#endif
 }
 
 void Application::RenderTickables()

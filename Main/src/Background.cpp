@@ -212,11 +212,12 @@ public:
 		openLib(LUA_STRLIBNAME, luaopen_string);
 		openLib(LUA_MATHLIBNAME, luaopen_math);
 		openLib(LUA_DBLIBNAME, luaopen_math); //TODO(skade) only open on debug command argument
+		openLib(LUA_OSLIBNAME, luaopen_os); //TODO(skade) not secure remove?
 
 		// Add error messages to libs which are not allowed
 		errorOnLib(LUA_COLIBNAME);
 		errorOnLib(LUA_IOLIBNAME);
-		errorOnLib(LUA_OSLIBNAME);
+		//errorOnLib(LUA_OSLIBNAME);
 		errorOnLib(LUA_UTF8LIBNAME);
 		//errorOnLib(LUA_DBLIBNAME);
 
@@ -314,7 +315,7 @@ public:
 		lua_getglobal(lua, "render_ffg");
 		if (lua_isfunction(lua, -1))
 			hasFFGbind = true;
-		lua_getglobal(lua, "render_ffg");
+		lua_getglobal(lua, "render_bfg");
 		if (lua_isfunction(lua, -1))
 			hasBFGbind = true;
 		lua_settop(lua, 0);

@@ -15,8 +15,6 @@ extern class JobSheduler *g_jobSheduler;
 extern class Input g_input;
 extern class SkinConfig *g_skinConfig;
 extern class TransitionScreen *g_transition;
-extern float g_scale;
-extern Vector2 g_center;
 
 class SharedTexture;
 

@@ -11,6 +11,7 @@ namespace Graphics
 		Transform worldTransform;
 		Transform projectionTransform;
 		Transform cameraTransform;
+		Transform cameraTransformNoMods;
 		Vector2i viewportSize;
 		float aspectRatio;
 		float time;

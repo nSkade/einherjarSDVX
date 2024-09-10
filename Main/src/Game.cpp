@@ -31,7 +31,6 @@
 #include "Audio/OffsetComputer.hpp"
 #include <ShadedMesh.hpp>
 
-//#include "Lua/luaMods.hpp"
 #include "GUI/guiState.h"
 
 extern struct GUIState g_guiState;
@@ -3282,9 +3281,6 @@ public:
 		bind->AddFunction("GetHispeed",this,&Game_Impl::lGetHispeed);
 		bind->AddFunction("SetSpinSpeed",this,&Game_Impl::lSetSpinSpeed);
 
-		bind->AddFunction("SetGScale",this,&Game_Impl::lehjGScale);  //TODO(skade) deprecated
-		bind->AddFunction("SetGCenter",this,&Game_Impl::lehjGCenter);//TODO(skade) deprecated
-
 		bind->AddFunction("SetCamModMat",this,&Game_Impl::lsetCamModMat);
 		bind->AddFunction("GetCamModMat",this,&Game_Impl::lgetCamModMat);
 		bind->AddFunction("SetCamModMatSkin",this,&Game_Impl::lsetCamModMat);
@@ -3360,14 +3356,6 @@ public:
 	}
 	int lSetSpinSpeed(struct lua_State* L) {
 		m_camera.SetSpinSpeed(luaL_checknumber(L,2));
-		return 0;
-	}
-	int lehjGScale(struct lua_State* L) {
-		g_scale = luaL_checknumber(L,2);
-		return 0;
-	}
-	int lehjGCenter(struct lua_State* L) {
-		g_center = Vector2(luaL_checknumber(L,2),luaL_checknumber(L,3));
 		return 0;
 	}
 
@@ -4300,7 +4288,6 @@ public:
 			lua_pushnumber(L, data);
 			lua_settable(L, -3);
 		};
-		pushFloatToTable("gScale",g_scale);
 		pushFloatToTable("TRACK_H", m_track->trackLength);
 		lua_setglobal(L, "mdv");
 	}
@@ -4319,7 +4306,6 @@ public:
 			lua_settable(L, -3);
 		};
 		
-		//pushFloatToTable("gScale",g_scale);
 		pushIntToTable("BTA",Track::ML_BTA);
 		pushIntToTable("BTB",Track::ML_BTB);
 		pushIntToTable("BTC",Track::ML_BTC);

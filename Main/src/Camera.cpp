@@ -376,20 +376,7 @@ void Camera::SetFancyHighwayTilt(bool fancyHighWaySetting)
 
 Vector3 Camera::Project(const Vector3& pos)
 {
-	Transform cameraTransform;
-	{ // crit transform without cam mods
-		auto critDir = worldNoRoll.GetPosition().Normalized();
-		float rotToCrit = -atan2(critDir.y, -critDir.z) * Math::radToDeg;
-		int portrait = g_aspectRatio > 1 ? 0 : 1;
-		float fov = fovs[portrait];
-		float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
-		m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
-		m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
-		cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
-	}
-	Vector3 cameraSpace = cameraTransform.TransformPoint(pos);
-
-	//TODO(skade) g_guiState global
+	Vector3 cameraSpace = m_rsLast.cameraTransformNoMods.TransformPoint(pos);
 	//Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
 	Vector3 screenSpace = m_rsLast.projectionTransform.TransformPoint(cameraSpace);
 	screenSpace.y = -screenSpace.y;
@@ -468,8 +455,7 @@ RenderState Camera::CreateRenderState(bool clipped)
 	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
 	cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
 
-	//rs.projectionTransform = Transform::Translation(Vector3(-g_center.x+0.5,-g_center.y+0.5,0.0)); //TODO(skade) g_center and g_scale probably obsolete with nvg3D
-	//rs.projectionTransform *= Transform::Scale(Vector3(g_scale)); //TODO(skade) this seems to cause a slight offset on nanovg critline and real critline
+	rs.cameraTransformNoMods = cameraTransform;
 	rs.cameraTransform = modTransform;
 	rs.cameraTransform *= modTransformSkin;
 	rs.cameraTransform *= cameraTransform;

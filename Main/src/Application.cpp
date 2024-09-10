@@ -1234,14 +1234,9 @@ void Application::m_MainLoop()
 	while (true)
 	{
 		m_appTime = appTimer.SecondsAsFloat();
-		//TODO(skade) nvg scale
-		//g_scale = 1.0f;//1.0f + sinf(m_appTime)*0.5f;
-		//g_center;
-		//g_centerOffset;
-		
 		m_frameTimer.Restart();
 		//run discord callbacks
-		//Discord_RunCallbacks(); //TODO for the weebs
+		//Discord_RunCallbacks();
 
 		// Process changes in the list of items
 		bool restoreTop = false;
@@ -2367,7 +2362,6 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 }
 
 #include "Lua/luaBindings.hpp"
-//#include "Lua/luaMods.hpp"
 
 void Application::SetLuaBindings(lua_State *state)
 {

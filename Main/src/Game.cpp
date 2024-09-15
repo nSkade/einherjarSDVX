@@ -2467,6 +2467,8 @@ public:
 			}
 		}
 		lua_settop(m_lua, 0);
+
+		m_background->OnButtonHit(button, rating, delta);
 	}
 
 	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
@@ -3404,19 +3406,17 @@ public:
 			lua_error(L);
 		}
 		if (n==2) {
-			// {index, offset}
-			int t1l = luaL_len(L,2);
-			for (uint32_t i=1;i<=t1l;i+=2) {
-				std::pair<int,float> p;
-				lua_rawgeti(L,2,i);
-				p.first = luaL_checknumber(L,-1);
-				lua_pop(L,1);
-				lua_rawgeti(L,2,i+1);
-				p.second = luaL_checknumber(L,-1);
-				lua_pop(L,1);
-				vals.push_back(p);
+			lua_pushnil(L);
+			while (lua_next(L, 2)) {
+				if (lua_isnumber(L, -1)) {
+					int key = lua_tonumber(L, -2);
+					float value = luaL_checknumber(L, -1);
+					vals.emplace_back(key, value);
+				}
+				lua_pop(L, 1);
 			}
 		} else {
+			//TODO(skade) test
 			if (!lua_istable(L, 3)) {
 				lua_pushstring(L, "incorrect argument");
 				lua_error(L);

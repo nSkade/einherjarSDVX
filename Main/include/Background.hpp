@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Input.hpp"
+#include "HitStat.hpp"
+
 /* 
 	Game background base class
 */
@@ -12,6 +15,8 @@ public:
 
 	virtual bool hasFG() = 0;
 	virtual bool hasFFG() = 0;
+
+	virtual void OnButtonHit(Input::Button button, ScoreHitRating rating, /*MapTime*/int32 delta) = 0;
 
 	class Game* game;
 };

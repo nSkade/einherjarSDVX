@@ -470,6 +470,7 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	NVGpaint paint = nvgImagePattern(g_guiState.vg, 0, 0, imgW, imgH, 0, image, alpha);
 	paint.innerColor = g_guiState.imageTint;
 	paint.innerColor.a = alpha;
+	paint.hueShift = g_guiState.hueShift;
 	nvgFillPaint(g_guiState.vg, paint);
 	nvgRect(g_guiState.vg, 0, 0, imgW, imgH);
 	nvgFill(g_guiState.vg);

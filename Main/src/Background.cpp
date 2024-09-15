@@ -77,6 +77,23 @@ public:
 		return this->hasFGbind;
 	}
 
+	void OnButtonHit(Input::Button button, ScoreHitRating rating, /*MapTime*/int32 delta)
+	{
+		//call lua button_hit if it exists
+		lua_getglobal(lua, "button_hit");
+		if (lua_isfunction(lua, -1))
+		{
+			lua_pushnumber(lua, (uint32)button);
+			lua_pushnumber(lua, (int)rating);
+			lua_pushnumber(lua, delta);
+			if (lua_pcall(lua, 3, 0, 0) != 0)
+			{
+				Logf("Lua error on calling button_hit: %s", Logger::Severity::Error, lua_tostring(lua, -1));
+			}
+		}
+		lua_settop(lua, 0);
+	}
+
 	bool hasFFG() {
 		return this->hasFFGbind;
 	}

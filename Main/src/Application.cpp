@@ -2562,6 +2562,7 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("GetSkinSetting", lGetSkinSetting);
 		pushFuncToTable("SetSkinSetting", lSetSkinSetting);
 		pushFuncToTable("LoadFile", lLoadFile);
+		pushFuncToTable("GetTimeMS", lGetTimeMS);
 
 		//constants
 		pushIntToTable("LOGGER_INFO", (int)Logger::Severity::Info);

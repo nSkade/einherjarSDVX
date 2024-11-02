@@ -47,6 +47,15 @@ static int lGetResolution(lua_State *L)
 	return 2;
 }
 
+static int lGetTimeMS(lua_State *L)
+{
+	std::chrono::time_point<std::chrono::high_resolution_clock> tp = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::micro> dur = tp.time_since_epoch();
+	double micros = dur.count();
+	lua_pushnumber(L, micros);
+	return 1;
+}
+
 static int lGetLaserColor(lua_State *L /*int laser*/)
 {
 	int laser = luaL_checkinteger(L, 1);

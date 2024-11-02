@@ -2468,7 +2468,8 @@ public:
 		}
 		lua_settop(m_lua, 0);
 
-		m_background->OnButtonHit(button, rating, delta);
+		if (m_background)
+			m_background->OnButtonHit(button, rating, delta);
 	}
 
 	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
@@ -3290,6 +3291,8 @@ public:
 		bind->AddFunction("GetProjMat",this,&Game_Impl::lgetProjMat);
 		bind->AddFunction("GetProjMatNVG",this,&Game_Impl::lgetProjMatNVG);
 		bind->AddFunction("GetCameraMat",this,&Game_Impl::lgetCameraMat);
+		bind->AddFunction("GetWorldMat",this,&Game_Impl::lgetWorldMat);
+		bind->AddFunction("GetTrackOriginMat",this,&Game_Impl::lgetTrackOriginMat);
 
 		//TODO(skade) capital begin / rework names
 		bind->AddFunction("addMod"            , this,&Game_Impl::laddMod);
@@ -3757,6 +3760,18 @@ public:
 
 	int lgetCameraMat(lua_State* L) {
 		Transform cm = m_camera.getCameraTransform();
+		writeMat4(L,cm);
+		return 1;
+	}
+
+	int lgetWorldMat(lua_State* L) {
+		Transform cm = m_camera.getWorldTransform();
+		writeMat4(L,cm);
+		return 1;
+	}
+
+	int lgetTrackOriginMat(lua_State* L) {
+		Transform cm = m_track->trackOrigin;
 		writeMat4(L,cm);
 		return 1;
 	}

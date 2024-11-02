@@ -147,6 +147,7 @@ public:
 	Transform modTransformSkin; //TODO(skade) better name
 
 	Transform getCameraTransform();
+	Transform getWorldTransform();
 
 	void SetSpinSpeed(float s) { m_modSpinSpeed = s; }
 

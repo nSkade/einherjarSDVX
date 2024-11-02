@@ -582,3 +582,7 @@ OldCameraShake::OldCameraShake(float duration, float amplitude) : duration(durat
 Transform Camera::getCameraTransform() {
 	return m_rsLast.cameraTransform;
 }
+
+Transform Camera::getWorldTransform() {
+	return m_rsLast.worldTransform;
+}

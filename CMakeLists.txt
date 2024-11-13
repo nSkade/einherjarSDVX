@@ -57,6 +57,10 @@ find_package(LibArchive REQUIRED)
 find_package(Iconv REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+#find_package(LuaJIT REQUIRED)
+find_package(PkgConfig REQUIRED)  
+pkg_check_modules(LuaJIT REQUIRED IMPORTED_TARGET luajit)
+
 # All projects use unicode define
 # this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
@@ -99,7 +103,7 @@ add_subdirectory(Graphics)
 add_subdirectory(Main)
 add_subdirectory(Audio)
 add_subdirectory(Beatmap)
-add_subdirectory(GUI)
+#add_subdirectory(GUI)
 
 # Unit test projects
 add_subdirectory(Tests)
@@ -124,7 +128,7 @@ if(MSVC)
 	set_target_properties(discord-rpc PROPERTIES FOLDER "Third Party")
 	set_target_properties(minimp3 PROPERTIES FOLDER "Third Party")
 	set_target_properties(soundtouch PROPERTIES FOLDER "Third Party")
-	set_target_properties(lua PROPERTIES FOLDER "Third Party")
+#TODO(skade)	set_target_properties(lua PROPERTIES FOLDER "Third Party")
 	set_target_properties(GLEW PROPERTIES FOLDER "Third Party")
 
 	# My libraries in the libraries folder
@@ -132,7 +136,7 @@ if(MSVC)
 	set_target_properties(Graphics PROPERTIES FOLDER Libraries)
 	set_target_properties(Audio PROPERTIES FOLDER Libraries)
 	set_target_properties(Beatmap PROPERTIES FOLDER Libraries)
-	set_target_properties(GUI PROPERTIES FOLDER Libraries)
+	#set_target_properties(GUI PROPERTIES FOLDER Libraries)
 
 	# Unit tests
 	set_target_properties(Tests PROPERTIES FOLDER "Tests")

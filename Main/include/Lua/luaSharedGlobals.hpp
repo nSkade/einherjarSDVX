@@ -5,6 +5,7 @@
 #include <variant>
 
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 
 enum class nil {};
 using Variant = std::variant<nil, bool, int, double, std::string>;
@@ -15,7 +16,7 @@ public:
 		void *p = luaL_checkudata(L, 1, "globals_meta");
 		luaL_argcheck(L, p != nullptr, 1, "invalid userdata");
 
-		std::string key = luaL_tolstring(L, 2, nullptr);
+		std::string key = std::string(luaL_tolstring(L, 2, nullptr));
 
 		auto &globals = *static_cast<std::unordered_map<std::string, Variant> *>(
 			lua_touserdata(L, lua_upvalueindex(1)));
@@ -55,7 +56,7 @@ public:
 		void *p = luaL_checkudata(L, 1, "globals_meta");
 		luaL_argcheck(L, p != nullptr, 1, "invalid userdata");
 
-		std::string key = luaL_tolstring(L, 2, nullptr);
+		std::string key = std::string(luaL_tolstring(L, 2, nullptr));
 
 		auto globals = *static_cast<std::unordered_map<std::string, Variant> *>(
 			lua_touserdata(L, lua_upvalueindex(1)));

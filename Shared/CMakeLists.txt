@@ -33,18 +33,20 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${SHARED_SRC}" ${PCH_SRC})
+#enable_precompiled_headers("${SHARED_SRC}" ${PCH_SRC})
 
-add_library(Shared ${SHARED_SRC} ${PCH_FILES})
+#add_library(Shared ${SHARED_SRC} ${PCH_FILES})
+add_library(Shared ${SHARED_SRC})
 target_compile_features(Shared PUBLIC cxx_std_17)
 target_include_directories(Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Shared PRIVATE
     ${SRCROOT}
     ${INCROOT}
-    ${PCHROOT}
-)
+     ${PCHROOT})
+target_precompile_headers(Shared PRIVATE ${PCH_INC})
 
-target_link_libraries(Shared lua)
+#TODO(skade) target_link_libraries(Shared lua)
+target_link_libraries(Shared PkgConfig::LuaJIT)
 
 target_link_libraries(Shared ${Iconv_LIBRARIES})
 target_include_directories(Shared SYSTEM PRIVATE ${Iconv_INCLUDE_DIRS})

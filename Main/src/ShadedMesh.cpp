@@ -5,6 +5,7 @@
 #include "Camera.hpp"
 #include "Track.hpp"
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 
 #include "GUI/nanovg_linAlg.h"
 

@@ -3,6 +3,7 @@
 
 #include "Application.hpp"
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 #include "Shared/Time.hpp"
 #include "archive.h"
 #include "archive_entry.h"

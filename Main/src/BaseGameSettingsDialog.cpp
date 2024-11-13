@@ -2,6 +2,7 @@
 #include "BaseGameSettingsDialog.hpp"
 
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 #include "Application.hpp"
 
 BaseGameSettingsDialog::~BaseGameSettingsDialog()

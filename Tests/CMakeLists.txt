@@ -19,17 +19,18 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${TESTS_SRC}" ${PCH_SRC})
+#enable_precompiled_headers("${TESTS_SRC}" ${PCH_SRC})
 
-add_library(Tests ${TESTS_SRC} ${PCH_FILES})
+#add_library(Tests ${TESTS_SRC} ${PCH_FILES})
+add_library(Tests ${TESTS_SRC})
 target_compile_features(Tests PUBLIC cxx_std_17)
 # Public include paths for library
 target_include_directories(Tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Tests PRIVATE
     ${SRCROOT}
     ${INCROOT}
-    ${PCHROOT}
-)
+     ${PCHROOT})
+target_precompile_headers(Tests PRIVATE ${PCH_INC})
 if(MSVC)
     target_compile_options(Tests PUBLIC /EHa) # SEH
 endif()

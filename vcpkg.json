@@ -21,6 +21,8 @@
             ]
         },
         "libiconv",
-		"openssl"
+		"openssl",
+		"luajit",
+		"lua-compat53"
     ]
 }

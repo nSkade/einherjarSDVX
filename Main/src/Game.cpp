@@ -533,6 +533,9 @@ public:
 		//Lua
 		m_lua = luaL_newstate();
 
+		luaL_dostring(m_lua, "_ENV = require(\"compat53.module\")");
+
+
 		// Add Shared Table
 		m_sharedGlobalsLua.clearGlobals();
 		m_sharedGlobalsLua.addLuaState(m_lua);

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "TCPSocket.hpp"
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 #include "Application.hpp"
 #include "Shared/LuaBindable.hpp"
 

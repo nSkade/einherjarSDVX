@@ -1,0 +1,1 @@
+#define CMDARGS "\"D:\\kshootmania\\custom\\into the thunder\\ksh.ksh\" -autoplay -practice -console"

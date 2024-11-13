@@ -11,6 +11,7 @@
 #include "GameConfig.hpp"
 #include "GameplaySettingsDialog.hpp"
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 #include <iterator>
 #include <mutex>
 #include <unordered_set>

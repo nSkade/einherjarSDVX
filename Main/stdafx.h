@@ -10,6 +10,7 @@
 #include <tchar.h>
 #endif
 
+#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_keycode.h>
 
@@ -61,6 +62,7 @@ using namespace Graphics;
 #include "discord_rpc.h"
 #include "json.hpp"
 #include "lua.hpp"
+#include "compat-5.3.h"
 #include "nanovg.h"
 
 // NK imports
@@ -103,3 +105,4 @@ void usc_nk_sdl_use_atlas(nk_font_atlas * atlas, GLuint texture);
 void nk_sdl_device_destroy_keep_font(void);
 void nk_sdl_shutdown_keep_font(void);
 void nk_atlas_font_stash_begin(struct nk_font_atlas* atlas);
+

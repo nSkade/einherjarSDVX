@@ -14,6 +14,7 @@
 #include "GameplaySettingsDialog.hpp"
 #include <Audio/Audio.hpp>
 #include "lua.hpp"
+//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
 #include <iterator>
 #include <mutex>
 #include <MultiplayerScreen.hpp>

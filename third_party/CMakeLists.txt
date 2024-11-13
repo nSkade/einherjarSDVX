@@ -1,5 +1,5 @@
 # All third party libraries
-add_subdirectory(lua-5.3.5)
+#TODO(skade) add_subdirectory(lua-5.3.5)
 
 #cpr test programs
 option(CPR_BUILD_TESTS "Set to ON to build cpr tests." OFF)
@@ -98,7 +98,7 @@ if(MSVC)
     target_compile_options(cpr PRIVATE /MP)
     target_compile_options(discord-rpc PRIVATE /MP)
     target_compile_options(GLEW PRIVATE /MP)
-    target_compile_options(lua PRIVATE /MP)
+#TODO(skade)    target_compile_options(lua PRIVATE /MP)
     target_compile_options(minimp3 PRIVATE /MP)
     target_compile_options(nanovg PRIVATE /MP)
     target_compile_options(soundtouch PRIVATE /MP)

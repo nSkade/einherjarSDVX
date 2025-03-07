@@ -57,10 +57,6 @@ find_package(LibArchive REQUIRED)
 find_package(Iconv REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-#find_package(LuaJIT REQUIRED)
-find_package(PkgConfig REQUIRED)  
-pkg_check_modules(LuaJIT REQUIRED IMPORTED_TARGET luajit)
-
 # All projects use unicode define
 # this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
@@ -91,6 +87,14 @@ if(ASAN)
 		-fsanitize=address
 		-fno-omit-frame-pointer
 	)
+endif()
+
+option(USE_LUAJIT "Use LuaJIT instead of Lua" OFF)
+
+if(USE_LUAJIT)
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(LuaJIT REQUIRED IMPORTED_TARGET luajit)
+	add_definitions(-DUSE_LUAJIT)
 endif()
 
 # Include macros
@@ -128,8 +132,11 @@ if(MSVC)
 	set_target_properties(discord-rpc PROPERTIES FOLDER "Third Party")
 	set_target_properties(minimp3 PROPERTIES FOLDER "Third Party")
 	set_target_properties(soundtouch PROPERTIES FOLDER "Third Party")
-#TODO(skade)	set_target_properties(lua PROPERTIES FOLDER "Third Party")
 	set_target_properties(GLEW PROPERTIES FOLDER "Third Party")
+
+	if(NOT USE_LUAJIT)
+		set_target_properties(lua PROPERTIES FOLDER "Third Party")
+	endif()
 
 	# My libraries in the libraries folder
 	set_target_properties(Shared PROPERTIES FOLDER Libraries)

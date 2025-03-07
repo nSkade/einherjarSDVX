@@ -33,11 +33,7 @@
 
 int main(int argc, char** argv)
 {
-//	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
-	String commandLine = "";
-	for (int i = 0; i < argc; ++i) {
-		commandLine = commandLine + " " + std::string(argv[i]);
-	}
+	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
 	commandLine += std::string(" ") + CMDARGS;
 
 #ifdef _DEBUG

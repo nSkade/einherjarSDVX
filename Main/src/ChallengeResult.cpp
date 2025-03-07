@@ -9,7 +9,7 @@
 #include "Game.hpp"
 #include "AsyncAssetLoader.hpp"
 #include "lua.hpp"
-//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
+
 #include "Shared/Time.hpp"
 #include "json.hpp"
 #include "CollectionDialog.hpp"

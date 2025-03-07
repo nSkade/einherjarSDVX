@@ -87,6 +87,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::InputOffset, 0);
 	Set(GameConfigKeys::LaserOffset, 0);
 	Set(GameConfigKeys::FPSTarget, 0);
+	Set(GameConfigKeys::SleepOutFocusFPS, 0.f);
+	Set(GameConfigKeys::SleepPracticeOnly, false);
 	Set(GameConfigKeys::GaugeDrainNormal, 180);
 	Set(GameConfigKeys::GaugeDrainHalf, 300);
 	Set(GameConfigKeys::ModSpeed, 300.0f);

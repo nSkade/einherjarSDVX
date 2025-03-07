@@ -116,16 +116,18 @@ target_link_libraries(einherjarSDVX Audio)
 #target_link_libraries(einherjarSDVX GUI)
 target_link_libraries(einherjarSDVX Beatmap)
 target_link_libraries(einherjarSDVX nanovg)
-#TODO(skade) target_link_libraries(einherjarSDVX lua)
 
-#TODO(skade) remove
-message(STATUS "LuaJIT include dir: ${LuaJIT_INCLUDE_DIRS}")
-message(STATUS "LuaJIT libraries: ${LuaJIT_LIBRARIES}")
-message(STATUS "NUK_INC ${NUK_INC}")
-
-target_include_directories(einherjarSDVX PRIVATE ${LuaJIT_INCLUDE_DIRS})
-target_link_directories(einherjarSDVX PRIVATE ${LuaJIT_LIBRARY_DIRS})
-target_link_libraries(einherjarSDVX ${LuaJIT_LIBRARIES})
+if(USE_LUAJIT)
+	#TODO(skade) remove
+	message(STATUS "LuaJIT include dir: ${LuaJIT_INCLUDE_DIRS}")
+	message(STATUS "LuaJIT libraries: ${LuaJIT_LIBRARIES}")
+	message(STATUS "NUK_INC ${NUK_INC}")
+	target_include_directories(einherjarSDVX PRIVATE ${LuaJIT_INCLUDE_DIRS})
+	target_link_directories(einherjarSDVX PRIVATE ${LuaJIT_LIBRARY_DIRS})
+	target_link_libraries(einherjarSDVX ${LuaJIT_LIBRARIES})
+else()
+	target_link_libraries(einherjarSDVX lua)
+endif()
 
 target_link_libraries(einherjarSDVX discord-rpc)
 target_link_libraries(einherjarSDVX cpr)

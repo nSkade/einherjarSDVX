@@ -770,6 +770,9 @@ protected:
 
 		SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti-aliasing (requires restart):");
 		SetApply(ToggleSetting(GameConfigKeys::VSync, "VSync"));
+		IntSetting(GameConfigKeys::FPSTarget, "FPS limit, 0 for no limit",0,1000);
+		FloatSetting(GameConfigKeys::SleepOutFocusFPS, "FPS during out of focus, 0 to disable",0.,1000.);
+		SetApply(ToggleSetting(GameConfigKeys::SleepPracticeOnly, "Only apply sleep in practice mode"));
 		SetApply(ToggleSetting(GameConfigKeys::ShowFps, "Show FPS"));
 		SetApply(ToggleSetting(GameConfigKeys::KeepFontTexture, "Save font texture (settings load faster but uses more memory)"));
 		ToggleSetting(GameConfigKeys::OldSlamShake, "use SDVX4 slam shake");

@@ -1,4 +1,4 @@
-//#include "luaCompat53.hpp" //TODO(skade) remove
+#include "luaCompat53.hpp" //TODO(skade) remove
 
 #include <cmath>
 

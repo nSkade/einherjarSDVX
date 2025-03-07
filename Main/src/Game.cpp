@@ -969,6 +969,14 @@ public:
 	{
 		if (m_ended && IsSuspended()) return;
 
+		// reduce framerate when out of focus
+		if ((g_gameConfig.GetBool(GameConfigKeys::SleepPracticeOnly) && m_isPracticeMode) && !g_gameWindow->IsActive()) {
+			SDL_Event _;
+			int sleepDur = (1./g_gameConfig.GetFloat(GameConfigKeys::SleepOutFocusFPS)*1000.);
+			SDL_WaitEventTimeout(&_,sleepDur);
+			//TODOff(skade) watch for changes on bg and reload bg after sleep
+		}
+
 		// Adjust factor for the hi-speed, based on the playback speed
 		float hiSpeedAdjustFactor = 1.0;
 
@@ -1202,15 +1210,12 @@ public:
 		{
 			m_introCompleted = true;
 			if (m_ended)
-			{
 				m_outroCompleted = true;
-			}
 
 			RenderDebugHUD(deltaTime);
 
 			// Render particle effects last
-			if (particleMaterial && basicParticleTexture)
-			{
+			if (particleMaterial && basicParticleTexture) {
 				RenderParticles(rs, deltaTime);
 				//glFlush();
 			}
@@ -1219,17 +1224,14 @@ public:
 		{
 			m_introCompleted = true;
 			if (m_ended)
-			{
 				m_outroCompleted = true;
-			}
 
 			m_introCompleted = true;
 
 			m_fastGui.Render(deltaTime);
 
 			// Render particle effects last
-			if (particleMaterial && basicParticleTexture)
-			{
+			if (particleMaterial && basicParticleTexture) {
 				RenderParticles(rs, deltaTime);
 				//glFlush();
 			}
@@ -1327,9 +1329,7 @@ public:
 					m_introCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
 				}
 				else
-				{
 					m_introCompleted = true;
-				}
 			
 				lua_settop(m_lua, 0);
 			}
@@ -2730,6 +2730,7 @@ public:
 			bool was_paused = m_paused;
 			m_audioPlayback.Pause();
 			m_paused = true;
+			Log("!!!Congratulations!!!");
 			g_gameWindow->ShowMessageBox("Congratulations!!!\n",
 			"!!!Congratulations!!! You found the Function Key of the number 8 on your Typing device !!!Congratulations!!!\n\nPress OK to calim your Prize now!!!", 1);
 			if (!was_paused) {
@@ -2824,7 +2825,7 @@ public:
 			switch (buttonCode)
 			{
 			case Input::Button::Back:
-			case Input::Button::FX_0:
+			//case Input::Button::FX_0: //TODOff(skade) make configurable
 			case Input::Button::FX_1:
 				if (buttonCode == Input::Button::Back || g_input.GetButton(buttonCode == Input::Button::FX_0 ? Input::Button::FX_1 : Input::Button::FX_0))
 				{

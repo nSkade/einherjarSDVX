@@ -8,7 +8,7 @@
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "lua.hpp"
-//#include "Lua/luaCompat53.hpp" //TODO(skade) remove
+
 #include "Gauge.hpp"
 #include "Shared/LuaBindable.hpp"
 
@@ -226,7 +226,9 @@ public:
 			lua_getglobal(lua, "package");
 			lua_getfield(lua, -1, "path");				// get field "path" from table at top of stack (-1)
 			std::string cur_path = lua_tostring(lua, -1); // grab path string from top of stack
-			//cur_path.append(";");						// do your path magic here
+#if !USE_LUAJIT
+			cur_path.append(";");						// do your path magic here
+#endif
 			cur_path.append(lua_path.c_str());
 			lua_pop(lua, 1);						 // get rid of the string on the stack e just pushed on line 5
 			lua_pushstring(lua, cur_path.c_str()); // push the new one

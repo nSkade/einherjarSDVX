@@ -62,7 +62,9 @@ using namespace Graphics;
 #include "discord_rpc.h"
 #include "json.hpp"
 #include "lua.hpp"
+#ifdef USE_LUAJIT
 #include "compat-5.3.h"
+#endif
 #include "nanovg.h"
 
 // NK imports

@@ -12,14 +12,14 @@ source_group("Sources" FILES ${SRC})
 
 # Platform specific source files
 if(WIN32)
-    file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
+	file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
 else(WIN32)
-    file(GLOB UNIX_SRC "${SRCROOT}/Unix/*.cpp")
-    if(APPLE)
-        file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/MacOS/*.cpp")
-    else(APPLE)
-        file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/Linux/*.cpp")
-    endif(APPLE)
+	file(GLOB UNIX_SRC "${SRCROOT}/Unix/*.cpp")
+	if(APPLE)
+		file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/MacOS/*.cpp")
+	else(APPLE)
+		file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/Linux/*.cpp")
+	endif(APPLE)
 endif(WIN32)
 source_group("Sources\\Platform" FILES ${PLATFORM_SRC})
 
@@ -40,13 +40,16 @@ add_library(Shared ${SHARED_SRC})
 target_compile_features(Shared PUBLIC cxx_std_17)
 target_include_directories(Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Shared PRIVATE
-    ${SRCROOT}
-    ${INCROOT}
-     ${PCHROOT})
+	${SRCROOT}
+	${INCROOT}
+	 ${PCHROOT})
 target_precompile_headers(Shared PRIVATE ${PCH_INC})
 
-#TODO(skade) target_link_libraries(Shared lua)
-target_link_libraries(Shared PkgConfig::LuaJIT)
+if(USE_LUAJIT)
+	target_link_libraries(Shared PkgConfig::LuaJIT)
+else()
+	target_link_libraries(Shared lua)
+endif()
 
 target_link_libraries(Shared ${Iconv_LIBRARIES})
 target_include_directories(Shared SYSTEM PRIVATE ${Iconv_INCLUDE_DIRS})
@@ -58,11 +61,11 @@ target_link_libraries(Shared cc-common)
 
 find_package(ZLIB REQUIRED)
 if(ZLIB_FOUND)
-    target_compile_definitions(Shared PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
-    target_include_directories(Shared SYSTEM PRIVATE ${ZLIB_INCLUDE_DIRS})
+	target_compile_definitions(Shared PRIVATE ZLIB_FOUND=${ZLIB_FOUND})
+	target_include_directories(Shared SYSTEM PRIVATE ${ZLIB_INCLUDE_DIRS})
 endif()
 
 # Enable multiprocess compiling
 if(MSVC)
-    target_compile_options(Shared PRIVATE /MP)
+	target_compile_options(Shared PRIVATE /MP)
 endif(MSVC)

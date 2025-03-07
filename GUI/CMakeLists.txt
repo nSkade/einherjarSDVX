@@ -26,21 +26,19 @@ add_library(GUI ${GUI_SRC})
 target_compile_features(GUI PUBLIC cxx_std_17)
 target_include_directories(GUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(GUI PRIVATE
-    ${SRCROOT}
-    ${INCROOT}
-     ${PCHROOT})
+	${SRCROOT}
+	${INCROOT}
+	 ${PCHROOT})
 target_precompile_headers(GUI PRIVATE ${PCH_INC})
 
 # Dependencies
 target_link_libraries(GUI Shared)
 target_link_libraries(GUI nanovg)
 target_link_libraries(GUI Graphics)
-#TODO(skade) target_link_libraries(GUI lua)
-target_link_libraries(GUI PkgConfig::LuaJIT)
 
 target_link_libraries(GUI cc-common)
 
 # Enable multiprocess compiling
 if(MSVC)
-    target_compile_options(GUI PRIVATE /MP)
+	target_compile_options(GUI PRIVATE /MP)
 endif(MSVC)

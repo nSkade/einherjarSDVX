@@ -14,6 +14,7 @@
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"
 #include "lua.hpp"
+
 #include "Shared/LuaBindable.hpp"
 #include "DownloadScreen.hpp"
 #include "MultiplayerScreen.hpp"

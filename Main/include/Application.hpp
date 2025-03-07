@@ -110,6 +110,8 @@ public:
 	void RunUpdater();
 	void CheckForUpdate();
 	void ForceRender();
+	void ForceRenderNVG();
+	void ForceRenderSM();
 	void SetLuaBindings(struct lua_State* state);
 	Vector<String> GetLightPluginList();
 	void RenderTickables();
@@ -162,7 +164,7 @@ private:
 	SkinHttp m_skinHttp;
 	SkinIR m_skinIR;
 	Timer m_frameTimer;
-	uint32 m_targetRenderTime;
+//	uint32 m_targetRenderTime; //TODO(skade) remove
 
 	float m_deltaTime;
 	float m_fpsTargetSleepMult = 1.0f;

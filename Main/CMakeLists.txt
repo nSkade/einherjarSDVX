@@ -44,10 +44,20 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${MAIN_SRC}" ${PCH_SRC})
+#enable_precompiled_headers("${MAIN_SRC}" ${PCH_SRC})
 
 include_directories(Audio GUI .)
-add_executable(einherjarSDVX ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_FILES})
+add_executable(einherjarSDVX ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_SRC})
+#add_executable(einherjarSDVX ${MAIN_SRC} ${RESOURCE_SRC})
+
+##TODO(skade) nuklear
+#set(NUKLEAR_DIR "${CMAKE_SOURCE_DIR}/third_party/nuklear")
+#include_directories(${NUKLEAR_DIR})
+#target_sources(einherjarSDVX PRIVATE
+#    ${NUKLEAR_DIR}/nuklear.c  # Ensure this line is included
+#    # Add other necessary source files here if applicable
+#)
+
 target_include_directories(einherjarSDVX PRIVATE
 	${SRCROOT}
 	${SRCROOT}/GUI
@@ -55,7 +65,9 @@ target_include_directories(einherjarSDVX PRIVATE
 	${INCROOT}
 	${INCROOT}/GUI
 	${INCROOT}/Audio
+	${PROJECT_SOURCE_DIR}/GUI/include
 )
+target_precompile_headers(einherjarSDVX PRIVATE ${PCH_INC})
 target_compile_features(einherjarSDVX PUBLIC cxx_std_17)
 target_compile_definitions(einherjarSDVX PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_compile_definitions(einherjarSDVX PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
@@ -83,18 +95,40 @@ if(MSVC)
 	set_target_properties(einherjarSDVX PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 	target_compile_options(einherjarSDVX PRIVATE /EHsc /MP)
 	# Target subsystem on windows, enable multiprocess build and faster PDB gen
-	set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
-	set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
+	#set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
+	#set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /DEBUG:FULL")
+#TODO(skade)
+	set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE /DEBUG:FASTLINK")
+	set_target_properties(einherjarSDVX PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:CONSOLE /DEBUG:FULL")
 endif(MSVC)
+
+set_target_properties(einherjarSDVX
+	PROPERTIES
+	ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+	LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+	RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
+)
 
 # Dependencies
 target_link_libraries(einherjarSDVX Shared)
 target_link_libraries(einherjarSDVX Graphics)
 target_link_libraries(einherjarSDVX Audio)
-target_link_libraries(einherjarSDVX GUI)
+#target_link_libraries(einherjarSDVX GUI)
 target_link_libraries(einherjarSDVX Beatmap)
 target_link_libraries(einherjarSDVX nanovg)
-target_link_libraries(einherjarSDVX lua)
+
+if(USE_LUAJIT)
+	#TODO(skade) remove
+	message(STATUS "LuaJIT include dir: ${LuaJIT_INCLUDE_DIRS}")
+	message(STATUS "LuaJIT libraries: ${LuaJIT_LIBRARIES}")
+	message(STATUS "NUK_INC ${NUK_INC}")
+	target_include_directories(einherjarSDVX PRIVATE ${LuaJIT_INCLUDE_DIRS})
+	target_link_directories(einherjarSDVX PRIVATE ${LuaJIT_LIBRARY_DIRS})
+	target_link_libraries(einherjarSDVX ${LuaJIT_LIBRARIES})
+else()
+	target_link_libraries(einherjarSDVX lua)
+endif()
+
 target_link_libraries(einherjarSDVX discord-rpc)
 target_link_libraries(einherjarSDVX cpr)
 target_link_libraries(einherjarSDVX nlohmann_json)

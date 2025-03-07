@@ -1,0 +1,54 @@
+﻿{
+	"configurations": [
+		{
+			"name": "x64-Debug",
+			"generator": "Ninja",
+			"configurationType": "Debug",
+			"inheritEnvironments": [ "msvc_x64_x64" ],
+			"buildRoot": "${projectDir}\\out\\build\\${name}",
+			"installRoot": "${projectDir}\\out\\install\\${name}",
+			"cmakeCommandArgs": "",
+			"buildCommandArgs": "",
+			"variables": [
+				{
+					"name": "USE_LUAJIT",
+					"value": "False",
+					"type": "BOOL"
+				}
+			]
+		},
+		{
+			"name": "x64-Release",
+			"generator": "Ninja",
+			"configurationType": "RelWithDebInfo",
+			"buildRoot": "${projectDir}\\out\\build\\${name}",
+			"installRoot": "${projectDir}\\out\\install\\${name}",
+			"cmakeCommandArgs": "",
+			"buildCommandArgs": "",
+			"ctestCommandArgs": "",
+			"inheritEnvironments": [ "msvc_x64_x64" ],
+			"variables": [
+				{
+					"name": "VCPKG_VERBOSE",
+					"value": "True",
+					"type": "BOOL"
+				},
+				{
+					"name": "CMAKE_VERBOSE_MAKEFILE",
+					"value": "True",
+					"type": "BOOL"
+				},
+				{
+					"name": "gtest_force_shared_crt",
+					"value": "False",
+					"type": "BOOL"
+				},
+				{
+					"name": "USE_LUAJIT",
+					"value": "False",
+					"type": "BOOL"
+				}
+			]
+		}
+	]
+}

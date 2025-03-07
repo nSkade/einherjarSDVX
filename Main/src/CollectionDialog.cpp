@@ -3,6 +3,7 @@
 #include "Shared/LuaBindable.hpp"
 #include "Beatmap/MapDatabase.hpp"
 #include "lua.hpp"
+
 #include "GameConfig.hpp"
 
 // XXX probably should be moved with the other ones to its own class file?

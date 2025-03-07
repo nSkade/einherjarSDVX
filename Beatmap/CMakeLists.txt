@@ -21,16 +21,17 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${BEATMAP_SRC}" ${PCH_SRC})
+#enable_precompiled_headers("${BEATMAP_SRC}" ${PCH_SRC})
 
-add_library(Beatmap ${BEATMAP_SRC} ${PCH_FILES})
+#add_library(Beatmap ${BEATMAP_SRC} ${PCH_FILES})
+add_library(Beatmap ${BEATMAP_SRC})
 target_compile_features(Beatmap PUBLIC cxx_std_17)
 target_include_directories(Beatmap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Beatmap PRIVATE
     ${INCROOT}
     ${SRCROOT}
-    ${PCHROOT}
-)
+     ${PCHROOT})
+target_precompile_headers(Beatmap PRIVATE ${PCH_INC})
 
 # Dependencies
 

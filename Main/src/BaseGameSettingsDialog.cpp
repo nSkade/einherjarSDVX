@@ -2,6 +2,7 @@
 #include "BaseGameSettingsDialog.hpp"
 
 #include "lua.hpp"
+
 #include "Application.hpp"
 
 BaseGameSettingsDialog::~BaseGameSettingsDialog()

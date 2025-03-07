@@ -249,6 +249,16 @@ static int lForceRender(lua_State *L)
 	g_application->ForceRender();
 	return 0;
 }
+static int lForceRenderNVG(lua_State *L)
+{
+	g_application->ForceRenderNVG();
+	return 0;
+}
+static int lForceRenderSM(lua_State *L)
+{
+	g_application->ForceRenderSM();
+	return 0;
+}
 
 static int lLoadImageJob(lua_State *L /* char* path, int placeholder, int w = 0, int h = 0 */)
 {

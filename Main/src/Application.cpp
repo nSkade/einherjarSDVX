@@ -33,6 +33,9 @@
 #include "archive_entry.h"
 #include "LightPlugin/LightPlugin.h"
 
+#include "FPSLimiter.hpp"
+ehj::FPSLimiter g_fpsLimiter;
+
 GameConfig g_gameConfig;
 SkinConfig *g_skinConfig;
 OpenGL *g_gl = nullptr;
@@ -252,6 +255,17 @@ void Application::ForceRender()
 	nvgEndFrame(g_guiState.vg);
 	g_application->GetRenderQueueBase()->Process();
 	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
+}
+
+void Application::ForceRenderNVG()
+{
+	nvgEndFrame(g_guiState.vg);
+	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
+}
+
+void Application::ForceRenderSM()
+{
+	g_application->GetRenderQueueBase()->Process();
 }
 
 NVGcontext *Application::GetVGContext()
@@ -1297,19 +1311,18 @@ void Application::m_MainLoop()
 			return;
 		}
 
-		// Determine target tick rates for update and render
-		int32 targetFPS = 120; // Default to 120 FPS
-		m_targetRenderTime = 0;
-		for (auto tickable : g_tickables)
-		{
-			int32 tempTarget = 0;
-			if (tickable->GetTickRate(tempTarget))
-			{
-				targetFPS = tempTarget;
-			}
-		}
-		if (targetFPS > 0)
-			m_targetRenderTime = 1000000 / targetFPS;
+		//TODO(skade) potentially important for multiplayer?
+		//// Determine target tick rates for update and render
+		//int32 targetFPS = 120; // Default to 120 FPS
+		//m_targetRenderTime = 0;
+		//for (auto tickable : g_tickables)
+		//{
+		//	int32 tempTarget = 0;
+		//	if (tickable->GetTickRate(tempTarget))
+		//		targetFPS = tempTarget;
+		//}
+		//if (targetFPS > 0)
+		//	m_targetRenderTime = 1000000 / targetFPS;
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
@@ -1352,6 +1365,7 @@ void Application::m_Tick()
 	{
 		tickable->Tick(m_deltaTime);
 	}
+
 	// Not minimized / Valid resolution
 	if (g_resolution.x > 0 && g_resolution.y > 0)
 	{
@@ -1456,32 +1470,38 @@ void Application::RenderTickables()
 
 	CheckGLErrors("after processing render queues");
 
-	//This FPS limiter seems unstable over 500fps
-	uint32 frameTime = m_frameTimer.Microseconds();
-	if (frameTime < m_targetRenderTime)
-	{
-		uint32 timeLeft = (m_targetRenderTime - frameTime);
-		uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
-		if (sleepMicroSecs > 1000)
-		{
-			uint32 sleepStart = m_frameTimer.Microseconds();
-			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
-			float actualSleep = m_frameTimer.Microseconds() - sleepStart;
+	//TODO(skade)
+	////This FPS limiter seems unstable over 500fps
+	//uint32 frameTime = m_frameTimer.Microseconds();
+	//if (frameTime < m_targetRenderTime)
+	//{
+	//	uint32 timeLeft = (m_targetRenderTime - frameTime);
+	//	uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
+	//	if (sleepMicroSecs > 1000)
+	//	{
+	//		uint32 sleepStart = m_frameTimer.Microseconds();
+	//		std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+	//		float actualSleep = m_frameTimer.Microseconds() - sleepStart;
 
-			m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
-			m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
-		}
+	//		m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
+	//		m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+	//	}
 
-		do
-		{
-			std::this_thread::yield();
-		} while (m_frameTimer.Microseconds() < m_targetRenderTime);
-	}
+	//	do
+	//	{
+	//		std::this_thread::yield();
+	//	} while (m_frameTimer.Microseconds() < m_targetRenderTime);
+	//}
 
 	CheckGLErrors("just before buffer swapping");
 
 	// Swap buffers
 	g_gl->SwapBuffers();
+	if (g_gameConfig.GetInt(GameConfigKeys::FPSTarget) != 0) {
+		//TODO(skade) dont set every frame
+		g_fpsLimiter.setLimit(g_gameConfig.GetInt(GameConfigKeys::FPSTarget));
+		g_fpsLimiter.wait();
+	}
 
 	GLenum glErr;
 	while ((glErr = glGetError()) != GL_NO_ERROR)
@@ -1724,10 +1744,13 @@ Material Application::LoadMaterial(const String &name, const String &path)
 	while (!ret) {
 		ret = MaterialRes::Create(g_gl, pathV, pathF);
 		// Additionally load geometry shader
-		if (Path::FileExists(pathG)) {
+		if (ret && Path::FileExists(pathG)) {
 			Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
-			assert(gshader);
-			ret->AssignShader(ShaderType::Geometry, gshader);
+			//assert(gshader);
+			if (!gshader)
+				ret.reset();
+			else
+				ret->AssignShader(ShaderType::Geometry, gshader);
 		}
 		if (!ret) {
 			bool vsE = Path::FileExists(pathV);
@@ -2440,6 +2463,8 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("Reset", lReset);
 		pushFuncToTable("PathWinding", lPathWinding);
 		pushFuncToTable("ForceRender", lForceRender);
+		pushFuncToTable("ForceRenderNVG", lForceRenderNVG);
+		pushFuncToTable("ForceRenderSM", lForceRenderSM);
 		pushFuncToTable("LoadImageJob", lLoadImageJob);
 		pushFuncToTable("LoadWebImageJob", lLoadWebImageJob);
 		pushFuncToTable("Scissor", lScissor);

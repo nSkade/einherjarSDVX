@@ -1,42 +1,71 @@
-#include "stdafx.h"
+//#include "stdafx.h"
 #include "Application.hpp"
-#include "Extras/guicon.hpp"
+//#include "Extras/guicon.hpp"
 #include <iostream>
+#include "../../cmdArgs.hpp"
 
-#ifdef _WIN32
+//#ifdef _WIN32
 // Windows entry point
-int32 __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+//int32 __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+//{
+//	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
+//#ifdef _DEBUG
+//	RedirectIOToConsole();
+//#else
+//	if (commandLine.find("-console")!=String::npos)
+//		RedirectIOToConsole();
+//#endif
+//
+//	new Application();
+//
+//	g_application->SetCommandLine(*commandLine);
+//
+//	int32 ret = g_application->Run();
+//	delete g_application;
+//
+//	if (commandLine.find("-cExit") != String::npos) {
+//		std::cout << "Press Enter to Exit";
+//		std::cin.ignore(std::numeric_limits<streamsize>::max(),'\n');
+//	}
+//
+//	return ret;
+//}
+
+int main(int argc, char** argv)
 {
 	String commandLine = Utility::ConvertToUTF8(GetCommandLineW());
+	commandLine += std::string(" ") + CMDARGS;
+
 #ifdef _DEBUG
-	RedirectIOToConsole();
+	//RedirectIOToConsole();
 #else
-	if (commandLine.find("-console")!=String::npos)
-		RedirectIOToConsole();
+	//if (commandLine.find("-console")!=String::npos)
+	//	RedirectIOToConsole();
 #endif
 
+	int ret = 0;
 	new Application();
 
 	g_application->SetCommandLine(*commandLine);
 
-	int32 ret = g_application->Run();
+	ret = g_application->Run();
 	delete g_application;
 
 	if (commandLine.find("-cExit") != String::npos) {
 		std::cout << "Press Enter to Exit";
-		std::cin.ignore(std::numeric_limits<streamsize>::max(),'\n');
+		std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 	}
 
 	return ret;
 }
-#else
-// Linux entry point
-int main(int argc, char** argv)
-{
-	new Application();
-	g_application->SetCommandLine(argc, argv);
-	int32 ret = g_application->Run();
-	delete g_application;
-	return ret;
-}
-#endif
+//#else
+//// Linux entry point
+//int main(int argc, char** argv)
+//{
+//	new Application();
+//	g_application->SetCommandLine(argc, argv);
+//	int32 ret = g_application->Run();
+//	delete g_application;
+//	return ret;
+//}
+//#endif

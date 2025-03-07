@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "TCPSocket.hpp"
 #include "lua.hpp"
+
 #include "Application.hpp"
 #include "Shared/LuaBindable.hpp"
 

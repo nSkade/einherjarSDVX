@@ -15,15 +15,16 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${TESTS_GAME_SRC}" ${PCH_SRC})
+#enable_precompiled_headers("${TESTS_GAME_SRC}" ${PCH_SRC})
 
-add_executable(Tests.Game ${TESTS_GAME_SRC} ${PCH_FILES})
+#add_executable(Tests.Game ${TESTS_GAME_SRC} ${PCH_FILES})
+add_executable(Tests.Game ${TESTS_GAME_SRC})
 target_compile_features(Tests.Game PUBLIC cxx_std_17)
 set_output_postfixes(Tests.Game)
 target_include_directories(Tests.Game PRIVATE
     ${SRCROOT}
-    ${PCHROOT}
-)
+     ${PCHROOT})
+target_precompile_headers(Tests.Game PRIVATE ${PCH_INC})
 target_compile_definitions(Tests.Game PRIVATE
     SDL_MAIN_HANDLED # Because SDL rename our main to replace it by it's own
 )
@@ -33,5 +34,5 @@ target_link_libraries(Tests.Game Shared)
 target_link_libraries(Tests.Game Graphics)
 target_link_libraries(Tests.Game Audio)
 target_link_libraries(Tests.Game Beatmap)
-target_link_libraries(Tests.Game GUI)
+#target_link_libraries(Tests.Game GUI)
 target_link_libraries(Tests.Game Tests)

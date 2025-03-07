@@ -8,6 +8,7 @@
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "lua.hpp"
+
 #include "Gauge.hpp"
 #include "Shared/LuaBindable.hpp"
 
@@ -194,24 +195,6 @@ public:
 		lua = luaL_newstate();
 		luaL_openlibs(lua);
 
-		//void Application::SetScriptPath(lua_State *s)
-		{
-			//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
-			String lua_path = Path::Normalize(
-				Path::Absolute(folderPath + "?.lua;") +
-				Path::Absolute(folderPath + "?"));
-
-			lua_getglobal(lua, "package");
-			lua_getfield(lua, -1, "path");				// get field "path" from table at top of stack (-1)
-			std::string cur_path = lua_tostring(lua, -1); // grab path string from top of stack
-			cur_path.append(";");						// do your path magic here
-			cur_path.append(lua_path.c_str());
-			lua_pop(lua, 1);						 // get rid of the string on the stack e just pushed on line 5
-			lua_pushstring(lua, cur_path.c_str()); // push the new one
-			lua_setfield(lua, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
-			lua_pop(lua, 1);						 // get rid of package table from top of stack
-		}
-
 		auto openLib = [this](const char *name, lua_CFunction lib) {
 			luaL_requiref(lua, name, lib, 1);
 			lua_pop(lua, 1);
@@ -231,23 +214,62 @@ public:
 		openLib(LUA_DBLIBNAME, luaopen_math); //TODO(skade) only open on debug command argument
 		openLib(LUA_OSLIBNAME, luaopen_os); //TODO(skade) not secure remove?
 
+		//void Application::SetScriptPath(lua_State *s)
+		{
+			//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
+			String lua_path = Path::Normalize(
+				Path::Absolute(folderPath + "?.lua;") +
+				Path::Absolute(folderPath + "?;")) +
+				Path::Absolute(folderPath + "?\\init.lua;") +
+				Path::Absolute(folderPath + "?\\init;");
+
+			lua_getglobal(lua, "package");
+			lua_getfield(lua, -1, "path");				// get field "path" from table at top of stack (-1)
+			std::string cur_path = lua_tostring(lua, -1); // grab path string from top of stack
+#if !USE_LUAJIT
+			cur_path.append(";");						// do your path magic here
+#endif
+			cur_path.append(lua_path.c_str());
+			lua_pop(lua, 1);						 // get rid of the string on the stack e just pushed on line 5
+			lua_pushstring(lua, cur_path.c_str()); // push the new one
+			lua_setfield(lua, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
+			lua_pop(lua, 1);						 // get rid of package table from top of stack
+		}
+		{
+			lua_getglobal(lua, "package");
+			lua_getfield(lua, -1, "path");				// get field "path" from table at top of stack (-1)
+			std::string cur_path = lua_tostring(lua, -1); // grab path string from top of stack
+			Log(cur_path);
+		}
+
+		{
+		int result = luaL_dostring(lua, "_ENV = require(\"compat53\")");
+		if (result != LUA_OK) {
+			// Handle the error
+			const char *error_message = lua_tostring(lua, -1);
+			Log(std::string("") + "Error: " + error_message);
+			lua_pop(lua, 1);
+		}
+		}
+
 		// Add error messages to libs which are not allowed
 		errorOnLib(LUA_COLIBNAME);
 		errorOnLib(LUA_IOLIBNAME);
 		//errorOnLib(LUA_OSLIBNAME);
-		errorOnLib(LUA_UTF8LIBNAME);
+		//TODO(skade) luajit errorOnLib(LUA_UTF8LIBNAME);
 		//errorOnLib(LUA_DBLIBNAME);
 
 		// Clean up the 'package' library so we can't load dlls
 		lua_getglobal(lua, "package");
 
 		// Remove C searchers so we can't load dlls
-		lua_getfield(lua, -1, "searchers"); // Get the searcher list (-1)
-		lua_pushnil(lua);
-		lua_rawseti(lua, -2, 4); // C root
-		lua_pushnil(lua);
-		lua_rawseti(lua, -2, 3); // C path
-		lua_pop(lua, 1);		 /* remove searchers */
+		//TODO(skade)
+		//lua_getfield(lua, -1, "searchers"); // Get the searcher list (-1)
+		//lua_pushnil(lua);
+		//lua_rawseti(lua, -2, 4); // C root
+		//lua_pushnil(lua);
+		//lua_rawseti(lua, -2, 3); // C path
+		//lua_pop(lua, 1);		 /* remove searchers */
 
 		// Remove loadlib so we can't load dlls
 		lua_pushnil(lua);

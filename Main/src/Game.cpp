@@ -970,7 +970,9 @@ public:
 		if (m_ended && IsSuspended()) return;
 
 		// reduce framerate when out of focus
-		if ((g_gameConfig.GetBool(GameConfigKeys::SleepPracticeOnly) && m_isPracticeMode) && !g_gameWindow->IsActive()) {
+		if (g_gameConfig.GetFloat(GameConfigKeys::SleepOutFocusFPS) > 0.f
+			&& (!g_gameConfig.GetBool(GameConfigKeys::SleepPracticeOnly) || m_isPracticeMode)
+			&& !g_gameWindow->IsActive()) {
 			SDL_Event _;
 			int sleepDur = (1./g_gameConfig.GetFloat(GameConfigKeys::SleepOutFocusFPS)*1000.);
 			SDL_WaitEventTimeout(&_,sleepDur);

@@ -119,6 +119,7 @@ protected:
 	LuaBindable *trackBindable = nullptr;
 	LuaBindable *modsBindable = nullptr;
 	String folderPath;
+	String skinsPath;
 	lua_State *lua = nullptr;
 	Vector3 timing;
 	Vector2 tilt;
@@ -169,7 +170,7 @@ public:
 		{
 			layer = kshLayer;
 		}
-		
+
 		//TODO(skade) try to load chart BG first.
 		if (defaultBGs.Contains(layer))
 		{
@@ -189,6 +190,9 @@ public:
 						 Path::sep;
 			folderPath = Path::Absolute(folderPath);
 		}
+
+		skinsPath = "skins/";
+		skinsPath = Path::Normalize(Path::Absolute(skinsPath));
 
 		String path = Path::Normalize(folderPath + fname);
 
@@ -299,6 +303,7 @@ public:
 		bindable->AddFunction("SetParam4x4f", this, &TestBackground::SetParam4x4f);
 		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
 		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
+		bindable->AddFunction("GetSkinsPath", this, &TestBackground::GetSkinsPath);
 		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
 		bindable->AddFunction("GetTiming", this, &TestBackground::GetTiming);
 		bindable->AddFunction("GetBeat", this, &TestBackground::GetBeat); //TODO(skade) Binding also for skin?
@@ -611,6 +616,12 @@ public:
 	int GetPath(lua_State *L)
 	{
 		lua_pushstring(L, *folderPath);
+		return 1;
+	}
+
+	int GetSkinsPath(lua_State *L)
+	{
+		lua_pushstring(L, *skinsPath);
 		return 1;
 	}
 

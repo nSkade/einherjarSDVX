@@ -1,28 +1,28 @@
 {
-    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
-    "name": "usc-game",
-    "version": "0.5.0",
-    "dependencies": [
-        "zlib",
-        "curl",
-        "freetype",
-        "sdl2",
-        "libjpeg-turbo",
-        "libvorbis",
-        {
-            "name": "libarchive",
-            "default-features": false,
-            "features": [
-                "bzip2",
-                "libxml2",
-                "lz4",
-                "lzma",
-                "lzo"
-            ]
-        },
-        "libiconv",
+	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+	"name": "usc-game",
+	"version": "0.5.0",
+	"dependencies": [
+		"zlib",
+		"curl",
+		"freetype",
+		"sdl2",
+		"libjpeg-turbo",
+		"libvorbis",
+		{
+			"name": "libarchive",
+			"default-features": false,
+			"features": [
+				"bzip2",
+				"libxml2",
+				"lz4",
+				"lzma",
+				"lzo"
+			]
+		},
+		"libiconv",
 		"openssl",
 		"luajit",
 		"lua-compat53"
-    ]
+	]
 }

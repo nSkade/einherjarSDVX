@@ -5,6 +5,9 @@
 #include "GameConfig.hpp"
 #include <algorithm>
 
+#include <glm/glm.hpp>
+#include <bit>
+
 using Shared::Rect;
 using Shared::Rect3D;
 
@@ -40,20 +43,20 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 		float rfs = rf*length;
 		float emo =yPos+rfs/(m_track->trackLength); // effective mod offset
 		
-		//TODO(skade) improve
+		//TODO(skade) now handled by shader, remove
 		// We need to push back degenerated vertices until the buffer is full.
-		if (emo > 1.f || (emo < -1. / m_track->trackLength)) {
-			if (verts.size() > 0) {
-				verts.push_back(verts.back());
-				verts.push_back(verts.back());
-			} else {
-				MeshGenerators::SimpleVertex v;
-				v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
-				verts.push_back(v);
-				verts.push_back(v);
-			}
-			continue;
-		}
+		//if (emo > 1.f || (emo < -1. / m_track->trackLength)) {
+		//	if (verts.size() > 0) {
+		//		verts.push_back(verts.back());
+		//		verts.push_back(verts.back());
+		//	} else {
+		//		MeshGenerators::SimpleVertex v;
+		//		v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		//		verts.push_back(v);
+		//		verts.push_back(v);
+		//	}
+		//	continue;
+		//}
 
 		Vector3 pos = t+Vector3(0.f,rfs,0.f);
 		
@@ -67,8 +70,19 @@ Mesh LaserTrackBuilder::GenerateHold(class BeatmapPlayback& playback, HoldObject
 		left.pos = m*left.pos;
 		right.pos = m*right.pos;
 		
-		left.tex = Vector2(0.f,rf);
-		right.tex = Vector2(1.f,rf);
+		//left.tex = Vector2(0.f,rf);
+		//right.tex = Vector2(1.f,rf);
+
+		// hack length into second uv component
+		uint32_t htxl = glm::packHalf2x16({0.,rfs/m_track->trackLength});
+		uint32_t htxr = glm::packHalf2x16({1.,rfs/m_track->trackLength});
+		float htxl_f, htxr_f;
+		std::memcpy(&htxl_f,&htxl,sizeof(float));
+		std::memcpy(&htxr_f,&htxr,sizeof(float));
+
+		left.tex = Vector2(htxl_f,rf);
+		right.tex = Vector2(htxr_f,rf);
+		
 		verts.push_back(left);
 		verts.push_back(right);
 	}
@@ -96,7 +110,8 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 	const float length = playback.ToViewDistance(laser->time, laser->duration);
 
-	//TODO(skade)f still kinda buggy with rotations.
+	//TODO(skade) fix evaluation offsets for mods and fade out
+	//TODO(skade)old still kinda buggy with rotations.
 	if((laser->flags & LaserObjectState::flag_Instant) != 0) // Slam segment
 	{
 		float left, right, offsetT, offsetB, uvT, uvB;
@@ -141,14 +156,15 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 		float osl01 = slamLength01;
 		float ohl01 = halfLength01;
 
-		if (yPos+halfLength01 + slamLength01 > 1.f && yPos-halfLength01 < 1.f) {
-			// snap top to end
-			// slam length from pos to end (capped)
-			float slamLength01c = 1.f-yPos-halfLength01; //TODO(skade) fix
-			//float slamLength01c = 1.f-(yPos-halfLength01); //TODO(skade) fix
-			slamLength = slamLength/slamLength01*slamLength01c;
-			slamLength01 = slamLength01c;
-		}
+		// test clamping mesh when its outside track region, now done with shader instead
+		//if (yPos+halfLength01 + slamLength01 > 1.f && yPos-halfLength01 < 1.f) {
+		//	// snap top to end
+		//	// slam length from pos to end (capped)
+		//	float slamLength01c = 1.f-yPos-halfLength01; //TODO(skade) fix
+		//	//float slamLength01c = 1.f-(yPos-halfLength01); //TODO(skade) fix
+		//	slamLength = slamLength/slamLength01*slamLength01c;
+		//	slamLength01 = slamLength01c;
+		//}
 
 		//TODO(skade) laser scale on fix on max bpm
 
@@ -166,6 +182,16 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 		//Rect3D centerMiddle = Rect3D(left, slamLength + halfLength, right, -halfLength);
 		//Rect3D centerMiddle = Rect3D(0, slamLength + halfLength, 0, -halfLength);
 		Rect3D centerMiddle = Rect3D(0, 0, 0, 0);
+
+		auto hackLenUV = [](Vector<MeshGenerators::SimpleVertex>& verts, std::vector<float> lens) {
+			// hack length into second uv component
+			for (int i=0;i<verts.size();++i) {
+				uint32_t htx = glm::packHalf2x16({verts[i].tex.x,lens[i]});
+				float htx_f;
+				std::memcpy(&htx_f,&htx,sizeof(float));
+				verts[i].tex.x = htx_f;
+			}
+		};
 		
 		// Center Piece Connecting left and right laser. aka Horizontal Part of slam segment.
 		Vector<MeshGenerators::SimpleVertex> verts =
@@ -178,6 +204,15 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			{ { centerMiddle.Right() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 1.0f } }, // TR
 			{ { centerMiddle.Left() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 0.0f } }, // TL
 		};
+
+		hackLenUV(verts, {
+				-halfLength01,
+				-halfLength01,
+				+halfLength01+slamLength01,
+				-halfLength01,
+				+halfLength01+slamLength01,
+				+halfLength01+slamLength01,
+			});
 
 		verts[0].pos = mlb * verts[0].pos;
 		verts[1].pos = mrb * verts[1].pos;
@@ -204,6 +239,12 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 				leftVerts[0].pos = fm * leftVerts[0].pos;
 				leftVerts[1].pos = fm * leftVerts[1].pos;
 				leftVerts[2].pos = mlb * leftVerts[2].pos;
+
+				hackLenUV(leftVerts, {
+						+halfLength01+slamLength01,
+						+halfLength01+slamLength01,
+						-halfLength01,
+					});
 			} else {
 				Transform fm = m_track->EvaluateModTransform(lposb+Vector3(0,halfLength,0),yPos,idx,Track::MA_LASER);
 				leftVerts =
@@ -215,6 +256,12 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 				leftVerts[0].pos = fm * leftVerts[0].pos;
 				leftVerts[1].pos = fm * leftVerts[1].pos;
 				leftVerts[2].pos = mlt * leftVerts[2].pos;
+
+				hackLenUV(leftVerts, {
+						-halfLength01,
+						-halfLength01,
+						+halfLength01+slamLength01,
+					});
 			}
 			for (auto& v : leftVerts) {
 				verts.Add(v);
@@ -238,6 +285,12 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 				rightVerts[0].pos = fm * rightVerts[0].pos;
 				rightVerts[1].pos = fm * rightVerts[1].pos;
 				rightVerts[2].pos = mrt * rightVerts[2].pos;
+
+				hackLenUV(rightVerts, {
+						-halfLength01,
+						-halfLength01,
+						+halfLength01+slamLength01,
+					});
 			}
 			else
 			{
@@ -251,6 +304,12 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 				rightVerts[0].pos = mrb * rightVerts[0].pos;
 				rightVerts[1].pos = fm * rightVerts[1].pos;
 				rightVerts[2].pos = fm * rightVerts[2].pos;
+
+				hackLenUV(rightVerts, {
+						-halfLength01,
+						+halfLength01+slamLength01,
+						+halfLength01+slamLength01,
+					});
 			}
 			for (auto& v : rightVerts) {
 				verts.Add(v);
@@ -265,12 +324,13 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 	//		{ { centerMiddle.Right() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 1.0f } }, // TR
 	//		{ { centerMiddle.Left() + offsetT, centerMiddle.Top(),  0.0f },{ uvT, 0.0f } }, // TL
 
-		//TODO(skade) smarter clamp
-		if (yPos+halfLength01+slamLength01 > 1.f) {
-			for (auto& v : verts) {
-				v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
-			}
-		}
+		//TODO(skade) smarter clamp, deprecated, now done with shader
+		//if (yPos+halfLength01+slamLength01 > 1.f) {
+		//	for (auto& v : verts) {
+		//		v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+		//	}
+		//}
+		
 		newMesh->SetData(verts);
 		newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
 	}
@@ -331,7 +391,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			float emo = yPos+rfs/tl; // effective mod offset
 			
 			//TODO(skade) is bad by resizing GPU buffer.
-			if (emo > 1.f || (emo < -1. / m_track->trackLength)) {
+			if (emo > 1.f || (emo < -2. / m_track->trackLength)) {
 				if (verts.size() > 0) {
 					verts.push_back(verts.back());
 					verts.push_back(verts.back());
@@ -356,9 +416,19 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			
 			left.pos = m*left.pos;
 			right.pos = m*right.pos;
+			//left.tex = Vector2(uMin,rf);
+			//right.tex = Vector2(uMax,rf);
+
+			//// hack length into second uv component
+			uint32_t htxl = glm::packHalf2x16({uMin,rfs/m_track->trackLength});
+			uint32_t htxr = glm::packHalf2x16({uMax,rfs/m_track->trackLength});
+			float htxl_f, htxr_f;
+			std::memcpy(&htxl_f,&htxl,sizeof(float));
+			std::memcpy(&htxr_f,&htxr,sizeof(float));
 			
-			left.tex = Vector2(uMin,rf);
-			right.tex = Vector2(uMax,rf);
+			left.tex = Vector2(htxl_f,rf);
+			right.tex = Vector2(htxr_f,rf);
+			
 			verts.push_back(left);
 			verts.push_back(right);
 		}
@@ -393,19 +463,21 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	Vector<MeshGenerators::SimpleVertex> verts;
 
 	float len01 = length/m_track->trackLength;
-	if (yPos > 1.f && yPos - len01 < 1.f) {
-		float lenOf = (1.f-yPos)*m_track->trackLength;
-		float yPosTE = (1.f-(yPos-len01))*m_track->trackLength;
-
-		// scroll yPos-len01 larger down
-		float len01c = len01-(yPos-1.f);
-		length = length/len01*len01c;
-		len01 = len01c;
-		
-		// snap pos to end
-		t.y = m_track->trackLength;
-		yPos = 1.f;
-	}
+	
+	//TODO(skade) old snapping, remove
+	//if (yPos > 1.f && yPos - len01 < 1.f) {
+	//	float lenOf = (1.f-yPos)*m_track->trackLength;
+	//	float yPosTE = (1.f-(yPos-len01))*m_track->trackLength;
+	//
+	//	// scroll yPos-len01 larger down
+	//	float len01c = len01-(yPos-1.f);
+	//	length = length/len01*len01c;
+	//	len01 = len01c;
+	//	
+	//	// snap pos to end
+	//	t.y = m_track->trackLength;
+	//	yPos = 1.f;
+	//}
 	
 	uint32_t idx = 1-laser->index+6;
 	Vector3 pb = t + Vector3(startingX,-length,0);
@@ -417,7 +489,7 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	Rect3D rec = Rect3D(Vector2(- actualLaserWidth,0), Vector2(actualLaserWidth * 2,0));
 	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(rec, uv, verts);
-
+	
 	verts[0].pos = mt * verts[0].pos;
 	verts[1].pos = mb * verts[1].pos;
 	verts[2].pos = mt * verts[2].pos;
@@ -425,15 +497,24 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	verts[4].pos = mb * verts[4].pos;
 	verts[5].pos = mb * verts[5].pos;
 
+	// hack length into second uv component
+	for (int i=0;i<6;++i) {
+		uint32_t htx = glm::packHalf2x16({verts[i].tex.x,(-length + (1.-verts[i].tex.y)*length)/m_track->trackLength});
+		float htx_f;
+		std::memcpy(&htx_f,&htx,sizeof(float));
+		verts[i].tex.x = htx_f;
+	}
+
 	//for (auto& v : verts) {
 	//	v.pos = m * v.pos;
 	//}
 
-	if (yPos-len01 > 1.f) {
-		for (auto& v : verts) {
-			v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
-		}
-	}
+	//TODO(skade) old clamping method, remove
+	//if (yPos-len01 > 1.f) {
+	//	for (auto& v : verts) {
+	//		v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+	//	}
+	//}
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
 
@@ -477,12 +558,13 @@ Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, Laser
 	yPos += len01prev;
 	float len01 = length/m_track->trackLength;
 
-	if (yPos+len01 > 1.f && yPos < 1.f) {
-		// snap off to end
-		float len01c = 1.f-yPos;
-		length = length/len01*len01c;
-		len01 = len01c;
-	}
+	//TODO(skade) old snapping, remove
+	//if (yPos+len01 > 1.f && yPos < 1.f) {
+	//	// snap off to end
+	//	float len01c = 1.f-yPos;
+	//	length = length/len01*len01c;
+	//	len01 = len01c;
+	//}
 	Vector3 pb = t + Vector3(startingX,prevLength,0);
 	Vector3 pt = t + Vector3(startingX,prevLength+length,0);
 
@@ -500,12 +582,21 @@ Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, Laser
 	verts[3].pos = mt * verts[3].pos;
 	verts[4].pos = mb * verts[4].pos;
 	verts[5].pos = mb * verts[5].pos;
-
-	if (yPos > 1.f) {
-		for (auto& v : verts) {
-			v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
-		}
+	
+	// hack length into second uv component
+	for (int i=0;i<6;++i) {
+		uint32_t htx = glm::packHalf2x16({verts[i].tex.x,((1.-verts[i].tex.y)*length + prevLength)/m_track->trackLength});
+		float htx_f;
+		std::memcpy(&htx_f,&htx,sizeof(float));
+		verts[i].tex.x = htx_f;
 	}
+	
+	//TODO(skade) old clamping method, remove
+	//if (yPos > 1.f) {
+	//	for (auto& v : verts) {
+	//		v.pos = Vector3(FLT_MAX,FLT_MAX,FLT_MAX);
+	//	}
+	//}
 	newMesh->SetData(verts);
 	newMesh->SetPrimitiveType(PrimitiveType::TriangleList);
 

@@ -791,7 +791,6 @@ void PitchShiftDSP::Process(float *out, uint32 numSamples)
 VocalFilterDSP::VocalFilterDSP(uint32 sampleRate) : DSP()
 {
 	SetSampleRate(sampleRate);
-	invertedOut = 0;
 }
 void VocalFilterDSP::Process(float* out, uint32 numSamples)
 {
@@ -799,10 +798,19 @@ void VocalFilterDSP::Process(float* out, uint32 numSamples)
 	{
 		for (uint32 i = 0; i < numSamples; i++)
 		{
-			invertedOut = out[i*2] - out[i*2 + 1];
+#if 0 // old
+			float invertedOut = out[i*2] - out[i*2 + 1];
 
 			out[i*2] = invertedOut*0.75f;
 			out[i*2+1] = invertedOut*0.75f;
+#endif
+#if 1 // new test
+			float invL =  out[i*2] - out[i*2 + 1];
+			float invR = -out[i*2] + out[i*2 + 1];
+
+			out[i*2]   = invL*.5;
+			out[i*2+1] = invR*.5;
+#endif
 		}
 	}
 }

@@ -12,6 +12,9 @@ elseif(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 	message(FATAL_ERROR "Could not find vcpkg root")
 endif()
 
+# use local vcpkg_installed folder at the root of the project
+set(VCPKG_INSTALLED_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed")
+
 option(BUILD_SHARED_LIBS "Build libraries as shared libraries" OFF)
 option(USC_GNU_WERROR "Set Werror for gcc." OFF)
 
@@ -56,6 +59,7 @@ find_package(OGG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(Iconv REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 # All projects use unicode define
 # this is mainly for windows functions either being defined to call A or W prefixed functions

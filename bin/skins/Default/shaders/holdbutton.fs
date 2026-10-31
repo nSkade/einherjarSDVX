@@ -7,7 +7,8 @@ layout(location=0) out vec4 target;
 uniform sampler2D mainTex;
 uniform float objectGlow;
 
-varying vec4 position;
+in vec4 position;
+in float len;
 
 uniform float trackPos;
 uniform float trackScale;
@@ -26,6 +27,12 @@ void main()
 	target = color;
 
 	float off = trackPos + position.y * trackScale;
+
+	float fadeOutDist = .9; // natural cutoff at in
+	if (trackPos + len > fadeOutDist)
+		target.a *= (1.-(trackPos+len))/(1.-fadeOutDist);
+	else if (trackPos + len < -fadeOutDist + 8.5/11.) // and out //TODO find better value than 8.5
+		target.a *= (1.-(8.5/11.)+(trackPos+len))/(1.-fadeOutDist);
 	
 	if(hiddenCutoff < suddenCutoff) {
 		float hiddenCutoffFade = hiddenCutoff - hiddenFadeWindow;

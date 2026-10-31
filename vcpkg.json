@@ -14,15 +14,16 @@
 			"default-features": false,
 			"features": [
 				"bzip2",
-				"libxml2",
 				"lz4",
 				"lzma",
 				"lzo"
 			]
 		},
+		"libxml2",
 		"libiconv",
 		"openssl",
 		"luajit",
-		"lua-compat53"
+		"lua-compat53",
+		"glm"
 	]
 }

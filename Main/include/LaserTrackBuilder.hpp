@@ -36,6 +36,9 @@ public:
 	// The length of the horizontal slam segments
 	MapTime slamDuration;
 
+	float GetActualLaserWidth() { return actualLaserWidth; }
+	float GetActualLaserHeight() { return actualLaserHeight; }
+
 private:
 	// The uv coordinates to sample the laser without the border, or only the border
 	float textureBorder;

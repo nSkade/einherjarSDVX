@@ -1376,12 +1376,35 @@ void Application::m_Tick()
 			SDL_SemPost(renderSema);
 			while (rendering.load()) {
 				SDL_PumpEvents();
-				if (m_responsiveInputsSleep) {
-					std::this_thread::sleep_for(std::chrono::milliseconds(m_responsiveInputsSleep));
-				}
-				else {
-					std::this_thread::yield();
-				}
+#if 0
+				//TODO(skade) sleep_for should never be used its horrible
+				//if (m_responsiveInputsSleep) {
+				//	std::this_thread::sleep_for(std::chrono::milliseconds(m_responsiveInputsSleep));
+				//}
+				//else {
+				//	std::this_thread::yield();
+				//}
+#endif
+#if 1
+				//if (m_responsiveInputsSleep) {
+					static std::chrono::steady_clock::time_point s_next;
+					auto now = std::chrono::steady_clock::now();
+
+					if (now < s_next){ 
+						std::this_thread::sleep_for(std::chrono::floor<std::chrono::milliseconds>(s_next - now - std::chrono::milliseconds(2)));
+
+						while ((now = std::chrono::steady_clock::now()) < s_next)
+							std::this_thread::yield();
+					}
+					else
+						s_next = now;
+
+					//s_next += std::chrono::milliseconds(m_responsiveInputsSleep);
+					s_next += std::chrono::milliseconds(1);
+				//} else {
+				//	std::this_thread::yield();
+				//}
+#endif
 			}
 			g_gl->MakeCurrent();
 		}

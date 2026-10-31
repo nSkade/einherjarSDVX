@@ -1,7 +1,10 @@
-#version 330
+#version 420
+//#version 330
 #extension GL_ARB_separate_shader_objects : enable
 layout(location=0) in vec3 inPos;
 layout(location=1) in vec2 inTex;
+
+out float len;
 
 out gl_PerVertex
 {
@@ -15,6 +18,8 @@ uniform mat4 world;
 
 void main()
 {
-	fsTex = inTex;
+	vec2 packLenUVx = unpackHalf2x16(floatBitsToUint(inTex.x));
+	fsTex = vec2(packLenUVx.x,inTex.y);
+	len = packLenUVx.y;
 	gl_Position = proj * camera * world * vec4(inPos, 1);
 }

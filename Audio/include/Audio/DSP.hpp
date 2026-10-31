@@ -314,8 +314,6 @@ public:
 	VocalFilterDSP(uint32 sampleRate);
 	virtual void Process(float* out, uint32 numSamples);
 	virtual const char* GetName() const { return "VocalFilterDSP"; }
-private:
-	float invertedOut;
 };
 
 class ReverbDSP : public DSP

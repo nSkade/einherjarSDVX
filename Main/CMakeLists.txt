@@ -149,6 +149,10 @@ if(WIN32)
 		debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Debug.lib
 	)
 	target_include_directories(einherjarSDVX PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
+	
+	target_link_libraries(einherjarSDVX
+		winmm
+	)
 endif()
 
 find_package(ZLIB REQUIRED)

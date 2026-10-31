@@ -764,7 +764,9 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		params.SetParameter("trackScale", trackScale);
 		params.SetParameter("uIndex", mobj->button.index);
 		params.SetParameter("trackPos", position);
-		params.SetParameter("length", length);
+		//TODO(skade) useless should be deducable from inPos
+		//params.SetParameter("length", length);
+
 		params.insert(holdButtonParamsCust.begin(),holdButtonParamsCust.end());
 		rq.Draw(buttonTransform, mesh, mat, params);
 
@@ -931,7 +933,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		bool isExit = !laser->next && (laser->flags & LaserObjectState::flag_Instant) != 0; // Only draw exit on slams
 
 		// Draw segment function
-		auto DrawSegment = [&](Mesh mesh, Texture texture, int part)
+		//TODO(skade)removelength
+		auto DrawSegment = [&](Mesh mesh, Texture texture, int part, float length)
 		{
 			MaterialParameterSet laserParams;
 			laserParams.SetParameter("trackPos", posmult * position / trackLength);
@@ -966,6 +969,9 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			// Set laser color
 			laserParams.SetParameter("color", laserColors[laser->index]);
 			laserParams.SetParameter("uIndex",laser->index);
+			//TODO(skade) should be unneccesarry
+			//laserParams.SetParameter("length",length);
+
 			laserParams.insert(laserParamsCust.begin(),laserParamsCust.end());
 
 			if(mesh)
@@ -976,18 +982,25 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		if(isEntry)
 		{
 			Mesh laserTail = m_laserTrackBuilder->GenerateTrackEntry(playback, laser,laserPos,posy);
-			DrawSegment(laserTail, laserTailTextures[laser->index], 1);
+			//float length = (float)m_laserTrackBuilder->laserEntryTextureSize.y
+			//	/ (float)m_laserTrackBuilder->laserEntryTextureSize.x * m_laserTrackBuilder->GetActualLaserWidth();
+			
+			DrawSegment(laserTail, laserTailTextures[laser->index], 1, 0.);
 		}
 
-		// Body
-		Mesh laserMesh = m_laserTrackBuilder->GenerateTrackMesh(playback, laser, laserPos, posy,1.f,m_mqLaser);
-		DrawSegment(laserMesh, laserTextures[laser->index], 0);
+		{ // Body
+			Mesh laserMesh = m_laserTrackBuilder->GenerateTrackMesh(playback, laser, laserPos, posy,1.f,m_mqLaser);
+			//float length = playback.ToViewDistance(laser->time, laser->duration);
+			DrawSegment(laserMesh, laserTextures[laser->index], 0, 0.);
+		}
 
 		// Draw exit
 		if(isExit) // Only draw exit on slams
 		{
 			Mesh laserTail = m_laserTrackBuilder->GenerateTrackExit(playback, laser,laserPos,posy);
-			DrawSegment(laserTail, laserTailTextures[2 + laser->index], 2);
+			//float length = (float)m_laserTrackBuilder->laserExitTextureSize.y
+			//	/ (float)m_laserTrackBuilder->laserExitTextureSize.x * m_laserTrackBuilder->GetActualLaserWidth();
+			DrawSegment(laserTail, laserTailTextures[2 + laser->index], 2, 0.);
 		}
 	}
 }

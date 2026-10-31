@@ -8,6 +8,8 @@ layout(location=0) out vec4 target;
 in vec4 position;
 #endif
 
+in float len;
+
 uniform sampler2D mainTex;
 uniform vec4 color;
 uniform float objectGlow;
@@ -93,5 +95,11 @@ void main()
     float brightness = (target.x + target.y + target.z) / 3.0;
     target.xyz = target.xyz * (0.0 + objectGlow * 1.2);
     //target *= hide();
+
+	float fadeOutDist = .9; // natural cutoff at in
+	if (trackPos + len > fadeOutDist)
+		target *= (1.-(trackPos+len))/(1.-fadeOutDist);
+	else if (trackPos + len < -fadeOutDist + 9./11.) // and out //TODO find better value than 8.5
+		target *= (1.-(9./11.)+(trackPos+len))/(1.-fadeOutDist);
 }
 #endif

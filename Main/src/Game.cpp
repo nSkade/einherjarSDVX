@@ -3208,6 +3208,8 @@ public:
 	{
 		assert(m_isPracticeMode && m_isPracticeSetup);
 
+		
+		ReloadBackground();
 		m_isPracticeSetup = false;
 		m_scoring.autoplayInfo.autoplay = false;
 
